@@ -124,3 +124,15 @@ mono note cutting, CC locks (later build steps).
 
 Colours are still placeholders: use **palette 0** / **palette 64** to pick
 indices, and send them back.
+
+## Step 5 — Step gestures ✅
+
+| Push | Does |
+|---|---|
+| Press an empty step | Creates the trig straight away (bass: brush note), so you can keep holding it to edit |
+| Tap a lit / muted step | Mutes / unmutes it **on release** |
+| Hold a step + turn an encoder | Releasing is no longer a tap: the step is not muted (the encoder sets p-locks in step 7) |
+| Hold step(s) + tap a note pad | Sets or replaces the held bass steps' note (brush unchanged); the keyboard shows the held step's note in bright white |
+| Hold Delete + tap a step | Wipes it (on press) |
+
+Follow mode pauses while a step is held, so the page doesn't change under your finger.

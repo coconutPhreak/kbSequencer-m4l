@@ -7,6 +7,8 @@
 // Build step 3: playback (see "playback" section for the timing design).
 // Build step 4: pad UI: step / page / note rows, follow mode, page viewing,
 // loop by holding two page pads, note brush + audition, octave buttons.
+// Build step 5: step gestures: create on press, mute on release unless the
+// held step was edited, hold step + note pad sets its note.
 // Encoders, p-lock gestures etc. come in later build steps.
 //
 // ES5 on purpose: runs in both [js] (Max 8) and [v8] (Max 9).
@@ -402,6 +404,7 @@ function grab() {
 	grabbed = true;
 	deleteHeld = selectHeld = false;
 	heldPages = [];
+	heldSteps = [];
 	cancelLongPress();
 	padCache = {};
 	renderAll();
@@ -450,6 +453,7 @@ function handleInput(role, v) {
 	if (role === "matrix") { onPad(v[1], v[2], pressed); return; }
 	if (role === "octaveUp") { if (pressed) shiftOctave(1); return; }
 	if (role === "octaveDown") { if (pressed) shiftOctave(-1); return; }
+	if (role === "encoders") { onEncoder(v); return; }
 }
 
 // Lower display buttons: 1 kick, 2 bass, 3–5 banks (step 6), 6 follow.
@@ -468,26 +472,70 @@ function onPad(x, y, pressed) {
 		if (pressed) post("kbSequencer: palette index " + (paletteBase + y * 8 + x) + "\n");
 		return;
 	}
-	if (y <= 3) { if (pressed) onStepPad(viewPage * S.STEPS_PER_PAGE + y * 8 + x); return; }
+	if (y <= 3) { onStepPad(y * 8 + x, pressed); return; }
 	if (y <= 5) { onPagePad((y - 4) * 8 + x, pressed); return; }
 	if (pressed) onNotePad(x, y);
 }
 
-function onStepPad(i) {
+// Step pads (build step 5). An empty step gets its trig on press, so it can
+// be held and edited straight away. A lit step mutes / unmutes on release,
+// and only if nothing was edited while it was held (encoder turn or note
+// pad): holding a step to edit it never mutes it. Delete + tap wipes on press.
+// heldSteps: { pad, i, created, edited }. pad is the local pad (0–31) and i
+// the absolute step fixed at press, so a page change can't retarget it.
+var heldSteps = [];
+
+function heldStepAt(pad) {
+	for (var k = 0; k < heldSteps.length; k++) if (heldSteps[k].pad === pad) return k;
+	return -1;
+}
+
+function onStepPad(pad, pressed) {
 	var lanes = selectedLanes();
+	if (!pressed) {
+		var at = heldStepAt(pad);
+		if (at < 0) return;
+		var h = heldSteps.splice(at, 1)[0];
+		if (!h.created && !h.edited) {
+			// Decide from the first selected lane that has a trig, so both lanes move together.
+			var ref = null;
+			for (var r = 0; r < lanes.length && !ref; r++) ref = model.step(lanes[r], h.i);
+			if (ref) {
+				var mute = !ref.muted;
+				for (var m = 0; m < lanes.length; m++) model.setMuted(lanes[m], h.i, mute);
+			}
+		}
+		renderStep(h.i);
+		renderNotes();
+		return;
+	}
+	var i = viewPage * S.STEPS_PER_PAGE + pad;
 	if (deleteHeld) {
 		for (var k = 0; k < lanes.length; k++) model.wipe(lanes[k], i);
-	} else {
-		// Decide from the first selected lane so both lanes move together.
-		var st = model.step(lanes[0], i);
-		for (var j = 0; j < lanes.length; j++) {
-			var l = lanes[j];
-			if (!st || !model.hasTrig(l, i)) model.addTrig(l, i, brushNote); // kick ignores the note
-			else model.setMuted(l, i, !st.muted);
-		}
+		renderStep(i);
+		renderPages();
+		return;
 	}
+	if (heldStepAt(pad) >= 0) return;
+	// Create on press when the first selected lane is empty; any other
+	// selected lane that is empty gets a trig too.
+	var created = !model.hasTrig(lanes[0], i);
+	if (created) for (var j = 0; j < lanes.length; j++) model.addTrig(lanes[j], i, brushNote); // kick ignores the note
+	heldSteps.push({ pad: pad, i: i, created: created, edited: false });
 	renderStep(i);
 	renderPages();
+	renderNotes(); // keyboard shows the held step's note
+}
+
+// Anything that edits the held steps makes their release not a tap.
+function markHeldEdited() {
+	for (var k = 0; k < heldSteps.length; k++) heldSteps[k].edited = true;
+}
+
+// Encoders: p-locks come in steps 6–7. For now a turn only marks the held
+// steps as edited (so releasing them doesn't mute).
+function onEncoder(v) {
+	if (heldSteps.length) markHeldEdited();
 }
 
 // Page pads. Select + pad: view that page (follow off). Hold one pad and
@@ -534,10 +582,22 @@ function onPagePad(page, pressed) {
 
 // Note keyboard: bottom row (y 7) = notes 1–8, row above = 9–16. Tapping a
 // note makes it the brush (new bass trigs get it) and auditions it.
-// Hold step + note pad (set a step's note) comes in step 5.
+// Hold step(s) + note pad: sets or replaces the held steps' bass note
+// (brush unchanged).
 function onNotePad(x, y) {
 	var n = keyboardNotes()[(y === 7 ? 0 : 8) + x];
 	if (n < 0) return;
+	if (heldSteps.length) {
+		if (!selBass) return;
+		var any = false;
+		for (var k = 0; k < heldSteps.length; k++) {
+			if (model.hasTrig(S.BASS, heldSteps[k].i)) { model.setNote(S.BASS, heldSteps[k].i, n); any = true; }
+		}
+		markHeldEdited();
+		if (any) audition(S.BASS, n);
+		renderNotes();
+		return;
+	}
 	if (selBass) {
 		brushNote = n;
 		audition(S.BASS, n);
@@ -673,11 +733,16 @@ function renderPages() {
 function renderNotes() {
 	if (!grabbed || !controls.matrix || paletteBase >= 0) return;
 	var notes = keyboardNotes();
+	var lit = brushNote;
+	if (heldSteps.length) {
+		var hs = model.step(S.BASS, heldSteps[0].i);
+		lit = hs ? hs.note : -1;
+	}
 	for (var k = 0; k < 16; k++) {
 		var n = notes[k], c;
 		if (n < 0) c = COL.off;
 		else if (!selBass) c = COL.noteDimmed;
-		else if (n === brushNote) c = COL.noteBrush;
+		else if (n === lit) c = COL.noteBrush;
 		else if (((n - scaleRoot) % 12 + 12) % 12 === 0) c = COL.noteRoot;
 		else c = COL.noteScale;
 		sendPad(k % 8, k < 8 ? 7 : 6, c);
@@ -705,7 +770,7 @@ function renderOctaveButtons() {
 // Follow mode: keep the viewed page on the playhead's page.
 function followPlayhead() {
 	var pp = playPage();
-	if (!follow || !playing || pp < 0 || pp === viewPage) return false;
+	if (!follow || !playing || pp < 0 || pp === viewPage || heldSteps.length) return false;
 	viewPage = pp;
 	return true;
 }
