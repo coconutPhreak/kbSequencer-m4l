@@ -374,7 +374,7 @@
       400,
       20
      ],
-     "text": "kbSequencer \u00b7 step 4: pad UI   v0.5.4 \u00b7 1115.0049",
+     "text": "kbSequencer \u00b7 step 4: pad UI   v0.5.7 \u00b7 1115.0059",
      "numinlets": 1,
      "numoutlets": 0
     }
@@ -565,6 +565,128 @@
      "outlettype": [
       "int",
       "int"
+     ]
+    }
+   },
+   {
+    "box": {
+     "id": "clk_once",
+     "maxclass": "newobj",
+     "patching_rect": [
+      30,
+      655,
+      70,
+      22
+     ],
+     "text": "change -1",
+     "numinlets": 1,
+     "numoutlets": 3,
+     "outlettype": [
+      "",
+      "int",
+      "int"
+     ]
+    }
+   },
+   {
+    "box": {
+     "id": "clk_poll",
+     "maxclass": "newobj",
+     "patching_rect": [
+      250,
+      520,
+      110,
+      22
+     ],
+     "text": "metro 2 @active 1",
+     "numinlets": 2,
+     "numoutlets": 1,
+     "outlettype": [
+      "bang"
+     ]
+    }
+   },
+   {
+    "box": {
+     "id": "clk_tr2",
+     "maxclass": "newobj",
+     "patching_rect": [
+      250,
+      550,
+      70,
+      22
+     ],
+     "text": "transport",
+     "numinlets": 2,
+     "numoutlets": 9,
+     "outlettype": [
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      ""
+     ]
+    }
+   },
+   {
+    "box": {
+     "id": "clk_run",
+     "maxclass": "newobj",
+     "patching_rect": [
+      250,
+      580,
+      50,
+      22
+     ],
+     "text": "change",
+     "numinlets": 1,
+     "numoutlets": 3,
+     "outlettype": [
+      "",
+      "int",
+      "int"
+     ]
+    }
+   },
+   {
+    "box": {
+     "id": "clk_edge",
+     "maxclass": "newobj",
+     "patching_rect": [
+      250,
+      610,
+      50,
+      22
+     ],
+     "text": "sel 1 0",
+     "numinlets": 3,
+     "numoutlets": 3,
+     "outlettype": [
+      "bang",
+      "bang",
+      ""
+     ]
+    }
+   },
+   {
+    "box": {
+     "id": "clk_reset",
+     "maxclass": "message",
+     "patching_rect": [
+      310,
+      640,
+      50,
+      22
+     ],
+     "text": "set -1",
+     "numinlets": 2,
+     "numoutlets": 1,
+     "outlettype": [
+      ""
      ]
     }
    },
@@ -1528,7 +1650,91 @@
       0
      ],
      "destination": [
+      "clk_once",
+      0
+     ]
+    }
+   },
+   {
+    "patchline": {
+     "source": [
+      "clk_once",
+      0
+     ],
+     "destination": [
       "clk_t",
+      0
+     ]
+    }
+   },
+   {
+    "patchline": {
+     "source": [
+      "clk_poll",
+      0
+     ],
+     "destination": [
+      "clk_tr2",
+      0
+     ]
+    }
+   },
+   {
+    "patchline": {
+     "source": [
+      "clk_tr2",
+      6
+     ],
+     "destination": [
+      "clk_run",
+      0
+     ]
+    }
+   },
+   {
+    "patchline": {
+     "source": [
+      "clk_run",
+      0
+     ],
+     "destination": [
+      "clk_edge",
+      0
+     ]
+    }
+   },
+   {
+    "patchline": {
+     "source": [
+      "clk_edge",
+      0
+     ],
+     "destination": [
+      "clk_tr",
+      0
+     ]
+    }
+   },
+   {
+    "patchline": {
+     "source": [
+      "clk_edge",
+      1
+     ],
+     "destination": [
+      "clk_reset",
+      0
+     ]
+    }
+   },
+   {
+    "patchline": {
+     "source": [
+      "clk_reset",
+      0
+     ],
+     "destination": [
+      "clk_once",
       0
      ]
     }

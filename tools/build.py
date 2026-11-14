@@ -22,7 +22,7 @@ AMXD_MIDI = int.from_bytes(b"mmmm", "big")  # 1835887981
 
 # Shown on every device and printed to the Max Console at load, so it's easy
 # to tell which build is running. VERSION: bump the minor per spec build step.
-VERSION = "0.5.4"
+VERSION = "0.5.7"
 BUILD = datetime.datetime.now().strftime("%m%d.%H%M")  # build time, MMDD.HHMM
 STAMP = f"v{VERSION} · {BUILD}"
 
@@ -242,7 +242,26 @@ s.wire("clk_tr", 7, "clk_f", 1)    # raw ticks (fires before state: right to lef
 s.wire("clk_tr", 6, "clk_sel", 0)  # transport state; 1 = running
 s.wire("clk_sel", 0, "clk_f", 0)
 s.wire("clk_f", 0, "clk_step", 0)
-s.wire("clk_step", 0, "clk_t", 0)
+# Each abs step plays once: the start detector below and the metro can both
+# land on the first step. Reset on stop so playing again from the same spot works.
+s.obj("clk_once", "change -1", [30, 655, 70, 22], 1, 3, ["", "int", "int"])
+s.wire("clk_step", 0, "clk_once", 0)
+s.wire("clk_once", 0, "clk_t", 0)
+# Start detector. A transport-locked metro starts at the NEXT 1/16 after the
+# transport starts, so the step under the start position (the downbeat) was
+# never played on the first pass. A free 2 ms poll of the transport state
+# catches the start and reads the position at once (high priority).
+s.obj("clk_poll", "metro 2 @active 1", [250, 520, 110, 22], 2, 1, ["bang"])
+s.obj("clk_tr2", "transport", [250, 550, 70, 22], 2, 9)
+s.obj("clk_run", "change", [250, 580, 50, 22], 1, 3, ["", "int", "int"])
+s.obj("clk_edge", "sel 1 0", [250, 610, 50, 22], 3, 3, ["bang", "bang", ""])
+s.message("clk_reset", "set -1", [310, 640, 50, 22])
+s.wire("clk_poll", 0, "clk_tr2", 0)
+s.wire("clk_tr2", 6, "clk_run", 0)
+s.wire("clk_run", 0, "clk_edge", 0)
+s.wire("clk_edge", 0, "clk_tr", 0)    # started: read ticks + state now
+s.wire("clk_edge", 1, "clk_reset", 0) # stopped
+s.wire("clk_reset", 0, "clk_once", 0)
 # right outlet first: play this step's MIDI, then tell the script (low priority)
 s.obj("clk_mod", f"% {SLOTS}", [120, 700, 40, 22], 2, 1, ["int"])
 s.obj("ev_coll", "coll", [120, 730, 50, 22], 1, 4, ["", "", "", "bang"])
