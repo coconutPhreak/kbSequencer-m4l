@@ -72,7 +72,8 @@ var CONTROL_NAMES = {
 	octaveUp: "Octave_Up_Button",
 	octaveDown: "Octave_Down_Button",
 	undoBtn: "Undo_Button",
-	shiftBtn: "Shift_Button"
+	shiftBtn: "Shift_Button",
+	duplicateBtn: "Duplicate_Button"
 };
 
 // ---------- deferred work queue ----------
@@ -468,6 +469,7 @@ function grab() {
 	}
 	grabbed = true;
 	deleteHeld = selectHeld = shiftHeld = false;
+	dupHeld = false; clip = null; dupAnchor = -1;
 	heldPages = [];
 	heldSteps = [];
 	cancelLongPress();
@@ -515,6 +517,7 @@ function handleInput(role, v) {
 	if (role === "deleteBtn") { deleteHeld = pressed; return; }
 	if (role === "selectBtn") { selectHeld = pressed; return; }
 	if (role === "shiftBtn") { shiftHeld = pressed; return; }
+	if (role === "duplicateBtn") { onDuplicate(pressed); return; }
 	if (role === "undoBtn") { if (pressed) { if (shiftHeld) redo(); else undo(); } return; }
 	if (role === "display") { if (pressed) onDisplayButton(v[1]); return; }
 	if (role === "matrix") { onPad(v[1], v[2], pressed); return; }
@@ -558,6 +561,7 @@ function heldStepAt(pad) {
 }
 
 function onStepPad(pad, pressed) {
+	if (dupHeld) { onDupStep(pad, pressed); return; }
 	var lanes = selectedLanes();
 	if (!pressed) {
 		var at = heldStepAt(pad);
@@ -605,6 +609,71 @@ function onEncoder(v) {
 	if (heldSteps.length) markHeldEdited();
 }
 
+// Copy / paste with Push's Duplicate button, Push style: while Duplicate is
+// held, the first pad touched is the source and every pad after it is a
+// paste target. Releasing Duplicate forgets the clipboard.
+//   Steps: Duplicate + step copies it (with its locks, selected lanes).
+//          Keep holding that step and press another: copies the range
+//          between them. Then tap a step to paste there (the range runs on
+//          into the next page if needed, stops at the last step). Page pads
+//          view another page meanwhile, so steps can be pasted to any page.
+//   Pages: Duplicate + page pad copies the whole page; tap other page pads
+//          to paste it over them.
+// A paste replaces the target exactly, empty steps included; one Undo
+// takes back one paste.
+var dupHeld = false;
+var clip = null;     // { kind: "steps"|"page", lanes: [..], len, data: {lane: steps} }
+var dupAnchor = -1;  // local pad of the source step while still held (range copy)
+var dupAnchorStep = -1;
+
+function onDuplicate(pressed) {
+	dupHeld = pressed;
+	if (!pressed) { clip = null; dupAnchor = -1; }
+	renderDuplicateButton();
+	showStatus();
+}
+
+function copyRange(kind, from, len) {
+	var lanes = selectedLanes();
+	clip = { kind: kind, lanes: lanes, len: len, data: {} };
+	for (var k = 0; k < lanes.length; k++) clip.data[lanes[k]] = model.copySteps(lanes[k], from, len);
+	post("kbSequencer: copied " + (kind === "page" ? "page " + (from / S.STEPS_PER_PAGE + 1) : len + " step" + (len > 1 ? "s" : "")) + "\n");
+	renderDuplicateButton();
+	showStatus();
+}
+
+function pasteAt(at) {
+	for (var k = 0; k < clip.lanes.length; k++) model.pasteSteps(clip.lanes[k], at, clip.data[clip.lanes[k]]);
+	renderAll();
+	showStatus();
+}
+
+function onDupStep(pad, pressed) {
+	if (!pressed) { if (pad === dupAnchor) dupAnchor = -1; return; }
+	var i = viewPage * S.STEPS_PER_PAGE + pad;
+	if (!clip) {
+		copyRange("steps", i, 1);
+		dupAnchor = pad;
+		dupAnchorStep = i;
+	} else if (clip.kind === "steps" && dupAnchor >= 0) {
+		var from = Math.min(dupAnchorStep, i), to = Math.max(dupAnchorStep, i);
+		copyRange("steps", from, to - from + 1);
+	} else if (clip.kind === "steps") {
+		pasteAt(i);
+	}
+}
+
+function onDupPage(page) {
+	if (!clip) copyRange("page", page * S.STEPS_PER_PAGE, S.STEPS_PER_PAGE);
+	else if (clip.kind === "page") pasteAt(page * S.STEPS_PER_PAGE);
+	else viewPageAndStopFollow(page); // step clipboard: go to another page to paste
+}
+
+function renderDuplicateButton() {
+	if (!grabbed || !controls.duplicateBtn) return;
+	new LiveAPI("id " + controls.duplicateBtn.id).call("send_value", clip ? COL.buttonOn : COL.off);
+}
+
 // Page pads. Select + pad: view that page (follow off). Hold one pad and
 // press another: loop from the first to the second. Long-press one pad on
 // its own: loop that single page. Plain tap (released within ½ s, no
@@ -631,6 +700,7 @@ function viewPageAndStopFollow(page) {
 }
 
 function onPagePad(page, pressed) {
+	if (dupHeld && pressed) { onDupPage(page); return; }
 	var at = heldPages.indexOf(page);
 	if (!pressed) {
 		if (at >= 0) heldPages.splice(at, 1);
@@ -785,6 +855,7 @@ function renderAll() {
 	renderDisplayButtons();
 	renderOctaveButtons();
 	renderUndoButton();
+	renderDuplicateButton();
 }
 
 function renderStep(i) {
@@ -877,6 +948,7 @@ function showStatus() {
 	parts.push("lanes " + (selKick ? "K" : "") + (selBass ? "B" : ""));
 	parts.push("page " + (viewPage + 1) + (follow ? " (follow)" : ""));
 	parts.push("oct " + octave);
+	if (clip) parts.push("clip: " + (clip.kind === "page" ? "page" : clip.len + " step" + (clip.len > 1 ? "s" : "")));
 	parts.push((playing ? "playing" : "stopped") + " loop " + (model.loopStart + 1) + "-" + (model.loopEnd + 1));
 	parts.push("trigs " + model.countTrigs(S.KICK) + "/" + model.countTrigs(S.BASS));
 	status(parts.join(" · "));

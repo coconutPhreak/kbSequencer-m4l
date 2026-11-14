@@ -374,7 +374,7 @@
       400,
       20
      ],
-     "text": "kbSequencer \u00b7 step 4: pad UI   v0.5.3 \u00b7 1115.0038",
+     "text": "kbSequencer \u00b7 step 4: pad UI   v0.5.4 \u00b7 1115.0049",
      "numinlets": 1,
      "numoutlets": 0
     }

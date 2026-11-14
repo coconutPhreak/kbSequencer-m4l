@@ -115,6 +115,31 @@ Model.prototype.wipe = function (lane, i) {
 	this.changed();
 };
 
+// Copy / paste. copySteps returns detached copies (null = empty step) of
+// len steps from `from`; pasteSteps writes them at `at`, empty source steps
+// included (a paste replaces the range exactly), stopping at the last step.
+function cloneStep(st) {
+	if (!st) return null;
+	var locks = {};
+	for (var k in st.locks) locks[k] = st.locks[k];
+	return { muted: st.muted, note: st.note, locks: locks };
+}
+Model.prototype.copySteps = function (lane, from, len) {
+	var out = [];
+	for (var i = from; i < from + len && i < NUM_STEPS; i++) out.push(cloneStep(this.lanes[lane].steps[i]));
+	return out;
+};
+Model.prototype.pasteSteps = function (lane, at, clip) {
+	var steps = this.lanes[lane].steps, n = 0;
+	for (var k = 0; k < clip.length && at + k < NUM_STEPS; k++) {
+		if (at + k < 0) continue;
+		steps[at + k] = cloneStep(clip[k]);
+		n++;
+	}
+	if (n) this.changed();
+	return n;
+};
+
 Model.prototype.setLock = function (lane, i, pid, value) {
 	var st = this.lanes[lane].steps[i], P = PARAMS[pid];
 	if (!st || !P || !P.lanes[lane]) return;

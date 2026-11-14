@@ -151,6 +151,25 @@ function run(argv) {
 	eq("oct 7 clipped", M.keyboardNotes(0, major, 7)[15], -1);
 	eq("bottom ok", M.keyboardNotes(0, major, -2)[0], 0);
 
+	// ---- copy / paste ----
+	var cm = new M.Model();
+	cm.addTrig(B, 2, 40); cm.setLock(B, 2, P.velocity, 90); cm.setMuted(B, 2, true);
+	cm.addTrig(B, 4, 45);
+	var clip = cm.copySteps(B, 2, 3);
+	eq("clip len", clip.length, 3);
+	eq("clip empty middle", clip[1], null);
+	cm.setLock(B, 2, P.velocity, 10);
+	eq("clip detached", clip[0].locks[P.velocity], 90);
+	cm.addTrig(B, 101, 50);
+	eq("paste count", cm.pasteSteps(B, 100, clip), 3);
+	eq("pasted step", [cm.step(B, 100).note, cm.step(B, 100).muted, cm.value(B, 100, P.velocity)], [40, true, 90]);
+	eq("paste overwrites with empty", cm.hasTrig(B, 101), false);
+	eq("pasted third", cm.step(B, 102).note, 45);
+	cm.setLock(B, 100, P.velocity, 1);
+	eq("paste detached from clip", clip[0].locks[P.velocity], 90);
+	eq("paste clipped at end", cm.pasteSteps(B, 510, clip), 2);
+	eq("page copy", cm.copySteps(B, 0, 32).length, 32);
+
 	log.push(passes + " passed, " + fails + " failed");
 	return log.join("\n");
 }

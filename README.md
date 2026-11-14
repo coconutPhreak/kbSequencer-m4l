@@ -152,3 +152,23 @@ clearall counts as one edit):
 This only applies while the sequencer has Push. When it releases Push,
 Undo is Live's again. Loading a Set or preset starts a fresh history.
 The device also has **undo** / **redo** buttons.
+
+## Copy / paste
+
+Uses Push's **Duplicate** button, like Push itself: while Duplicate is held,
+the first pad you touch is the source and every pad after it is a paste
+target. Releasing Duplicate forgets the copy. Copies take the selected
+lanes, with notes, mutes and all p-locks.
+
+| Push | Does |
+|---|---|
+| Hold Duplicate + tap a step | Copy that step |
+| Hold Duplicate + hold a step + press another step | Copy the range between them |
+| …then tap a step (Duplicate still held) | Paste starting there. A range runs on into the next page if needed |
+| …tap a page pad (step copy) | View that page, to paste onto another page |
+| Hold Duplicate + tap a page pad | Copy the whole page |
+| …then tap other page pads | Paste the page over them |
+
+A paste replaces the target exactly (empty steps in the copy clear the
+target). The Duplicate light is on while something is copied. Each paste is
+one Undo.
