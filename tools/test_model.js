@@ -140,6 +140,17 @@ function run(argv) {
 	eq("prob 50 about half", hits > 400 && hits < 600, true);
 	eq("prob roll stable on refill", stable, true);
 
+	// ---- keyboard ----
+	var major = [0, 2, 4, 5, 7, 9, 11];
+	eq("C major oct 1", M.keyboardNotes(0, major, 1).slice(0, 9), [36, 38, 40, 41, 43, 45, 47, 48, 50]);
+	eq("16 notes", M.keyboardNotes(0, major, 1).length, 16);
+	eq("A minor root", M.keyboardNotes(9, [0, 2, 3, 5, 7, 8, 10], 1)[0], 45);
+	eq("chromatic fallback", M.keyboardNotes(0, [], 1).slice(0, 3), [36, 37, 38]);
+	eq("pentatonic wraps", M.keyboardNotes(0, [0, 2, 4, 7, 9], 0).slice(4, 7), [33, 36, 38]);
+	eq("oct 6 top in range", M.keyboardNotes(0, major, 6)[15], 122);
+	eq("oct 7 clipped", M.keyboardNotes(0, major, 7)[15], -1);
+	eq("bottom ok", M.keyboardNotes(0, major, -2)[0], 0);
+
 	log.push(passes + " passed, " + fails + " failed");
 	return log.join("\n");
 }

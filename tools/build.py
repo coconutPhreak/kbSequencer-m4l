@@ -22,7 +22,7 @@ AMXD_MIDI = int.from_bytes(b"mmmm", "big")  # 1835887981
 
 # Shown on every device and printed to the Max Console at load, so it's easy
 # to tell which build is running. VERSION: bump the minor per spec build step.
-VERSION = "0.3.1"
+VERSION = "0.4.2"
 BUILD = datetime.datetime.now().strftime("%m%d.%H%M")  # build time, MMDD.HHMM
 STAMP = f"v{VERSION} · {BUILD}"
 
@@ -212,8 +212,8 @@ t.write("kbTakeover")
 
 # ---- main device ----
 bundle("kbSequencer.js", "main.js", modules=[("S", "seq_model.js")])
-s = Patch("kbSequencer · step 3: playback", size=(420, 169))
-common(s, "js kbSequencer.js", 4, wire_init=False)
+s = Patch("kbSequencer · step 4: pad UI", size=(420, 169))
+common(s, "js kbSequencer.js", 5, wire_init=False)
 s.blob_pattr("pattr", "kbData", [200, 400, 100, 22])
 # On device init: first bang pattr so the stored sequence reaches the script
 # (right outlet fires first), then init the script.
@@ -253,6 +253,7 @@ s.wire("clk_mod", 0, "ev_coll", 0)
 s.wire("js", 3, "ev_coll", 0)
 s.wire("ev_coll", 0, "ev_iter", 0)
 s.wire("ev_iter", 0, "ev_route", 0)
+s.wire("js", 4, "ev_iter", 0)  # audition notes join the same lane chains
 s.obj("clk_defer", "deferlow", [30, 700, 60, 22], 1, 1)
 s.obj("clk_pre", "prepend tick", [30, 730, 75, 22], 1, 1)
 s.wire("clk_t", 0, "clk_defer", 0)

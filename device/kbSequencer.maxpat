@@ -95,8 +95,9 @@
      ],
      "text": "js kbSequencer.js",
      "numinlets": 1,
-     "numoutlets": 4,
+     "numoutlets": 5,
      "outlettype": [
+      "",
       "",
       "",
       "",
@@ -373,7 +374,7 @@
       400,
       20
      ],
-     "text": "kbSequencer \u00b7 step 3: playback   v0.3.1 \u00b7 1114.2225",
+     "text": "kbSequencer \u00b7 step 4: pad UI   v0.4.2 \u00b7 1114.2359",
      "numinlets": 1,
      "numoutlets": 0
     }
@@ -1538,6 +1539,18 @@
      ],
      "destination": [
       "ev_route",
+      0
+     ]
+    }
+   },
+   {
+    "patchline": {
+     "source": [
+      "js",
+      4
+     ],
+     "destination": [
+      "ev_iter",
       0
      ]
     }

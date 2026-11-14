@@ -225,6 +225,22 @@ Model.prototype.eventsAt = function (absStep, stepMs, seed) {
 	return out;
 };
 
+// ---------- note keyboard ----------
+var CHROMATIC = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11];
+var MIN_OCTAVE = -2, MAX_OCTAVE = 6;
+
+// 16 ascending in-scale notes for the keyboard rows, starting at the root
+// of `octave` (octave 1 + root C = MIDI 36, Live's C1). Notes above 127 → -1.
+function keyboardNotes(root, intervals, octave) {
+	var iv = (intervals && intervals.length) ? intervals : CHROMATIC;
+	var base = (root | 0) + 12 * (octave + 2), out = [];
+	for (var k = 0; k < 16; k++) {
+		var n = base + iv[k % iv.length] + 12 * Math.floor(k / iv.length);
+		out.push(n >= 0 && n <= 127 ? n : -1);
+	}
+	return out;
+}
+
 // ---------- serialisation ----------
 // Flat int list (safe to store in a [pattr] blob, no quoting issues). Sparse:
 // only steps with a trig are written.
@@ -319,7 +335,9 @@ var api = {
 	CONDITIONS: CONDITIONS, RETRIG_RATES: RETRIG_RATES,
 	STEPS_PER_PAGE: STEPS_PER_PAGE, PAGES: PAGES, NUM_STEPS: NUM_STEPS,
 	TICKS_PER_STEP: TICKS_PER_STEP, CC_SLOTS: CC_SLOTS,
-	KICK: KICK, BASS: BASS, LANE_NAMES: LANE_NAMES
+	KICK: KICK, BASS: BASS, LANE_NAMES: LANE_NAMES,
+	keyboardNotes: keyboardNotes, CHROMATIC: CHROMATIC,
+	MIN_OCTAVE: MIN_OCTAVE, MAX_OCTAVE: MAX_OCTAVE
 };
 if (typeof exports !== "undefined") for (var _k in api) exports[_k] = api[_k];
 return api; // bundled build wraps this file in a function

@@ -107,3 +107,20 @@ mono note cutting, CC locks (later build steps).
 4. Enter or mute steps while it plays: the change is heard within a step or two.
 5. Start playback from a different bar: the pattern stays aligned to the bar.
 6. Change tempo: timing follows.
+
+## Step 4 — Pad UI ✅
+
+| Push | Does |
+|---|---|
+| Rows 1–4 | 32 steps of the viewed page (tap / Delete + tap as before; new bass trigs use the brush note) |
+| Rows 5–6 | 16 page pads: viewed = white, playing (follow off) = green, in loop with trigs = mid grey, in loop empty = dim grey, outside loop = off |
+| Hold a page pad + press another | Loop from the first page to the second |
+| Long-press a page pad (½ s, alone) | Loop just that page |
+| Select + page pad | View that page without changing the loop; turns follow off |
+| Rows 7–8 | Note keyboard: 16 notes of Live's scale (bottom row lower). Root = blue, others = dim white, brush = bright white; all dim when only kick is selected |
+| Tap a note pad | Makes it the brush note and auditions it (kick only: auditions the kick) |
+| Octave up / down | Shift the keyboard (lit while it can move further) |
+| Lower display button 6 | Follow mode on/off: the viewed page follows the playhead |
+
+Colours are still placeholders: use **palette 0** / **palette 64** to pick
+indices, and send them back.
