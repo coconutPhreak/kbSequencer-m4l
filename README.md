@@ -116,7 +116,7 @@ mono note cutting, CC locks (later build steps).
 | Rows 5–6 | 16 page pads: viewed = white, playing (follow off) = green, in loop with trigs = mid grey, in loop empty = dim grey, outside loop = off |
 | Hold a page pad + press another | Loop from the first page to the second |
 | Long-press a page pad (½ s, alone) | Loop just that page |
-| Select + page pad | View that page without changing the loop; turns follow off |
+| Tap a page pad (or Select + page pad) | View that page for editing without changing the loop; turns follow off |
 | Rows 7–8 | Note keyboard: 16 notes of Live's scale (bottom row lower). Root = blue, others = dim white, brush = bright white; all dim when only kick is selected |
 | Tap a note pad | Makes it the brush note and auditions it (kick only: auditions the kick) |
 | Octave up / down | Shift the keyboard (lit while it can move further) |
@@ -134,5 +134,6 @@ indices, and send them back.
 | Hold a step + turn an encoder | Releasing is no longer a tap: the step is not muted (the encoder sets p-locks in step 7) |
 | Hold step(s) + tap a note pad | Sets or replaces the held bass steps' note (brush unchanged); the keyboard shows the held step's note in bright white |
 | Hold Delete + tap a step | Wipes it (on press) |
+| Hold Delete + tap a page pad | Wipes every step on that page (trigs, notes, p-locks) for the selected lanes; the loop is unchanged |
 
 Follow mode pauses while a step is held, so the page doesn't change under your finger.
