@@ -130,7 +130,7 @@ indices, and send them back.
 | Push | Does |
 |---|---|
 | Press an empty step | Creates the trig straight away (bass: brush note), so you can keep holding it to edit |
-| Tap a lit / muted step | Mutes / unmutes it **on release** |
+| Tap a lit / muted step | Mutes / unmutes it **on release**, only for a quick tap (under 0.3 s) |
 | Hold a step + turn an encoder | Releasing is no longer a tap: the step is not muted (the encoder sets p-locks in step 7) |
 | Hold step(s) + tap a note pad | Sets or replaces the held bass steps' note (brush unchanged); the keyboard shows the held step's note in bright white |
 | Hold Delete + tap a step | Wipes it (on press) |
@@ -172,3 +172,28 @@ lanes, with notes, mutes and all p-locks.
 A paste replaces the target exactly (empty steps in the copy clear the
 target). The Duplicate light is on while something is copied. Each paste is
 one Undo.
+
+## Step 6 — Encoders and banks ✅
+
+Push can't show a custom screen, so the device has 35 small **display
+parameters** (one per value an encoder edits) and **one Push bank**, which
+the script rewrites with `live.banks` to hold the 8 that matter right now.
+The encoders stay grabbed and edit the sequence directly; the script sets
+the display parameters only so Push shows the values. Push must be showing
+kbSequencer (Device mode, device selected) to see the bank.
+
+| Context | Display buttons 3 / 4 / 5 (the row under the knobs) | Encoders |
+|---|---|---|
+| Nothing held | **Settings** / **CC Setup** / – | Edit them (one Undo per turn) |
+| Step held | **Step** / **More** / **CC Locks** | Show the held step's values (writing locks is step 7) |
+
+- Settings: Kick Ch, Bass Ch, Kick Note, Bend, Scale (follow), Swing.
+- CC Setup: CC number of the 8 slots. CC Locks: the held step's lock per slot (-1 = none).
+- Step: Note, Velocity, Length (in steps), Micro (1/24 step), Prob, Accent, Slide, Tie.
+  Note and Slide are hidden when bass isn't selected.
+- More: Retrig, Rt Rate, Rt Fade, Fill, Cond.
+- CC Setup / CC Locks use the first selected lane (kick when both are selected).
+- The last bank picked in each context is remembered. The selected bank's
+  button is bright, the other available ones dim.
+- The first 6 encoder messages are printed to the Max Console
+  (`encoder raw …`), to check the format Push sends.

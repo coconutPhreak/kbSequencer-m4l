@@ -374,7 +374,7 @@
       400,
       20
      ],
-     "text": "kbSequencer \u00b7 step 4: pad UI   v0.5.7 \u00b7 1115.0059",
+     "text": "kbSequencer \u00b7 step 6: encoders + banks   v0.6.3 \u00b7 1115.0118",
      "numinlets": 1,
      "numoutlets": 0
     }
@@ -1376,6 +1376,1180 @@
       ""
      ]
     }
+   },
+   {
+    "box": {
+     "id": "pv_kickChannel",
+     "maxclass": "live.numbox",
+     "patching_rect": [
+      1000,
+      20,
+      80,
+      15
+     ],
+     "numinlets": 1,
+     "numoutlets": 2,
+     "outlettype": [
+      "",
+      "float"
+     ],
+     "parameter_enable": 1,
+     "varname": "pv_kickChannel",
+     "saved_attribute_attributes": {
+      "valueof": {
+       "parameter_longname": "KickCh",
+       "parameter_shortname": "Kick Ch",
+       "parameter_initial_enable": 0,
+       "parameter_type": 1,
+       "parameter_mmin": 1,
+       "parameter_mmax": 16,
+       "parameter_unitstyle": 0
+      }
+     }
+    }
+   },
+   {
+    "box": {
+     "id": "pv_bassChannel",
+     "maxclass": "live.numbox",
+     "patching_rect": [
+      1000,
+      44,
+      80,
+      15
+     ],
+     "numinlets": 1,
+     "numoutlets": 2,
+     "outlettype": [
+      "",
+      "float"
+     ],
+     "parameter_enable": 1,
+     "varname": "pv_bassChannel",
+     "saved_attribute_attributes": {
+      "valueof": {
+       "parameter_longname": "BassCh",
+       "parameter_shortname": "Bass Ch",
+       "parameter_initial_enable": 0,
+       "parameter_type": 1,
+       "parameter_mmin": 1,
+       "parameter_mmax": 16,
+       "parameter_unitstyle": 0
+      }
+     }
+    }
+   },
+   {
+    "box": {
+     "id": "pv_kickNote",
+     "maxclass": "live.numbox",
+     "patching_rect": [
+      1000,
+      68,
+      80,
+      15
+     ],
+     "numinlets": 1,
+     "numoutlets": 2,
+     "outlettype": [
+      "",
+      "float"
+     ],
+     "parameter_enable": 1,
+     "varname": "pv_kickNote",
+     "saved_attribute_attributes": {
+      "valueof": {
+       "parameter_longname": "KickNote",
+       "parameter_shortname": "Kick Note",
+       "parameter_initial_enable": 0,
+       "parameter_type": 1,
+       "parameter_mmin": 0,
+       "parameter_mmax": 127,
+       "parameter_unitstyle": 8
+      }
+     }
+    }
+   },
+   {
+    "box": {
+     "id": "pv_bendRange",
+     "maxclass": "live.numbox",
+     "patching_rect": [
+      1000,
+      92,
+      80,
+      15
+     ],
+     "numinlets": 1,
+     "numoutlets": 2,
+     "outlettype": [
+      "",
+      "float"
+     ],
+     "parameter_enable": 1,
+     "varname": "pv_bendRange",
+     "saved_attribute_attributes": {
+      "valueof": {
+       "parameter_longname": "BendRange",
+       "parameter_shortname": "Bend",
+       "parameter_initial_enable": 0,
+       "parameter_type": 1,
+       "parameter_mmin": 1,
+       "parameter_mmax": 48,
+       "parameter_unitstyle": 9,
+       "parameter_units": "%d st"
+      }
+     }
+    }
+   },
+   {
+    "box": {
+     "id": "pv_scaleFollow",
+     "maxclass": "live.menu",
+     "patching_rect": [
+      1000,
+      116,
+      80,
+      15
+     ],
+     "numinlets": 1,
+     "numoutlets": 3,
+     "outlettype": [
+      "",
+      "",
+      "float"
+     ],
+     "parameter_enable": 1,
+     "varname": "pv_scaleFollow",
+     "saved_attribute_attributes": {
+      "valueof": {
+       "parameter_longname": "ScaleFollow",
+       "parameter_shortname": "Scale",
+       "parameter_initial_enable": 0,
+       "parameter_type": 2,
+       "parameter_enum": [
+        "Off",
+        "On"
+       ],
+       "parameter_mmax": 1
+      }
+     }
+    }
+   },
+   {
+    "box": {
+     "id": "pv_swing",
+     "maxclass": "live.numbox",
+     "patching_rect": [
+      1000,
+      140,
+      80,
+      15
+     ],
+     "numinlets": 1,
+     "numoutlets": 2,
+     "outlettype": [
+      "",
+      "float"
+     ],
+     "parameter_enable": 1,
+     "varname": "pv_swing",
+     "saved_attribute_attributes": {
+      "valueof": {
+       "parameter_longname": "Swing",
+       "parameter_shortname": "Swing",
+       "parameter_initial_enable": 0,
+       "parameter_type": 1,
+       "parameter_mmin": 50,
+       "parameter_mmax": 75,
+       "parameter_unitstyle": 9,
+       "parameter_units": "%d %%"
+      }
+     }
+    }
+   },
+   {
+    "box": {
+     "id": "pv_ccNum1",
+     "maxclass": "live.numbox",
+     "patching_rect": [
+      1000,
+      164,
+      80,
+      15
+     ],
+     "numinlets": 1,
+     "numoutlets": 2,
+     "outlettype": [
+      "",
+      "float"
+     ],
+     "parameter_enable": 1,
+     "varname": "pv_ccNum1",
+     "saved_attribute_attributes": {
+      "valueof": {
+       "parameter_longname": "CCNum1",
+       "parameter_shortname": "CC# 1",
+       "parameter_initial_enable": 0,
+       "parameter_type": 1,
+       "parameter_mmin": 0,
+       "parameter_mmax": 127,
+       "parameter_unitstyle": 0
+      }
+     }
+    }
+   },
+   {
+    "box": {
+     "id": "pv_ccNum2",
+     "maxclass": "live.numbox",
+     "patching_rect": [
+      1000,
+      188,
+      80,
+      15
+     ],
+     "numinlets": 1,
+     "numoutlets": 2,
+     "outlettype": [
+      "",
+      "float"
+     ],
+     "parameter_enable": 1,
+     "varname": "pv_ccNum2",
+     "saved_attribute_attributes": {
+      "valueof": {
+       "parameter_longname": "CCNum2",
+       "parameter_shortname": "CC# 2",
+       "parameter_initial_enable": 0,
+       "parameter_type": 1,
+       "parameter_mmin": 0,
+       "parameter_mmax": 127,
+       "parameter_unitstyle": 0
+      }
+     }
+    }
+   },
+   {
+    "box": {
+     "id": "pv_ccNum3",
+     "maxclass": "live.numbox",
+     "patching_rect": [
+      1000,
+      212,
+      80,
+      15
+     ],
+     "numinlets": 1,
+     "numoutlets": 2,
+     "outlettype": [
+      "",
+      "float"
+     ],
+     "parameter_enable": 1,
+     "varname": "pv_ccNum3",
+     "saved_attribute_attributes": {
+      "valueof": {
+       "parameter_longname": "CCNum3",
+       "parameter_shortname": "CC# 3",
+       "parameter_initial_enable": 0,
+       "parameter_type": 1,
+       "parameter_mmin": 0,
+       "parameter_mmax": 127,
+       "parameter_unitstyle": 0
+      }
+     }
+    }
+   },
+   {
+    "box": {
+     "id": "pv_ccNum4",
+     "maxclass": "live.numbox",
+     "patching_rect": [
+      1000,
+      236,
+      80,
+      15
+     ],
+     "numinlets": 1,
+     "numoutlets": 2,
+     "outlettype": [
+      "",
+      "float"
+     ],
+     "parameter_enable": 1,
+     "varname": "pv_ccNum4",
+     "saved_attribute_attributes": {
+      "valueof": {
+       "parameter_longname": "CCNum4",
+       "parameter_shortname": "CC# 4",
+       "parameter_initial_enable": 0,
+       "parameter_type": 1,
+       "parameter_mmin": 0,
+       "parameter_mmax": 127,
+       "parameter_unitstyle": 0
+      }
+     }
+    }
+   },
+   {
+    "box": {
+     "id": "pv_ccNum5",
+     "maxclass": "live.numbox",
+     "patching_rect": [
+      1000,
+      260,
+      80,
+      15
+     ],
+     "numinlets": 1,
+     "numoutlets": 2,
+     "outlettype": [
+      "",
+      "float"
+     ],
+     "parameter_enable": 1,
+     "varname": "pv_ccNum5",
+     "saved_attribute_attributes": {
+      "valueof": {
+       "parameter_longname": "CCNum5",
+       "parameter_shortname": "CC# 5",
+       "parameter_initial_enable": 0,
+       "parameter_type": 1,
+       "parameter_mmin": 0,
+       "parameter_mmax": 127,
+       "parameter_unitstyle": 0
+      }
+     }
+    }
+   },
+   {
+    "box": {
+     "id": "pv_ccNum6",
+     "maxclass": "live.numbox",
+     "patching_rect": [
+      1000,
+      284,
+      80,
+      15
+     ],
+     "numinlets": 1,
+     "numoutlets": 2,
+     "outlettype": [
+      "",
+      "float"
+     ],
+     "parameter_enable": 1,
+     "varname": "pv_ccNum6",
+     "saved_attribute_attributes": {
+      "valueof": {
+       "parameter_longname": "CCNum6",
+       "parameter_shortname": "CC# 6",
+       "parameter_initial_enable": 0,
+       "parameter_type": 1,
+       "parameter_mmin": 0,
+       "parameter_mmax": 127,
+       "parameter_unitstyle": 0
+      }
+     }
+    }
+   },
+   {
+    "box": {
+     "id": "pv_ccNum7",
+     "maxclass": "live.numbox",
+     "patching_rect": [
+      1090,
+      20,
+      80,
+      15
+     ],
+     "numinlets": 1,
+     "numoutlets": 2,
+     "outlettype": [
+      "",
+      "float"
+     ],
+     "parameter_enable": 1,
+     "varname": "pv_ccNum7",
+     "saved_attribute_attributes": {
+      "valueof": {
+       "parameter_longname": "CCNum7",
+       "parameter_shortname": "CC# 7",
+       "parameter_initial_enable": 0,
+       "parameter_type": 1,
+       "parameter_mmin": 0,
+       "parameter_mmax": 127,
+       "parameter_unitstyle": 0
+      }
+     }
+    }
+   },
+   {
+    "box": {
+     "id": "pv_ccNum8",
+     "maxclass": "live.numbox",
+     "patching_rect": [
+      1090,
+      44,
+      80,
+      15
+     ],
+     "numinlets": 1,
+     "numoutlets": 2,
+     "outlettype": [
+      "",
+      "float"
+     ],
+     "parameter_enable": 1,
+     "varname": "pv_ccNum8",
+     "saved_attribute_attributes": {
+      "valueof": {
+       "parameter_longname": "CCNum8",
+       "parameter_shortname": "CC# 8",
+       "parameter_initial_enable": 0,
+       "parameter_type": 1,
+       "parameter_mmin": 0,
+       "parameter_mmax": 127,
+       "parameter_unitstyle": 0
+      }
+     }
+    }
+   },
+   {
+    "box": {
+     "id": "pv_note",
+     "maxclass": "live.numbox",
+     "patching_rect": [
+      1090,
+      68,
+      80,
+      15
+     ],
+     "numinlets": 1,
+     "numoutlets": 2,
+     "outlettype": [
+      "",
+      "float"
+     ],
+     "parameter_enable": 1,
+     "varname": "pv_note",
+     "saved_attribute_attributes": {
+      "valueof": {
+       "parameter_longname": "Note",
+       "parameter_shortname": "Note",
+       "parameter_initial_enable": 0,
+       "parameter_type": 1,
+       "parameter_mmin": 0,
+       "parameter_mmax": 127,
+       "parameter_unitstyle": 8
+      }
+     }
+    }
+   },
+   {
+    "box": {
+     "id": "pv_velocity",
+     "maxclass": "live.numbox",
+     "patching_rect": [
+      1090,
+      92,
+      80,
+      15
+     ],
+     "numinlets": 1,
+     "numoutlets": 2,
+     "outlettype": [
+      "",
+      "float"
+     ],
+     "parameter_enable": 1,
+     "varname": "pv_velocity",
+     "saved_attribute_attributes": {
+      "valueof": {
+       "parameter_longname": "Velocity",
+       "parameter_shortname": "Velocity",
+       "parameter_initial_enable": 0,
+       "parameter_type": 1,
+       "parameter_mmin": 0,
+       "parameter_mmax": 127,
+       "parameter_unitstyle": 0
+      }
+     }
+    }
+   },
+   {
+    "box": {
+     "id": "pv_length",
+     "maxclass": "live.numbox",
+     "patching_rect": [
+      1090,
+      116,
+      80,
+      15
+     ],
+     "numinlets": 1,
+     "numoutlets": 2,
+     "outlettype": [
+      "",
+      "float"
+     ],
+     "parameter_enable": 1,
+     "varname": "pv_length",
+     "saved_attribute_attributes": {
+      "valueof": {
+       "parameter_longname": "Length",
+       "parameter_shortname": "Length",
+       "parameter_initial_enable": 0,
+       "parameter_type": 0,
+       "parameter_mmin": 0.041666666666666664,
+       "parameter_mmax": 16,
+       "parameter_unitstyle": 9,
+       "parameter_units": "%.2f st"
+      }
+     }
+    }
+   },
+   {
+    "box": {
+     "id": "pv_microtime",
+     "maxclass": "live.numbox",
+     "patching_rect": [
+      1090,
+      140,
+      80,
+      15
+     ],
+     "numinlets": 1,
+     "numoutlets": 2,
+     "outlettype": [
+      "",
+      "float"
+     ],
+     "parameter_enable": 1,
+     "varname": "pv_microtime",
+     "saved_attribute_attributes": {
+      "valueof": {
+       "parameter_longname": "Micro",
+       "parameter_shortname": "Micro",
+       "parameter_initial_enable": 0,
+       "parameter_type": 1,
+       "parameter_mmin": -12,
+       "parameter_mmax": 12,
+       "parameter_unitstyle": 9,
+       "parameter_units": "%d/24"
+      }
+     }
+    }
+   },
+   {
+    "box": {
+     "id": "pv_probability",
+     "maxclass": "live.numbox",
+     "patching_rect": [
+      1090,
+      164,
+      80,
+      15
+     ],
+     "numinlets": 1,
+     "numoutlets": 2,
+     "outlettype": [
+      "",
+      "float"
+     ],
+     "parameter_enable": 1,
+     "varname": "pv_probability",
+     "saved_attribute_attributes": {
+      "valueof": {
+       "parameter_longname": "Prob",
+       "parameter_shortname": "Prob",
+       "parameter_initial_enable": 0,
+       "parameter_type": 1,
+       "parameter_mmin": 0,
+       "parameter_mmax": 100,
+       "parameter_unitstyle": 9,
+       "parameter_units": "%d %%"
+      }
+     }
+    }
+   },
+   {
+    "box": {
+     "id": "pv_accent",
+     "maxclass": "live.menu",
+     "patching_rect": [
+      1090,
+      188,
+      80,
+      15
+     ],
+     "numinlets": 1,
+     "numoutlets": 3,
+     "outlettype": [
+      "",
+      "",
+      "float"
+     ],
+     "parameter_enable": 1,
+     "varname": "pv_accent",
+     "saved_attribute_attributes": {
+      "valueof": {
+       "parameter_longname": "Accent",
+       "parameter_shortname": "Accent",
+       "parameter_initial_enable": 0,
+       "parameter_type": 2,
+       "parameter_enum": [
+        "Off",
+        "On"
+       ],
+       "parameter_mmax": 1
+      }
+     }
+    }
+   },
+   {
+    "box": {
+     "id": "pv_slide",
+     "maxclass": "live.menu",
+     "patching_rect": [
+      1090,
+      212,
+      80,
+      15
+     ],
+     "numinlets": 1,
+     "numoutlets": 3,
+     "outlettype": [
+      "",
+      "",
+      "float"
+     ],
+     "parameter_enable": 1,
+     "varname": "pv_slide",
+     "saved_attribute_attributes": {
+      "valueof": {
+       "parameter_longname": "Slide",
+       "parameter_shortname": "Slide",
+       "parameter_initial_enable": 0,
+       "parameter_type": 2,
+       "parameter_enum": [
+        "Off",
+        "On"
+       ],
+       "parameter_mmax": 1
+      }
+     }
+    }
+   },
+   {
+    "box": {
+     "id": "pv_tie",
+     "maxclass": "live.menu",
+     "patching_rect": [
+      1090,
+      236,
+      80,
+      15
+     ],
+     "numinlets": 1,
+     "numoutlets": 3,
+     "outlettype": [
+      "",
+      "",
+      "float"
+     ],
+     "parameter_enable": 1,
+     "varname": "pv_tie",
+     "saved_attribute_attributes": {
+      "valueof": {
+       "parameter_longname": "Tie",
+       "parameter_shortname": "Tie",
+       "parameter_initial_enable": 0,
+       "parameter_type": 2,
+       "parameter_enum": [
+        "Off",
+        "On"
+       ],
+       "parameter_mmax": 1
+      }
+     }
+    }
+   },
+   {
+    "box": {
+     "id": "pv_retrig",
+     "maxclass": "live.menu",
+     "patching_rect": [
+      1090,
+      260,
+      80,
+      15
+     ],
+     "numinlets": 1,
+     "numoutlets": 3,
+     "outlettype": [
+      "",
+      "",
+      "float"
+     ],
+     "parameter_enable": 1,
+     "varname": "pv_retrig",
+     "saved_attribute_attributes": {
+      "valueof": {
+       "parameter_longname": "Retrig",
+       "parameter_shortname": "Retrig",
+       "parameter_initial_enable": 0,
+       "parameter_type": 2,
+       "parameter_enum": [
+        "Off",
+        "On"
+       ],
+       "parameter_mmax": 1
+      }
+     }
+    }
+   },
+   {
+    "box": {
+     "id": "pv_retrigRate",
+     "maxclass": "live.menu",
+     "patching_rect": [
+      1090,
+      284,
+      80,
+      15
+     ],
+     "numinlets": 1,
+     "numoutlets": 3,
+     "outlettype": [
+      "",
+      "",
+      "float"
+     ],
+     "parameter_enable": 1,
+     "varname": "pv_retrigRate",
+     "saved_attribute_attributes": {
+      "valueof": {
+       "parameter_longname": "RtRate",
+       "parameter_shortname": "Rt Rate",
+       "parameter_initial_enable": 0,
+       "parameter_type": 2,
+       "parameter_enum": [
+        "1/16",
+        "1/24",
+        "1/32",
+        "1/48",
+        "1/64"
+       ],
+       "parameter_mmax": 4
+      }
+     }
+    }
+   },
+   {
+    "box": {
+     "id": "pv_retrigFade",
+     "maxclass": "live.numbox",
+     "patching_rect": [
+      1180,
+      20,
+      80,
+      15
+     ],
+     "numinlets": 1,
+     "numoutlets": 2,
+     "outlettype": [
+      "",
+      "float"
+     ],
+     "parameter_enable": 1,
+     "varname": "pv_retrigFade",
+     "saved_attribute_attributes": {
+      "valueof": {
+       "parameter_longname": "RtFade",
+       "parameter_shortname": "Rt Fade",
+       "parameter_initial_enable": 0,
+       "parameter_type": 1,
+       "parameter_mmin": -64,
+       "parameter_mmax": 63,
+       "parameter_unitstyle": 0
+      }
+     }
+    }
+   },
+   {
+    "box": {
+     "id": "pv_fill",
+     "maxclass": "live.menu",
+     "patching_rect": [
+      1180,
+      44,
+      80,
+      15
+     ],
+     "numinlets": 1,
+     "numoutlets": 3,
+     "outlettype": [
+      "",
+      "",
+      "float"
+     ],
+     "parameter_enable": 1,
+     "varname": "pv_fill",
+     "saved_attribute_attributes": {
+      "valueof": {
+       "parameter_longname": "Fill",
+       "parameter_shortname": "Fill",
+       "parameter_initial_enable": 0,
+       "parameter_type": 2,
+       "parameter_enum": [
+        "Off",
+        "On"
+       ],
+       "parameter_mmax": 1
+      }
+     }
+    }
+   },
+   {
+    "box": {
+     "id": "pv_condition",
+     "maxclass": "live.menu",
+     "patching_rect": [
+      1180,
+      68,
+      80,
+      15
+     ],
+     "numinlets": 1,
+     "numoutlets": 3,
+     "outlettype": [
+      "",
+      "",
+      "float"
+     ],
+     "parameter_enable": 1,
+     "varname": "pv_condition",
+     "saved_attribute_attributes": {
+      "valueof": {
+       "parameter_longname": "Cond",
+       "parameter_shortname": "Cond",
+       "parameter_initial_enable": 0,
+       "parameter_type": 2,
+       "parameter_enum": [
+        "always",
+        "1st",
+        "!1st",
+        "pre",
+        "!pre",
+        "1:2",
+        "2:2",
+        "1:3",
+        "2:3",
+        "3:3",
+        "1:4",
+        "2:4",
+        "3:4",
+        "4:4",
+        "1:8",
+        "2:8",
+        "3:8",
+        "4:8",
+        "5:8",
+        "6:8",
+        "7:8",
+        "8:8"
+       ],
+       "parameter_mmax": 21
+      }
+     }
+    }
+   },
+   {
+    "box": {
+     "id": "pv_cc1",
+     "maxclass": "live.numbox",
+     "patching_rect": [
+      1180,
+      92,
+      80,
+      15
+     ],
+     "numinlets": 1,
+     "numoutlets": 2,
+     "outlettype": [
+      "",
+      "float"
+     ],
+     "parameter_enable": 1,
+     "varname": "pv_cc1",
+     "saved_attribute_attributes": {
+      "valueof": {
+       "parameter_longname": "CCLock1",
+       "parameter_shortname": "CC 1",
+       "parameter_initial_enable": 0,
+       "parameter_type": 1,
+       "parameter_mmin": -1,
+       "parameter_mmax": 127,
+       "parameter_unitstyle": 0
+      }
+     }
+    }
+   },
+   {
+    "box": {
+     "id": "pv_cc2",
+     "maxclass": "live.numbox",
+     "patching_rect": [
+      1180,
+      116,
+      80,
+      15
+     ],
+     "numinlets": 1,
+     "numoutlets": 2,
+     "outlettype": [
+      "",
+      "float"
+     ],
+     "parameter_enable": 1,
+     "varname": "pv_cc2",
+     "saved_attribute_attributes": {
+      "valueof": {
+       "parameter_longname": "CCLock2",
+       "parameter_shortname": "CC 2",
+       "parameter_initial_enable": 0,
+       "parameter_type": 1,
+       "parameter_mmin": -1,
+       "parameter_mmax": 127,
+       "parameter_unitstyle": 0
+      }
+     }
+    }
+   },
+   {
+    "box": {
+     "id": "pv_cc3",
+     "maxclass": "live.numbox",
+     "patching_rect": [
+      1180,
+      140,
+      80,
+      15
+     ],
+     "numinlets": 1,
+     "numoutlets": 2,
+     "outlettype": [
+      "",
+      "float"
+     ],
+     "parameter_enable": 1,
+     "varname": "pv_cc3",
+     "saved_attribute_attributes": {
+      "valueof": {
+       "parameter_longname": "CCLock3",
+       "parameter_shortname": "CC 3",
+       "parameter_initial_enable": 0,
+       "parameter_type": 1,
+       "parameter_mmin": -1,
+       "parameter_mmax": 127,
+       "parameter_unitstyle": 0
+      }
+     }
+    }
+   },
+   {
+    "box": {
+     "id": "pv_cc4",
+     "maxclass": "live.numbox",
+     "patching_rect": [
+      1180,
+      164,
+      80,
+      15
+     ],
+     "numinlets": 1,
+     "numoutlets": 2,
+     "outlettype": [
+      "",
+      "float"
+     ],
+     "parameter_enable": 1,
+     "varname": "pv_cc4",
+     "saved_attribute_attributes": {
+      "valueof": {
+       "parameter_longname": "CCLock4",
+       "parameter_shortname": "CC 4",
+       "parameter_initial_enable": 0,
+       "parameter_type": 1,
+       "parameter_mmin": -1,
+       "parameter_mmax": 127,
+       "parameter_unitstyle": 0
+      }
+     }
+    }
+   },
+   {
+    "box": {
+     "id": "pv_cc5",
+     "maxclass": "live.numbox",
+     "patching_rect": [
+      1180,
+      188,
+      80,
+      15
+     ],
+     "numinlets": 1,
+     "numoutlets": 2,
+     "outlettype": [
+      "",
+      "float"
+     ],
+     "parameter_enable": 1,
+     "varname": "pv_cc5",
+     "saved_attribute_attributes": {
+      "valueof": {
+       "parameter_longname": "CCLock5",
+       "parameter_shortname": "CC 5",
+       "parameter_initial_enable": 0,
+       "parameter_type": 1,
+       "parameter_mmin": -1,
+       "parameter_mmax": 127,
+       "parameter_unitstyle": 0
+      }
+     }
+    }
+   },
+   {
+    "box": {
+     "id": "pv_cc6",
+     "maxclass": "live.numbox",
+     "patching_rect": [
+      1180,
+      212,
+      80,
+      15
+     ],
+     "numinlets": 1,
+     "numoutlets": 2,
+     "outlettype": [
+      "",
+      "float"
+     ],
+     "parameter_enable": 1,
+     "varname": "pv_cc6",
+     "saved_attribute_attributes": {
+      "valueof": {
+       "parameter_longname": "CCLock6",
+       "parameter_shortname": "CC 6",
+       "parameter_initial_enable": 0,
+       "parameter_type": 1,
+       "parameter_mmin": -1,
+       "parameter_mmax": 127,
+       "parameter_unitstyle": 0
+      }
+     }
+    }
+   },
+   {
+    "box": {
+     "id": "pv_cc7",
+     "maxclass": "live.numbox",
+     "patching_rect": [
+      1180,
+      236,
+      80,
+      15
+     ],
+     "numinlets": 1,
+     "numoutlets": 2,
+     "outlettype": [
+      "",
+      "float"
+     ],
+     "parameter_enable": 1,
+     "varname": "pv_cc7",
+     "saved_attribute_attributes": {
+      "valueof": {
+       "parameter_longname": "CCLock7",
+       "parameter_shortname": "CC 7",
+       "parameter_initial_enable": 0,
+       "parameter_type": 1,
+       "parameter_mmin": -1,
+       "parameter_mmax": 127,
+       "parameter_unitstyle": 0
+      }
+     }
+    }
+   },
+   {
+    "box": {
+     "id": "pv_cc8",
+     "maxclass": "live.numbox",
+     "patching_rect": [
+      1180,
+      260,
+      80,
+      15
+     ],
+     "numinlets": 1,
+     "numoutlets": 2,
+     "outlettype": [
+      "",
+      "float"
+     ],
+     "parameter_enable": 1,
+     "varname": "pv_cc8",
+     "saved_attribute_attributes": {
+      "valueof": {
+       "parameter_longname": "CCLock8",
+       "parameter_shortname": "CC 8",
+       "parameter_initial_enable": 0,
+       "parameter_type": 1,
+       "parameter_mmin": -1,
+       "parameter_mmax": 127,
+       "parameter_unitstyle": 0
+      }
+     }
+    }
+   },
+   {
+    "box": {
+     "id": "banks",
+     "maxclass": "newobj",
+     "patching_rect": [
+      1000,
+      330,
+      70,
+      22
+     ],
+     "text": "live.banks",
+     "numinlets": 1,
+     "numoutlets": 1,
+     "outlettype": [
+      ""
+     ],
+     "varname": "banks"
+    }
+   },
+   {
+    "box": {
+     "id": "pre_banks",
+     "maxclass": "newobj",
+     "patching_rect": [
+      1000,
+      360,
+      90,
+      22
+     ],
+     "text": "prepend banks",
+     "numinlets": 1,
+     "numoutlets": 1,
+     "outlettype": [
+      ""
+     ]
+    }
    }
   ],
   "lines": [
@@ -2302,6 +3476,30 @@
       0
      ]
     }
+   },
+   {
+    "patchline": {
+     "source": [
+      "banks",
+      0
+     ],
+     "destination": [
+      "pre_banks",
+      0
+     ]
+    }
+   },
+   {
+    "patchline": {
+     "source": [
+      "pre_banks",
+      0
+     ],
+     "destination": [
+      "js",
+      0
+     ]
+    }
    }
   ],
   "dependency_cache": [
@@ -2322,6 +3520,181 @@
    "group": [
     "Group",
     "Group",
+    0
+   ],
+   "pv_kickChannel": [
+    "KickCh",
+    "Kick Ch",
+    0
+   ],
+   "pv_bassChannel": [
+    "BassCh",
+    "Bass Ch",
+    0
+   ],
+   "pv_kickNote": [
+    "KickNote",
+    "Kick Note",
+    0
+   ],
+   "pv_bendRange": [
+    "BendRange",
+    "Bend",
+    0
+   ],
+   "pv_scaleFollow": [
+    "ScaleFollow",
+    "Scale",
+    0
+   ],
+   "pv_swing": [
+    "Swing",
+    "Swing",
+    0
+   ],
+   "pv_ccNum1": [
+    "CCNum1",
+    "CC# 1",
+    0
+   ],
+   "pv_ccNum2": [
+    "CCNum2",
+    "CC# 2",
+    0
+   ],
+   "pv_ccNum3": [
+    "CCNum3",
+    "CC# 3",
+    0
+   ],
+   "pv_ccNum4": [
+    "CCNum4",
+    "CC# 4",
+    0
+   ],
+   "pv_ccNum5": [
+    "CCNum5",
+    "CC# 5",
+    0
+   ],
+   "pv_ccNum6": [
+    "CCNum6",
+    "CC# 6",
+    0
+   ],
+   "pv_ccNum7": [
+    "CCNum7",
+    "CC# 7",
+    0
+   ],
+   "pv_ccNum8": [
+    "CCNum8",
+    "CC# 8",
+    0
+   ],
+   "pv_note": [
+    "Note",
+    "Note",
+    0
+   ],
+   "pv_velocity": [
+    "Velocity",
+    "Velocity",
+    0
+   ],
+   "pv_length": [
+    "Length",
+    "Length",
+    0
+   ],
+   "pv_microtime": [
+    "Micro",
+    "Micro",
+    0
+   ],
+   "pv_probability": [
+    "Prob",
+    "Prob",
+    0
+   ],
+   "pv_accent": [
+    "Accent",
+    "Accent",
+    0
+   ],
+   "pv_slide": [
+    "Slide",
+    "Slide",
+    0
+   ],
+   "pv_tie": [
+    "Tie",
+    "Tie",
+    0
+   ],
+   "pv_retrig": [
+    "Retrig",
+    "Retrig",
+    0
+   ],
+   "pv_retrigRate": [
+    "RtRate",
+    "Rt Rate",
+    0
+   ],
+   "pv_retrigFade": [
+    "RtFade",
+    "Rt Fade",
+    0
+   ],
+   "pv_fill": [
+    "Fill",
+    "Fill",
+    0
+   ],
+   "pv_condition": [
+    "Cond",
+    "Cond",
+    0
+   ],
+   "pv_cc1": [
+    "CCLock1",
+    "CC 1",
+    0
+   ],
+   "pv_cc2": [
+    "CCLock2",
+    "CC 2",
+    0
+   ],
+   "pv_cc3": [
+    "CCLock3",
+    "CC 3",
+    0
+   ],
+   "pv_cc4": [
+    "CCLock4",
+    "CC 4",
+    0
+   ],
+   "pv_cc5": [
+    "CCLock5",
+    "CC 5",
+    0
+   ],
+   "pv_cc6": [
+    "CCLock6",
+    "CC 6",
+    0
+   ],
+   "pv_cc7": [
+    "CCLock7",
+    "CC 7",
+    0
+   ],
+   "pv_cc8": [
+    "CCLock8",
+    "CC 8",
     0
    ],
    "inherited_shortname": 1

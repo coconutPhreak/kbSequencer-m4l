@@ -150,7 +150,10 @@ var historyNow = model.encode(), historyKey = historyNow.join(" ");
 var historyTask = new Task(commitHistory, this);
 var historyPending = false;
 
+var encoderEdit = false;   // set while an encoder edits: group a turn into one undo
+var ENCODER_UNDO_MS = 600;
 function historyChanged() {
+	if (encoderEdit) { historyPending = true; historyTask.schedule(ENCODER_UNDO_MS); return; }
 	if (historyPending) return;
 	historyPending = true;
 	historyTask.schedule(0);
@@ -401,6 +404,7 @@ function init() {
 	if (!surface) { status("No Push found — is Push set as a control surface?"); return; }
 	resolveControls();
 	setupFocus();
+	ensureBanks();
 	defer(updateGrab);
 }
 
@@ -531,6 +535,12 @@ function onDisplayButton(x) {
 	if (x === 0) { selKick = !selKick; if (!selKick && !selBass) selBass = true; } // one lane stays on
 	else if (x === 1) { selBass = !selBass; if (!selKick && !selBass) selKick = true; }
 	else if (x === 5) { follow = !follow; if (follow) followPlayhead(); }
+	else if (x >= 2 && x <= 4) {
+		var c = context();
+		if (x - 2 >= BANKS[c].length) return;
+		bankSel[c] = x - 2;
+		encAcc = [0, 0, 0, 0, 0, 0, 0, 0];
+	}
 	else return;
 	renderAll();
 	showStatus();
@@ -549,11 +559,14 @@ function onPad(x, y, pressed) {
 
 // Step pads (build step 5). An empty step gets its trig on press, so it can
 // be held and edited straight away. A lit step mutes / unmutes on release,
-// and only if nothing was edited while it was held (encoder turn or note
-// pad): holding a step to edit it never mutes it. Delete + tap wipes on press.
+// and only after a quick tap (under TAP_MS) with nothing edited while it was
+// held (encoder turn or note pad): holding a step to edit it never mutes it. Delete + tap wipes on press.
 // heldSteps: { pad, i, created, edited }. pad is the local pad (0–31) and i
 // the absolute step fixed at press, so a page change can't retarget it.
 var heldSteps = [];
+// A release only mutes / unmutes after a quick tap: shorter than TAP_MS.
+var TAP_MS = 300;
+function now() { return new Date().getTime(); }
 
 function heldStepAt(pad) {
 	for (var k = 0; k < heldSteps.length; k++) if (heldSteps[k].pad === pad) return k;
@@ -567,7 +580,8 @@ function onStepPad(pad, pressed) {
 		var at = heldStepAt(pad);
 		if (at < 0) return;
 		var h = heldSteps.splice(at, 1)[0];
-		if (!h.created && !h.edited) {
+		var quick = now() - h.at < TAP_MS; // a longer hold is for editing, never a mute
+		if (!h.created && !h.edited && quick) {
 			// Decide from the first selected lane that has a trig, so both lanes move together.
 			var ref = null;
 			for (var r = 0; r < lanes.length && !ref; r++) ref = model.step(lanes[r], h.i);
@@ -578,6 +592,7 @@ function onStepPad(pad, pressed) {
 		}
 		renderStep(h.i);
 		renderNotes();
+		if (!heldSteps.length) { renderDisplayButtons(); updateDisplay(); } // back to settings
 		return;
 	}
 	var i = viewPage * S.STEPS_PER_PAGE + pad;
@@ -592,10 +607,12 @@ function onStepPad(pad, pressed) {
 	// selected lane that is empty gets a trig too.
 	var created = !model.hasTrig(lanes[0], i);
 	if (created) for (var j = 0; j < lanes.length; j++) model.addTrig(lanes[j], i, brushNote); // kick ignores the note
-	heldSteps.push({ pad: pad, i: i, created: created, edited: false });
+	heldSteps.push({ pad: pad, i: i, created: created, edited: false, at: now() });
 	renderStep(i);
 	renderPages();
 	renderNotes(); // keyboard shows the held step's note
+	renderDisplayButtons();
+	updateDisplay(); // Push shows the held step
 }
 
 // Anything that edits the held steps makes their release not a tap.
@@ -603,11 +620,145 @@ function markHeldEdited() {
 	for (var k = 0; k < heldSteps.length; k++) heldSteps[k].edited = true;
 }
 
-// Encoders: p-locks come in steps 6–7. For now a turn only marks the held
-// steps as edited (so releasing them doesn't mute).
-function onEncoder(v) {
-	if (heldSteps.length) markHeldEdited();
+// ---------- encoders, banks and the Push display (build step 6) ----------
+// Push can't be custom-drawn: it shows the device's parameters. The device
+// has one Push bank, rewritten with live.banks to hold whichever 8 display
+// parameters (DISPLAY_PARAMS, made by tools/build.py) the context needs, and
+// the script sets their values ("set", no output) for Push to show.
+// The encoders stay grabbed and edit the sequence directly.
+//   Nothing held:  display buttons 3 / 4 = Settings / CC setup.
+//   Step held:     display buttons 3 / 4 / 5 = Step / More / CC locks,
+//                  showing the held step (step 7 makes turning write locks).
+// CC setup and CC locks are for the first selected lane (kick if both).
+var BANKS = {
+	settings: [
+		{ name: "Settings", items: ["kickChannel", "bassChannel", "kickNote", "bendRange", "scaleFollow", "swing", null, null] },
+		{ name: "CC Setup", items: ["ccNum1", "ccNum2", "ccNum3", "ccNum4", "ccNum5", "ccNum6", "ccNum7", "ccNum8"] }
+	],
+	step: [
+		{ name: "Step", items: ["note", "velocity", "length", "microtime", "probability", "accent", "slide", "tie"] },
+		{ name: "More", items: ["retrig", "retrigRate", "retrigFade", "fill", "condition", null, null, null] },
+		{ name: "CC Locks", items: ["cc1", "cc2", "cc3", "cc4", "cc5", "cc6", "cc7", "cc8"] }
+	]
+};
+var bankSel = { settings: 0, step: 0 };
+var banksReady = false, lastBankSig = "";
+var encAcc = [0, 0, 0, 0, 0, 0, 0, 0];
+var encLogLeft = 6; // print the first few raw encoder messages (format check)
+
+function context() { return heldSteps.length ? "step" : "settings"; }
+function currentBank() { var c = context(); return BANKS[c][bankSel[c]]; }
+function editLane() { return selKick ? S.KICK : S.BASS; }
+
+// Items hidden in the current state (Note and Slide need bass).
+function itemShown(key) {
+	if (!key) return false;
+	if ((key === "note" || key === "slide") && !selBass) return false;
+	return true;
 }
+
+// The held step and the lane its values are read from: the first selected
+// lane with a trig there.
+function heldTarget() {
+	if (!heldSteps.length) return null;
+	var i = heldSteps[0].i, lanes = selectedLanes();
+	for (var k = 0; k < lanes.length; k++) if (model.hasTrig(lanes[k], i)) return { lane: lanes[k], i: i };
+	return { lane: lanes[0], i: i };
+}
+
+// Value of a display item, in the display parameter's own units.
+function itemValue(key) {
+	if (key.indexOf("ccNum") === 0) return model.lanes[editLane()].ccNums[Number(key.slice(5)) - 1];
+	if (key in model.settings) return model.settings[key];
+	var t = heldTarget();
+	if (key === "note") {
+		var bs = t && model.step(S.BASS, t.i);
+		return bs ? bs.note : brushNote;
+	}
+	var pid = S.PARAM_ID[key];
+	var v = t ? model.value(t.lane, t.i, pid) : model.lanes[editLane()].defaults[pid];
+	if (key.indexOf("cc") === 0 && !(t && model.isLocked(t.lane, t.i, pid))) return -1; // no lock: sends nothing
+	if (key === "length") return v / S.TICKS_PER_STEP;
+	return v;
+}
+
+function setDisplayParam(key, v) {
+	var o = this.patcher ? this.patcher.getnamed("pv_" + key) : null;
+	if (o) o.message("set", v);
+}
+
+// live.banks: make sure the device has exactly one bank, then keep it current.
+function ensureBanks() {
+	var b = this.patcher ? this.patcher.getnamed("banks") : null;
+	if (b) b.message("getcount");
+}
+function banks() {
+	var a = arrayfromargs(arguments);
+	if (a[0] !== "count") return;
+	var n = Number(a[1]) || 0, b = this.patcher.getnamed("banks");
+	for (var k = n - 1; k >= 1; k--) b.message("delete", k);
+	var bank = BANKS.settings[0];
+	var msg = [n > 0 ? "edit" : "new", 0, bank.name].concat(bank.items.map(function (k) { return k ? DISPLAY_PARAMS[k].longname : "-"; }));
+	b.message.apply(b, msg);
+	banksReady = true;
+	lastBankSig = "";
+	updateDisplay();
+}
+
+function updateDisplay() {
+	if (!banksReady) return;
+	var bank = currentBank(), names = [];
+	for (var k = 0; k < 8; k++) names.push(itemShown(bank.items[k]) ? DISPLAY_PARAMS[bank.items[k]].longname : "-");
+	var sig = bank.name + "|" + names.join("|");
+	if (sig !== lastBankSig) {
+		var b = this.patcher.getnamed("banks");
+		b.message.apply(b, ["edit", 0, bank.name].concat(names));
+		lastBankSig = sig;
+	}
+	for (var j = 0; j < 8; j++) if (itemShown(bank.items[j])) setDisplayParam(bank.items[j], itemValue(bank.items[j]));
+}
+
+// Encoder ticks per value step: small ranges (menus, channels) move slower.
+function ticksPerStep(key) {
+	var d = DISPLAY_PARAMS[key];
+	return d.kind === "enum" || (d.hi - d.lo) <= 48 ? 4 : 1;
+}
+
+// Push encoders are relative: 1..63 = clockwise ticks, 65..127 = counter-clockwise.
+function encoderDelta(raw) {
+	raw = Number(raw);
+	if (raw > 64) return raw - 128;
+	return raw;
+}
+
+function onEncoder(v) {
+	if (encLogLeft > 0) { encLogLeft--; post("kbSequencer: encoder raw " + v.join(" ") + "\n"); }
+	var idx = v[1] | 0, d = encoderDelta(v[0]);
+	if (idx < 0 || idx > 7 || !d) return;
+	if (heldSteps.length) { markHeldEdited(); return; } // p-locks: build step 7
+	var key = currentBank().items[idx];
+	if (!itemShown(key)) return;
+	encAcc[idx] += d;
+	var per = ticksPerStep(key), steps = (encAcc[idx] / per) | 0;
+	if (!steps) return;
+	encAcc[idx] -= steps * per;
+	editSetting(key, steps);
+}
+
+function editSetting(key, steps) {
+	encoderEdit = true;
+	if (key.indexOf("ccNum") === 0) {
+		var slot = Number(key.slice(5)) - 1, l = editLane();
+		model.setCcNumber(l, slot, model.lanes[l].ccNums[slot] + steps);
+	} else {
+		model.setSetting(key, model.settings[key] + steps);
+	}
+	encoderEdit = false;
+	if (key === "scaleFollow") renderNotes();
+	updateDisplay();
+	showStatus();
+}
+
 
 // Copy / paste with Push's Duplicate button, Push style: while Duplicate is
 // held, the first pad touched is the source and every pad after it is a
@@ -752,6 +903,7 @@ function onNotePad(x, y) {
 		markHeldEdited();
 		if (any) audition(S.BASS, n);
 		renderNotes();
+		updateDisplay();
 		return;
 	}
 	if (selBass) {
@@ -856,6 +1008,7 @@ function renderAll() {
 	renderOctaveButtons();
 	renderUndoButton();
 	renderDuplicateButton();
+	updateDisplay();
 }
 
 function renderStep(i) {
@@ -913,7 +1066,11 @@ function renderDisplayButtons() {
 	var api = new LiveAPI("id " + d.id);
 	api.call("send_value", 0, 0, selKick ? COL.kick : COL.laneOff);
 	api.call("send_value", 1, 0, selBass ? COL.bass : COL.laneOff);
-	for (var x = 2; x < 5; x++) api.call("send_value", x, 0, COL.off); // banks: step 6
+	var c = context();
+	for (var x = 2; x < 5; x++) {
+		var n = x - 2;
+		api.call("send_value", x, 0, n >= BANKS[c].length ? COL.off : n === bankSel[c] ? COL.followOn : COL.followOff);
+	}
 	api.call("send_value", 5, 0, follow ? COL.followOn : COL.followOff);
 	api.call("send_value", 6, 0, COL.off);
 	api.call("send_value", 7, 0, COL.off);

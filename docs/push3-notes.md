@@ -9,7 +9,7 @@ From the step 1 takeover test (Push 3 tethered to a Mac).
 | Pad grid | `Button_Matrix` | value = `vel x y …`; x 0–7 left→right, **y 0 = top row, 7 = bottom** |
 | Encoders (8) | `Track_Controls` | single elements also exist: `Track_Control_0..7` |
 | Encoder touch | `Track_Control_Touches` | singles: `Track_Control_Touch_0..7` |
-| Lower display buttons | `Track_State_Buttons` | singles: `Track_State_Button0..7` |
+| Display buttons, row under the knobs (above the screen) | `Track_State_Buttons` | singles: `Track_State_Button0..7`. The code and README call these the "lower" display buttons |
 | Upper display buttons | `Track_Select_Buttons` | singles: `Track_Select_Button0..7` |
 | Delete | `Delete_Button` | |
 | Select | `Select_Button` | needed for Select + page pad |
