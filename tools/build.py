@@ -22,7 +22,7 @@ AMXD_MIDI = int.from_bytes(b"mmmm", "big")  # 1835887981
 
 # Shown on every device and printed to the Max Console at load, so it's easy
 # to tell which build is running. VERSION: bump the minor per spec build step.
-VERSION = "0.5.2"
+VERSION = "0.5.3"
 BUILD = datetime.datetime.now().strftime("%m%d.%H%M")  # build time, MMDD.HHMM
 STAMP = f"v{VERSION} · {BUILD}"
 
@@ -308,7 +308,7 @@ for lane, x in ((0, 120), (1, 300)):
     s.wire(mf, 0, f"lane_pack{lane}", 0)
     s.wire(mf, 0, "dbg_split", 0)
 
-buttons(s, ["rescan", "dump", "testfill", "clearall", "palette 0", "palette -1"])
+buttons(s, ["rescan", "dump", "testfill", "clearall", "palette 0", "palette -1", "undo", "redo"])
 s.deps = ["kbSequencer.js"]
 s.write("kbSequencer")
 

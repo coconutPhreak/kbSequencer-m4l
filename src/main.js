@@ -48,6 +48,7 @@ var selKick = true, selBass = false;
 var viewPage = 0;
 var deleteHeld = false, selectHeld = false;
 var heldPages = [];     // page pads currently held, in press order
+var shiftHeld = false;
 var follow = true;      // viewed page follows the playhead (display button 6)
 var octave = 1;         // note keyboard octave; octave 1 root C = MIDI 36
 var brushNote = 36;     // note new bass trigs get (tap a note pad)
@@ -69,7 +70,9 @@ var CONTROL_NAMES = {
 	encoders: "Track_Controls",
 	touches: "Track_Control_Touches",
 	octaveUp: "Octave_Up_Button",
-	octaveDown: "Octave_Down_Button"
+	octaveDown: "Octave_Down_Button",
+	undoBtn: "Undo_Button",
+	shiftBtn: "Shift_Button"
 };
 
 // ---------- deferred work queue ----------
@@ -100,6 +103,7 @@ model.onChange = function () {
 	if (restoring) return;
 	saveTask.schedule(250); // debounce bursts of edits
 	refillSoon();           // edits reach the next steps without waiting a tick
+	historyChanged();
 };
 function saveNow() {
 	var enc = model.encode();
@@ -126,8 +130,69 @@ function restore() {
 	restoring = false;
 	if (ok) post("kbSequencer: restored " + model.countTrigs(S.KICK) + " kick + " + model.countTrigs(S.BASS) + " bass trigs\n");
 	else post("kbSequencer: restore failed (" + model.lastError + "), starting empty\n");
+	resetHistory(); // a loaded Set / preset starts a fresh history
 	refillSoon();
 	if (grabbed) defer(renderAll);
+	showStatus();
+}
+
+// ---------- undo / redo ----------
+// Sequencer edits aren't Live parameters, so Live's undo can't see them.
+// The device keeps its own history: a snapshot (the encoded model) of the
+// state before each edit. Every change made inside one gesture (a page
+// wipe's 64 wipes, testfill, clearall) is committed as one entry on the next
+// scheduler tick. While the device has Push, Undo steps back, Shift + Undo
+// steps forward; released, Push's Undo is Live's again.
+var HISTORY_MAX = 50;
+var undoStack = [], redoStack = [];
+var historyNow = model.encode(), historyKey = historyNow.join(" ");
+var historyTask = new Task(commitHistory, this);
+var historyPending = false;
+
+function historyChanged() {
+	if (historyPending) return;
+	historyPending = true;
+	historyTask.schedule(0);
+}
+function commitHistory() {
+	historyTask.cancel();
+	if (!historyPending) return;
+	historyPending = false;
+	var enc = model.encode(), key = enc.join(" ");
+	if (key === historyKey) return; // changed and changed back
+	undoStack.push(historyNow);
+	if (undoStack.length > HISTORY_MAX) undoStack.shift();
+	redoStack = [];
+	historyNow = enc;
+	historyKey = key;
+	renderUndoButton();
+}
+function resetHistory() {
+	historyTask.cancel();
+	historyPending = false;
+	undoStack = [];
+	redoStack = [];
+	historyNow = model.encode();
+	historyKey = historyNow.join(" ");
+	renderUndoButton();
+}
+function undo() { stepHistory(undoStack, redoStack, "undo"); }
+function redo() { stepHistory(redoStack, undoStack, "redo"); }
+function stepHistory(from, to, what) {
+	commitHistory(); // an edit from this same tick goes in first
+	if (!from.length) { post("kbSequencer: nothing to " + what + "\n"); return; }
+	to.push(historyNow);
+	historyNow = from.pop();
+	historyKey = historyNow.join(" ");
+	restoring = true;
+	model.decode(historyNow);
+	restoring = false;
+	saveTask.schedule(250);
+	refillSoon();
+	heldSteps = [];
+	cancelLongPress();
+	post("kbSequencer: " + what + " (" + undoStack.length + " undo / " + redoStack.length + " redo left)\n");
+	renderAll();
 	showStatus();
 }
 
@@ -402,7 +467,7 @@ function grab() {
 		c.api.property = "value";
 	}
 	grabbed = true;
-	deleteHeld = selectHeld = false;
+	deleteHeld = selectHeld = shiftHeld = false;
 	heldPages = [];
 	heldSteps = [];
 	cancelLongPress();
@@ -449,6 +514,8 @@ function handleInput(role, v) {
 	var pressed = v[0] > 0;
 	if (role === "deleteBtn") { deleteHeld = pressed; return; }
 	if (role === "selectBtn") { selectHeld = pressed; return; }
+	if (role === "shiftBtn") { shiftHeld = pressed; return; }
+	if (role === "undoBtn") { if (pressed) { if (shiftHeld) redo(); else undo(); } return; }
 	if (role === "display") { if (pressed) onDisplayButton(v[1]); return; }
 	if (role === "matrix") { onPad(v[1], v[2], pressed); return; }
 	if (role === "octaveUp") { if (pressed) shiftOctave(1); return; }
@@ -717,6 +784,7 @@ function renderAll() {
 	}
 	renderDisplayButtons();
 	renderOctaveButtons();
+	renderUndoButton();
 }
 
 function renderStep(i) {
@@ -778,6 +846,12 @@ function renderDisplayButtons() {
 	api.call("send_value", 5, 0, follow ? COL.followOn : COL.followOff);
 	api.call("send_value", 6, 0, COL.off);
 	api.call("send_value", 7, 0, COL.off);
+}
+
+// Undo LED: lit while there is something to undo.
+function renderUndoButton() {
+	if (!grabbed || !controls.undoBtn) return;
+	new LiveAPI("id " + controls.undoBtn.id).call("send_value", undoStack.length ? COL.buttonOn : COL.off);
 }
 
 function renderOctaveButtons() {

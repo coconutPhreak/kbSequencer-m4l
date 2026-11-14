@@ -374,7 +374,7 @@
       400,
       20
      ],
-     "text": "kbSequencer \u00b7 step 4: pad UI   v0.5.2 \u00b7 1115.0033",
+     "text": "kbSequencer \u00b7 step 4: pad UI   v0.5.3 \u00b7 1115.0038",
      "numinlets": 1,
      "numoutlets": 0
     }
@@ -1204,6 +1204,56 @@
       ""
      ]
     }
+   },
+   {
+    "box": {
+     "id": "msg_undo",
+     "maxclass": "message",
+     "patching_rect": [
+      870,
+      140,
+      60,
+      22
+     ],
+     "presentation": 1,
+     "presentation_rect": [
+      382,
+      24,
+      58,
+      22
+     ],
+     "text": "undo",
+     "numinlets": 2,
+     "numoutlets": 1,
+     "outlettype": [
+      ""
+     ]
+    }
+   },
+   {
+    "box": {
+     "id": "msg_redo",
+     "maxclass": "message",
+     "patching_rect": [
+      870,
+      170,
+      60,
+      22
+     ],
+     "presentation": 1,
+     "presentation_rect": [
+      382,
+      48,
+      58,
+      22
+     ],
+     "text": "redo",
+     "numinlets": 2,
+     "numoutlets": 1,
+     "outlettype": [
+      ""
+     ]
+    }
    }
   ],
   "lines": [
@@ -2015,6 +2065,30 @@
     "patchline": {
      "source": [
       "msg_palette_m1",
+      0
+     ],
+     "destination": [
+      "js",
+      0
+     ]
+    }
+   },
+   {
+    "patchline": {
+     "source": [
+      "msg_undo",
+      0
+     ],
+     "destination": [
+      "js",
+      0
+     ]
+    }
+   },
+   {
+    "patchline": {
+     "source": [
+      "msg_redo",
       0
      ],
      "destination": [

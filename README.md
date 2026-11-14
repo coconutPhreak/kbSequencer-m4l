@@ -137,3 +137,18 @@ indices, and send them back.
 | Hold Delete + tap a page pad | Wipes every step on that page (trigs, notes, p-locks) for the selected lanes; the loop is unchanged |
 
 Follow mode pauses while a step is held, so the page doesn't change under your finger.
+
+## Undo / redo
+
+Step edits aren't Live parameters, so Live's own undo can't see them. The
+device keeps its own history (last 50 edits; a page wipe, testfill or
+clearall counts as one edit):
+
+| Push | Does |
+|---|---|
+| Undo | Undo the last sequencer edit (lit while there is something to undo) |
+| Shift + Undo | Redo |
+
+This only applies while the sequencer has Push. When it releases Push,
+Undo is Live's again. Loading a Set or preset starts a fresh history.
+The device also has **undo** / **redo** buttons.
