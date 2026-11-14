@@ -115,7 +115,7 @@ mono note cutting, CC locks (later build steps).
 | Rows 1–4 | 32 steps of the viewed page (tap / Delete + tap as before; new bass trigs use the brush note) |
 | Rows 5–6 | 16 page pads: viewed = white, playing (follow off) = green, in loop with trigs = mid grey, in loop empty = dim grey, outside loop = off |
 | Hold a page pad + press another | Loop from the first page to the second |
-| Long-press a page pad (½ s, alone) | Loop just that page |
+| Long-press a page pad (½ s, alone) | Loop just that page, on release (not if an encoder was turned: that's a page lock) |
 | Tap a page pad (or Select + page pad) | View that page for editing without changing the loop; turns follow off |
 | Rows 7–8 | Note keyboard: 16 notes of Live's scale (bottom row lower). Root = blue, others = dim white, brush = bright white; all dim when only kick is selected |
 | Tap a note pad | Makes it the brush note and auditions it (kick only: auditions the kick) |
@@ -197,3 +197,25 @@ kbSequencer (Device mode, device selected) to see the bank.
   button is bright, the other available ones dim.
 - The first 6 encoder messages are printed to the Max Console
   (`encoder raw …`), to check the format Push sends.
+
+## Step 7 — P-locks ✅
+
+| Push | Does |
+|---|---|
+| Hold step(s) + turn an encoder | Locks that parameter on the held steps (selected lanes); the value moves on screen |
+| Hold step(s) + Delete + touch an encoder | Clears that parameter's lock (the default plays again) |
+| Hold a page pad + turn an encoder | Page lock: every trig on the page (muted ones too) jumps to the first trig's value, then they move together |
+| Hold a page pad + Delete + touch an encoder | Clears that lock on every trig of the page |
+| While holding a step or page pad, tap Delete once | Clear mode latches (Delete lit) until you let go of the pad: touch encoders to clear their locks, no need to keep Delete held |
+
+- A page pad shows the page's values on Push after ⅓ s of holding (or at the
+  first turn), so quick taps don't flicker the screen.
+- Page pad on its own is now judged on release: quick tap = view, long hold =
+  loop that page, any turn or touch = page lock only.
+- After a page lock, any single step can still be overridden.
+- CC locks: turning up from "-1" (none) starts a lock at 0; turning below 0 clears it.
+- One Undo takes back one encoder turn (edits within 0.6 s are grouped).
+- Playback already uses velocity, length and probability locks; accent,
+  slide, tie, retrig, fill, condition, microtime and CC locks are stored and
+  shown but play in steps 8–10.
+- The first 4 touch messages are printed to the Max Console (`touch raw …`).

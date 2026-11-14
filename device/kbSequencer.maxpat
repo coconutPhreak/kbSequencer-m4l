@@ -374,7 +374,7 @@
       400,
       20
      ],
-     "text": "kbSequencer \u00b7 step 6: encoders + banks   v0.6.3 \u00b7 1115.0118",
+     "text": "kbSequencer \u00b7 step 7: p-locks   v0.7.1 \u00b7 1115.0133",
      "numinlets": 1,
      "numoutlets": 0
     }

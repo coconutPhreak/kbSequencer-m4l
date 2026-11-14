@@ -194,7 +194,7 @@ function stepHistory(from, to, what) {
 	saveTask.schedule(250);
 	refillSoon();
 	heldSteps = [];
-	cancelLongPress();
+	cancelPageHold();
 	post("kbSequencer: " + what + " (" + undoStack.length + " undo / " + redoStack.length + " redo left)\n");
 	renderAll();
 	showStatus();
@@ -387,7 +387,7 @@ function notifydeleted() {
 	saveTask.cancel();
 	grabTask.cancel();
 	repaintTask.cancel();
-	longPressTask.cancel();
+	pageShowTask.cancel();
 	teardownTransport();
 	teardownScale();
 	release();
@@ -473,10 +473,11 @@ function grab() {
 	}
 	grabbed = true;
 	deleteHeld = selectHeld = shiftHeld = false;
-	dupHeld = false; clip = null; dupAnchor = -1;
+	dupHeld = false; clip = null; dupAnchor = -1; clearLatch = false;
 	heldPages = [];
 	heldSteps = [];
-	cancelLongPress();
+	pageHold = null;
+	pageShowTask.cancel();
 	padCache = {};
 	renderAll();
 	// Push resets the LEDs of controls it hands over a moment after the grab,
@@ -518,7 +519,7 @@ function makeHandler(role) {
 
 function handleInput(role, v) {
 	var pressed = v[0] > 0;
-	if (role === "deleteBtn") { deleteHeld = pressed; return; }
+	if (role === "deleteBtn") { onDelete(pressed); return; }
 	if (role === "selectBtn") { selectHeld = pressed; return; }
 	if (role === "shiftBtn") { shiftHeld = pressed; return; }
 	if (role === "duplicateBtn") { onDuplicate(pressed); return; }
@@ -528,6 +529,7 @@ function handleInput(role, v) {
 	if (role === "octaveUp") { if (pressed) shiftOctave(1); return; }
 	if (role === "octaveDown") { if (pressed) shiftOctave(-1); return; }
 	if (role === "encoders") { onEncoder(v); return; }
+	if (role === "touches") { onTouch(v); return; }
 }
 
 // Lower display buttons: 1 kick, 2 bass, 3–5 banks (step 6), 6 follow.
@@ -592,7 +594,7 @@ function onStepPad(pad, pressed) {
 		}
 		renderStep(h.i);
 		renderNotes();
-		if (!heldSteps.length) { renderDisplayButtons(); updateDisplay(); } // back to settings
+		if (!heldSteps.length) { renderDisplayButtons(); updateDisplay(); endClearLatch(); } // back to settings
 		return;
 	}
 	var i = viewPage * S.STEPS_PER_PAGE + pad;
@@ -646,7 +648,7 @@ var banksReady = false, lastBankSig = "";
 var encAcc = [0, 0, 0, 0, 0, 0, 0, 0];
 var encLogLeft = 6; // print the first few raw encoder messages (format check)
 
-function context() { return heldSteps.length ? "step" : "settings"; }
+function context() { return heldSteps.length || (pageHold && pageHold.shown) ? "step" : "settings"; }
 function currentBank() { var c = context(); return BANKS[c][bankSel[c]]; }
 function editLane() { return selKick ? S.KICK : S.BASS; }
 
@@ -659,11 +661,35 @@ function itemShown(key) {
 
 // The held step and the lane its values are read from: the first selected
 // lane with a trig there.
+// With a page held: the first trig on the page (null if the page is empty).
 function heldTarget() {
-	if (!heldSteps.length) return null;
-	var i = heldSteps[0].i, lanes = selectedLanes();
-	for (var k = 0; k < lanes.length; k++) if (model.hasTrig(lanes[k], i)) return { lane: lanes[k], i: i };
-	return { lane: lanes[0], i: i };
+	var lanes = selectedLanes(), k;
+	if (heldSteps.length) {
+		var i = heldSteps[0].i;
+		for (k = 0; k < lanes.length; k++) if (model.hasTrig(lanes[k], i)) return { lane: lanes[k], i: i };
+		return { lane: lanes[0], i: i };
+	}
+	if (pageHold) {
+		var first = pageHold.page * S.STEPS_PER_PAGE;
+		for (var j = first; j < first + S.STEPS_PER_PAGE; j++)
+			for (k = 0; k < lanes.length; k++) if (model.hasTrig(lanes[k], j)) return { lane: lanes[k], i: j };
+	}
+	return null;
+}
+
+// Every trig a lock edit writes to: the held steps (or every trig on the
+// held page; muted ones count) on the selected lanes.
+function lockTargets() {
+	var out = [], lanes = selectedLanes(), k, l;
+	if (heldSteps.length) {
+		for (k = 0; k < heldSteps.length; k++)
+			for (l = 0; l < lanes.length; l++) if (model.hasTrig(lanes[l], heldSteps[k].i)) out.push({ lane: lanes[l], i: heldSteps[k].i });
+	} else if (pageHold) {
+		var first = pageHold.page * S.STEPS_PER_PAGE;
+		for (var i = first; i < first + S.STEPS_PER_PAGE; i++)
+			for (l = 0; l < lanes.length; l++) if (model.hasTrig(lanes[l], i)) out.push({ lane: lanes[l], i: i });
+	}
+	return out;
 }
 
 // Value of a display item, in the display parameter's own units.
@@ -721,6 +747,7 @@ function updateDisplay() {
 // Encoder ticks per value step: small ranges (menus, channels) move slower.
 function ticksPerStep(key) {
 	var d = DISPLAY_PARAMS[key];
+	if (key === "length") return 1; // shown in steps, edited in 1/24-step ticks
 	return d.kind === "enum" || (d.hi - d.lo) <= 48 ? 4 : 1;
 }
 
@@ -735,14 +762,82 @@ function onEncoder(v) {
 	if (encLogLeft > 0) { encLogLeft--; post("kbSequencer: encoder raw " + v.join(" ") + "\n"); }
 	var idx = v[1] | 0, d = encoderDelta(v[0]);
 	if (idx < 0 || idx > 7 || !d) return;
-	if (heldSteps.length) { markHeldEdited(); return; } // p-locks: build step 7
+	var locking = heldSteps.length || pageHold;
+	if (locking) {
+		markHeldEdited();
+		if (pageHold) {
+			pageHold.edited = true; // no view / loop on release
+			if (!pageHold.shown) pageShowTask.fire();
+		}
+	}
 	var key = currentBank().items[idx];
 	if (!itemShown(key)) return;
 	encAcc[idx] += d;
 	var per = ticksPerStep(key), steps = (encAcc[idx] / per) | 0;
 	if (!steps) return;
 	encAcc[idx] -= steps * per;
-	editSetting(key, steps);
+	if (locking) editLock(key, steps); else editSetting(key, steps);
+}
+
+// Hold step(s) / page + turn: every target gets the shown value moved by
+// `steps`. On a page the first turn makes every trig jump to the first
+// trig's value; then they move together. Turning a CC lock below 0 clears it.
+function editLock(key, steps) {
+	var targets = lockTargets();
+	if (!targets.length) return;
+	var base = itemValue(key), k;
+	encoderEdit = true;
+	if (key === "note") {
+		for (k = 0; k < targets.length; k++) if (targets[k].lane === S.BASS) model.setNote(S.BASS, targets[k].i, base + steps);
+	} else {
+		var pid = S.PARAM_ID[key];
+		if (key === "length") base = Math.round(base * S.TICKS_PER_STEP);
+		var v = base + steps;
+		for (k = 0; k < targets.length; k++) {
+			if (key.indexOf("cc") === 0 && v < 0) model.clearLock(targets[k].lane, targets[k].i, pid);
+			else model.setLock(targets[k].lane, targets[k].i, pid, v);
+		}
+	}
+	encoderEdit = false;
+	renderAll(); // locked colour on the steps + new values on Push
+	if (key === "note") renderNotes();
+}
+
+// Hold step(s) / page + Delete + touch an encoder: clear that parameter's
+// lock on every target (the default plays again).
+// Latch: pressing Delete while a step or page pad is held turns on clear
+// mode until that pad is let go (Delete lit), so touching encoders clears
+// their locks without keeping Delete held.
+var clearLatch = false;
+function onDelete(pressed) {
+	deleteHeld = pressed;
+	if (!pressed || !(heldSteps.length || pageHold)) return;
+	clearLatch = true;
+	markHeldEdited(); // the held step won't mute on release
+	if (pageHold) { pageHold.edited = true; if (!pageHold.shown) pageShowTask.fire(); }
+	renderDeleteButton();
+}
+function endClearLatch() {
+	if (heldSteps.length || pageHold || !clearLatch) return;
+	clearLatch = false;
+	renderDeleteButton();
+}
+function renderDeleteButton() {
+	if (!grabbed || !controls.deleteBtn) return;
+	new LiveAPI("id " + controls.deleteBtn.id).call("send_value", clearLatch ? COL.buttonOn : COL.off);
+}
+
+var touchLogLeft = 4;
+function onTouch(v) {
+	if (touchLogLeft > 0) { touchLogLeft--; post("kbSequencer: touch raw " + v.join(" ") + "\n"); }
+	if (!(v[0] > 0) || !(deleteHeld || clearLatch) || !(heldSteps.length || pageHold)) return;
+	markHeldEdited();
+	if (pageHold) { pageHold.edited = true; if (!pageHold.shown) pageShowTask.fire(); }
+	var key = currentBank().items[v[1] | 0];
+	if (!itemShown(key) || key === "note") { updateDisplay(); return; }
+	var targets = lockTargets(), pid = S.PARAM_ID[key];
+	for (var k = 0; k < targets.length; k++) model.clearLock(targets[k].lane, targets[k].i, pid);
+	renderAll();
 }
 
 function editSetting(key, steps) {
@@ -826,21 +921,28 @@ function renderDuplicateButton() {
 }
 
 // Page pads. Select + pad: view that page (follow off). Hold one pad and
-// press another: loop from the first to the second. Long-press one pad on
-// its own: loop that single page. Plain tap (released within ½ s, no
-// second pad): view that page, follow off — same as Select + pad.
-// Page locks (hold + encoder) come in step 7; turning an encoder while a page
-// is held must then call cancelLongPress() so a page lock never resets the loop.
+// press another: loop from the first to the second. One pad on its own is
+// judged on release, so it can be held for a page lock (step 7):
+//   released within LONG_PRESS_MS, nothing turned: view that page, follow off
+//   held longer, nothing turned:                    loop that single page
+//   an encoder turned / touched while held:          page lock only
+// After TAP_MS of holding, Push shows the page's values (first trig).
 var LONG_PRESS_MS = 500;
-var longPressPage = -1;
-var longPressTask = new Task(function () {
-	if (heldPages.length !== 1 || heldPages[0] !== longPressPage) return;
-	model.setLoop(longPressPage, longPressPage);
-	longPressPage = -1;
-	renderPages();
-	showStatus();
+var pageHold = null; // { page, at, edited, shown } while one page pad is held alone
+var pageShowTask = new Task(function () {
+	if (!pageHold || pageHold.shown) return;
+	pageHold.shown = true;
+	encAcc = [0, 0, 0, 0, 0, 0, 0, 0];
+	renderDisplayButtons();
+	updateDisplay();
 }, this);
-function cancelLongPress() { longPressTask.cancel(); longPressPage = -1; }
+function cancelPageHold() {
+	pageShowTask.cancel();
+	var was = pageHold && pageHold.shown;
+	pageHold = null;
+	if (was) { renderDisplayButtons(); updateDisplay(); }
+	endClearLatch();
+}
 
 // Plain tap or Select + pad: edit that page; follow turns off.
 function viewPageAndStopFollow(page) {
@@ -855,9 +957,13 @@ function onPagePad(page, pressed) {
 	var at = heldPages.indexOf(page);
 	if (!pressed) {
 		if (at >= 0) heldPages.splice(at, 1);
-		if (page === longPressPage) { // released early, no second pad: a plain tap
-			cancelLongPress();
-			viewPageAndStopFollow(page);
+		if (pageHold && pageHold.page === page) {
+			var ph = pageHold;
+			cancelPageHold();
+			if (!ph.edited) {
+				if (now() - ph.at < LONG_PRESS_MS) viewPageAndStopFollow(page);
+				else { model.setLoop(page, page); renderPages(); showStatus(); }
+			}
 		}
 		return;
 	}
@@ -877,10 +983,10 @@ function onPagePad(page, pressed) {
 	if (selectHeld) { viewPageAndStopFollow(page); return; }
 	if (at < 0) heldPages.push(page);
 	if (heldPages.length === 1) {
-		longPressPage = page;
-		longPressTask.schedule(LONG_PRESS_MS);
+		pageHold = { page: page, at: now(), edited: false, shown: false };
+		pageShowTask.schedule(TAP_MS);
 	} else {
-		cancelLongPress(); // second pad: range gesture instead
+		cancelPageHold(); // second pad: range gesture instead
 		model.setLoop(heldPages[0], page);
 		renderPages();
 		showStatus();
@@ -1008,6 +1114,7 @@ function renderAll() {
 	renderOctaveButtons();
 	renderUndoButton();
 	renderDuplicateButton();
+	renderDeleteButton();
 	updateDisplay();
 }
 

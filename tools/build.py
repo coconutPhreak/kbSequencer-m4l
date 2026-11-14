@@ -22,7 +22,7 @@ AMXD_MIDI = int.from_bytes(b"mmmm", "big")  # 1835887981
 
 # Shown on every device and printed to the Max Console at load, so it's easy
 # to tell which build is running. VERSION: bump the minor per spec build step.
-VERSION = "0.6.3"
+VERSION = "0.7.1"
 BUILD = datetime.datetime.now().strftime("%m%d.%H%M")  # build time, MMDD.HHMM
 STAMP = f"v{VERSION} · {BUILD}"
 
@@ -268,7 +268,7 @@ t.write("kbTakeover")
 
 # ---- main device ----
 bundle("kbSequencer.js", "main.js", modules=[("S", "seq_model.js")])
-s = Patch("kbSequencer · step 6: encoders + banks", size=(420, 169))
+s = Patch("kbSequencer · step 7: p-locks", size=(420, 169))
 common(s, "js kbSequencer.js", 5, wire_init=False)
 s.blob_pattr("pattr", "kbData", [200, 400, 100, 22])
 # On device init: first bang pattr so the stored sequence reaches the script
