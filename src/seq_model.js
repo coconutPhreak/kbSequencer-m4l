@@ -78,7 +78,10 @@ PARAMS.push(
 	{ key: "retrigPMode",  min: 0, max: RETRIG_PMODES.length - 1, def: 0, lanes: [1, 1] },
 	{ key: "retrigTRate",  min: 0, max: RETRIG_RATES.length, def: 0, lanes: [1, 1] }, // 0 Off, else RATE idx + 1
 	{ key: "retrigGlide",  min: 0, max: 512, def: 16,  lanes: [1, 1] },  // quarter steps (0–128 steps)
-	{ key: "retrigVoices", min: 0, max: RETRIG_VOICES.length - 1, def: 0, lanes: [1, 1] }
+	{ key: "retrigVoices", min: 0, max: RETRIG_VOICES.length - 1, def: 0, lanes: [1, 1] },
+	// Slide (bass): read from the first note of a slide chain.
+	{ key: "slideTime",    min: 0, max: 200, def: 100, lanes: [0, 1] },  // % of the gap to the next note
+	{ key: "slideCurve",   min: -100, max: 100, def: 0, lanes: [0, 1] }  // -100 fast start, +100 slow start
 );
 
 var PARAM_ID = {};
@@ -89,7 +92,7 @@ var SETTINGS = [
 	{ key: "kickChannel", min: 1, max: 16,  def: 1 },
 	{ key: "bassChannel", min: 1, max: 16,  def: 2 },
 	{ key: "kickNote",    min: 0, max: 127, def: 36 },
-	{ key: "bendRange",   min: 1, max: 48,  def: 24 },
+	{ key: "bendRange",   min: 1, max: 96,  def: 24 }, // ± semitones each way; must match the instrument
 	{ key: "scaleFollow", min: 0, max: 1,   def: 1 },
 	{ key: "swing",       min: 50, max: 75, def: 50 }
 ];
@@ -297,7 +300,11 @@ Model.prototype.noteAt = function (l, absStep, stepMs, seed) {
 		lenSteps: RETRIG_LENS[v("length")],
 		channel: l === KICK ? this.settings.kickChannel : this.settings.bassChannel,
 		retrig: v("retrig") === 1,
-		voices: v("retrigVoices") + 1
+		voices: v("retrigVoices") + 1,
+		slide: l === BASS && v("slide") === 1,
+		tie: v("tie") === 1,
+		slideTime: l === BASS ? v("slideTime") / 100 : 0,
+		slideCurve: l === BASS ? v("slideCurve") / 100 : 0
 	};
 	if (!n.retrig) return n;
 	n.rate = rateSteps(v("retrigRate"));
@@ -351,51 +358,169 @@ function burstHits(n, until) {
 	return { hits: hits, span: finite && last ? last.t + last.iv : Infinity };
 }
 
-// Abs step of the lane's next played note after `from` (for INF gates).
-Model.prototype.nextNoteAbs = function (l, from, stepMs, seed) {
-	for (var b = from + 1; b <= from + RETRIG_LOOKBACK; b++) if (this.noteAt(l, b, stepMs, seed)) return b;
-	return from + RETRIG_LOOKBACK;
+// ---------- slides and ties ----------
+// A step with Slide (bass) or Tie on connects to the lane's next unmuted
+// step, if that step starts before the note ends (the first note's Length):
+// no new note-on, the held note bends to that step's pitch (Tie: an instant
+// jump; Slide: a glide). A step after the note has ended plays normally. The connected step keeps only its note and
+// its own Slide / Tie flag (so chains continue); its other locks don't apply.
+// The first note of the chain sets velocity, Length (the whole held note,
+// from its start, so a short Length ends before the slide), Slide Time and
+// Curve. Retrig steps don't slide. A target
+// further than the bend range starts a new note instead.
+// Slide Time p = % of the gap g between the two notes: p ≤ 100 glides over
+// the last p·g before the next note (lands on its beat); p > 100 starts at
+// the first note and arrives (p−100)·g late.
+var BEND_MS = 5; // bend message spacing during a glide
+
+function curveShape(x, c) {
+	x = x < 0 ? 0 : x > 1 ? 1 : x;
+	return c >= 0 ? Math.pow(x, 1 + 3 * c) : 1 - Math.pow(1 - x, 1 + 3 * -c);
+}
+
+// Notes (chains) of one lane from `from`, until the first new note that
+// starts after absStep (needed for mono cuts) or RETRIG_LOOKBACK steps on.
+Model.prototype.laneChains = function (l, from, absStep, stepMs, seed) {
+	var chains = [], cur = null, steps = this.lanes[l].steps, range = this.settings.bendRange;
+	for (var b = from; b <= absStep + RETRIG_LOOKBACK; b++) {
+		var idx = this.seqIndexFor(b), st = steps[idx];
+		if (cur && cur.open) {
+			if (!st || st.muted) continue;
+			var pitch = l === KICK ? this.settings.kickNote : st.note;
+			// Connects only while the note still sounds (the first note's Length
+			// from its start) and within the bend range; else a new note.
+			var sounding = b < cur.first.abs + cur.first.lenSteps - 1e-9;
+			if (sounding && (l !== BASS || Math.abs(pitch - cur.first.pitch) <= range)) {
+				var sl = l === BASS && this.value(l, idx, PARAM_ID.slide) === 1, ti = this.value(l, idx, PARAM_ID.tie) === 1;
+				cur.notes.push({ abs: b, pitch: pitch, slide: sl, tie: ti });
+				cur.open = sl || ti;
+				continue;
+			}
+			cur.open = false; // ended, or out of bend range: a new note
+		}
+		var n = this.noteAt(l, b, stepMs, seed);
+		if (!n) continue;
+		cur = { first: n, notes: [{ abs: b, pitch: n.pitch, slide: n.slide, tie: n.tie }], open: !n.retrig && (n.slide || n.tie) };
+		chains.push(cur);
+		if (b > absStep) break; // the next new note after the step: enough
+	}
+	return chains;
 };
 
+// Glide windows [s0, s1] of a chain, one per pitch change (tie: s0 = s1).
+function chainWindows(c) {
+	var w = [], ns = c.notes, p = c.first.slideTime;
+	for (var k = 0; k + 1 < ns.length; k++) {
+		var a = ns[k].abs, b = ns[k + 1].abs, g = b - a, d = ns[k + 1].pitch - ns[k].pitch;
+		if (!d) continue;
+		if (ns[k].slide) {
+			var D = p * g;
+			w.push(D <= g ? { s0: b - D, s1: b, d: d } : { s0: a, s1: a + D, d: d });
+		} else w.push({ s0: b, s1: b, d: d }); // tie: jump on the next note
+	}
+	return w;
+}
+// Pitch offset (semitones from the first note) of a chain at abs time t.
+function chainOffset(c, t) {
+	var off = 0, w = c.windows || (c.windows = chainWindows(c));
+	for (var k = 0; k < w.length; k++)
+		off += w[k].d * (w[k].s1 > w[k].s0 ? curveShape((t - w[k].s0) / (w[k].s1 - w[k].s0), c.first.slideCurve) : (t >= w[k].s0 - 1e-9 ? 1 : 0));
+	return off;
+}
+function bendValue(off, range) {
+	var v = Math.round(8192 + off / range * (off >= 0 ? 8191 : 8192));
+	return v < 0 ? 0 : v > 16383 ? 16383 : v;
+}
+
 // Events to play during absStep: [{offMs, lane, pitch, velocity, durMs, channel}],
-// offMs = time after the step's start. Includes retrig hits of bursts that
-// started on earlier steps (back to startAbs, the play start: nothing ran
-// before it). Voices: each new note may keep at most VOICES−1 bursts running
-// (its own VOICES setting; Mono = 1): the oldest are stopped at its start.
-// Not yet: microtime, conditions, fill, accent, slide/tie (later steps).
+// offMs = time after the step's start. lane 2 = a bass pitch bend (pitch =
+// 14-bit value). Includes retrig hits and held / sliding notes that started
+// on earlier steps (back to startAbs, the play start: nothing ran before
+// it). Voices: each new note may keep at most VOICES−1 notes or bursts
+// running (its own VOICES; Mono = 1): the oldest are cut at its start, so
+// lanes are mono by default. Not yet: microtime, conditions, fill, accent.
 Model.prototype.eventsAt = function (absStep, stepMs, seed, startAbs) {
 	if (startAbs === undefined || startAbs > absStep) startAbs = absStep;
-	var out = [];
+	var out = [], range = this.settings.bendRange;
+	var inStep = function (at) { return at >= absStep - 1e-9 && at < absStep + 1 - 1e-9; };
+	var ms = function (at) { return Math.max(0, Math.round((at - absStep) * stepMs * 100) / 100); };
 	for (var l = 0; l < 2; l++) {
-		var from = Math.max(startAbs, absStep - RETRIG_LOOKBACK), running = [], bursts = [];
-		for (var b = from; b <= absStep; b++) {
-			var n = this.noteAt(l, b, stepMs, seed);
-			if (!n) continue;
+		var from = Math.max(startAbs, absStep - RETRIG_LOOKBACK), running = [], items = [];
+		var chains = this.laneChains(l, from, absStep, stepMs, seed);
+		for (var ci = 0; ci < chains.length; ci++) {
+			var c = chains[ci], n = c.first, b = n.abs;
 			running = running.filter(function (x) { return x.end > b + 1e-9; });
 			while (running.length >= n.voices) running.shift().end = b; // steal the oldest
-			var h = burstHits(n, absStep + 1 - b);
-			var burst = { n: n, hits: h.hits, end: b + h.span };
-			running.push(burst);
-			bursts.push(burst);
+			if (b > absStep) break; // only needed for the cut
+			var it = { c: c, end: Infinity };
+			if (c.notes.length > 1) {
+				// The first note's Length is the whole held note, from its start: a
+				// short Length ends it before the slide is heard. INF: until cut.
+				it.natural = b + n.lenSteps;
+			} else {
+				it.h = burstHits(n, absStep + 1 - b);
+				it.natural = b + it.h.span;
+			}
+			it.end = it.natural;
+			running.push(it);
+			items.push(it);
 		}
-		for (var k = 0; k < bursts.length; k++) {
-			var bu = bursts[k], st0 = bu.n.abs;
-			if (bu.end <= absStep) continue;
-			for (var j = 0; j < bu.hits.length; j++) {
-				var hit = bu.hits[j], at = st0 + hit.t;
-				if (at < absStep - 1e-9 || at >= absStep + 1 - 1e-9 || at >= bu.end - 1e-9 || !hit.play) continue;
-				var dur;
-				if (hit.plain && hit.iv === Infinity) dur = (this.nextNoteAbs(l, st0, stepMs, seed) - st0) * stepMs - 1; // INF: until the next note
-				else dur = hit.plain ? hit.iv * stepMs : Math.max(1, hit.iv * stepMs - 1); // retrig: held until the next hit
-				out.push({
-					offMs: Math.max(0, Math.round((at - absStep) * stepMs * 100) / 100),
-					lane: l, pitch: bu.n.pitch, velocity: hit.vel,
-					durMs: Math.max(1, Math.round(dur)), channel: bu.n.channel
-				});
+		var ch = l === KICK ? this.settings.kickChannel : this.settings.bassChannel;
+		for (var k = 0; k < items.length; k++) {
+			var item = items[k], c2 = item.c, f = c2.first, st0 = f.abs;
+			if (item.end <= absStep) continue;
+			var cut = item.end < item.natural; // stopped by a later note
+			var endOrNext = item.end === Infinity ? this.nextNoteAbs(l, st0, stepMs, seed) : item.end;
+			if (l === BASS && inStep(st0)) // centre the bend before every new bass note
+				out.push({ offMs: ms(st0), lane: 2, pitch: 8192, velocity: 0, durMs: 0, channel: ch });
+			if (c2.notes.length > 1) {
+				if (inStep(st0))
+					out.push({ offMs: ms(st0), lane: l, pitch: f.pitch, velocity: f.velocity,
+						durMs: Math.max(1, Math.round((endOrNext - st0) * stepMs - (cut || item.end === Infinity ? 1 : 0))), channel: ch });
+				if (l === BASS) this.chainBends(c2, absStep, endOrNext, stepMs, range, ch, out);
+				continue;
+			}
+			for (var j = 0; j < item.h.hits.length; j++) {
+				var hit = item.h.hits[j], at = st0 + hit.t;
+				if (!inStep(at) || at >= item.end - 1e-9 || !hit.play) continue;
+				var stop = Math.min(at + hit.iv, endOrNext), dur;
+				if (hit.plain) dur = (stop - at) * stepMs - (cut || hit.iv === Infinity ? 1 : 0);
+				else dur = Math.max(1, Math.min(hit.iv, stop - at) * stepMs - 1); // retrig: held until the next hit
+				out.push({ offMs: ms(at), lane: l, pitch: f.pitch, velocity: hit.vel,
+					durMs: Math.max(1, Math.round(dur)), channel: ch });
 			}
 		}
 	}
 	return out;
+};
+
+// Bend messages of a chain inside absStep, on a fixed grid (every BEND_MS
+// from the chain's start) plus each window end (exact landing, tie jumps).
+// Only when the 14-bit value changes; the comparison starts from the last
+// grid point / window end before the step, so steps join seamlessly.
+Model.prototype.chainBends = function (c, absStep, end, stepMs, range, ch, out) {
+	var f = c.first.abs, t0 = Math.max(absStep, f), t1 = Math.min(absStep + 1, end);
+	if (t1 <= t0) return;
+	var dt = BEND_MS / stepMs, w = c.windows || (c.windows = chainWindows(c));
+	var prev = f + Math.floor((t0 - f - 1e-9) / dt) * dt, k;
+	for (k = 0; k < w.length; k++) if (w[k].s1 < t0 - 1e-9 && w[k].s1 > prev) prev = w[k].s1;
+	var last = prev < f ? 8192 : bendValue(chainOffset(c, prev), range);
+	var times = [];
+	for (var t = f + Math.ceil((t0 - f - 1e-9) / dt) * dt; t < t1 - 1e-9; t += dt) times.push(t);
+	for (k = 0; k < w.length; k++) if (w[k].s1 >= t0 - 1e-9 && w[k].s1 < t1 - 1e-9) times.push(w[k].s1);
+	times.sort(function (x, y) { return x - y; });
+	for (var i = 0; i < times.length; i++) {
+		var v = bendValue(chainOffset(c, times[i]), range);
+		if (v === last) continue;
+		last = v;
+		out.push({ offMs: Math.max(0, Math.round((times[i] - absStep) * stepMs * 100) / 100), lane: 2, pitch: v, velocity: 0, durMs: 0, channel: ch });
+	}
+};
+
+// Abs step of the lane's next played note after `from` (for INF gates).
+Model.prototype.nextNoteAbs = function (l, from, stepMs, seed) {
+	for (var b = from + 1; b <= from + RETRIG_LOOKBACK; b++) if (this.noteAt(l, b, stepMs, seed)) return b;
+	return from + RETRIG_LOOKBACK;
 };
 
 // ---------- note keyboard ----------

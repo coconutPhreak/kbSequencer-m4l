@@ -185,7 +185,7 @@ kbSequencer (Device mode, device selected) to see the bank.
 | Context | Display buttons 3–8 (the row under the knobs) | Encoders |
 |---|---|---|
 | Nothing held | 3 **Settings**, 4 **CC Setup** (5–8 free) | Edit them (one Undo per turn) |
-| Step or page held | 3 **Step**, 4 **Retrig**, 5 **Rt Chance**, 6 **More** (Fill, Cond), 7 **CC Locks** (8 free) | Show and lock the held step's values |
+| Step or page held | 3 **Step**, 4 **Retrig**, 5 **Rt Chance**, 6 **More** (Fill, Cond), 7 **CC Locks**, 8 **Slide** | Show and lock the held step's values |
 
 - Settings: Kick Ch, Bass Ch, Kick Note, Bend, Scale (follow), Swing.
 - CC Setup: CC number of the 8 slots. CC Locks: the held step's lock per slot (-1 = none).
@@ -262,3 +262,19 @@ Not carried over: retrigs while the transport is stopped (there's nothing
 to play by hand here), Shift for fine encoder steps. Lane defaults for the
 retrig controls can't be edited yet (same open question as the other step
 parameters).
+
+## Slides, ties and mono lanes
+
+| Slide bank (button 8) | Values | Default | |
+|---|---|---|---|
+| Slide | Off / On | Off | Bass: this note slides into the lane's next unmuted step, if that step starts before the note ends (its Length). A step after that plays as a normal note |
+| Tie | Off / On | Off | Holds into the next step; on bass it jumps to that step's pitch with no glide |
+| Sl Time | 0–200 % | 100 % | Glide time as a % of the gap to the next note. ≤ 100 %: waits, then glides over the last part of the gap and lands on the next note's beat. > 100 %: starts at once and arrives late |
+| Sl Curve | −100 … +100 | 0 | −100 fast start, 0 straight, +100 slow start |
+
+- Slides are pitch bend on the bass channel (14-bit, a message every 5 ms while gliding). Set the instrument's pitch-bend range to **Bend** in Settings (default ±24 semitones, up to ±96). A target further than that plays as a new note.
+- The connected step gives only its **note** and its own **Slide / Tie** (so chains continue: A → B → C is one held note). Its velocity, Length, retrig, CC and other locks don't apply.
+- The **first note** of a chain sets velocity, Sl Time, Sl Curve and **Length**: the whole held note lasts the first note's Length from its start (a short Length ends before the slide is heard; the next new note still cuts it).
+- The bend returns to centre right before every new bass note.
+- Retrig steps don't slide. Kick has Tie (holds the note) but no Slide.
+- Lanes are **mono**: a new note cuts the previous one (unless Slide/Tie connects them, or a retrig VOICES setting above Mono lets them overlap).

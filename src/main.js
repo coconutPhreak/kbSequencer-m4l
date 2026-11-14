@@ -644,11 +644,12 @@ var BANKS = {
 		{ name: "Retrig", items: ["retrig", "retrigRate", "length", "retrigFade", "retrigCurve", "retrigProb", "retrigTRate", "retrigGlide"] }, // Length = the Step bank's Length
 		{ name: "Rt Chance", items: ["retrigProb", "retrigLock", "retrigPMode", "retrigVoices", null, null, null, null] },
 		{ name: "More", items: ["fill", "condition", null, null, null, null, null, null] },
-		{ name: "CC Locks", items: ["cc1", "cc2", "cc3", "cc4", "cc5", "cc6", "cc7", "cc8"] }
+		{ name: "CC Locks", items: ["cc1", "cc2", "cc3", "cc4", "cc5", "cc6", "cc7", "cc8"] },
+		{ name: "Slide", items: ["slide", "tie", "slideTime", "slideCurve", null, null, null, null] }
 	]
 };
-// Display buttons that pick banks (0-based): 3–8. Button 8 is free while a
-// step is held; 5–8 are free with nothing held.
+// Display buttons that pick banks (0-based): 3–8 (8 = Slide while a step is
+// held); 5–8 are free with nothing held.
 var BANK_BUTTONS = [2, 3, 4, 5, 6, 7];
 // Display units -> stored units, for values shown in steps.
 var DISPLAY_SCALE = { retrigGlide: 4 };
@@ -664,7 +665,7 @@ function editLane() { return selKick ? S.KICK : S.BASS; }
 // Items hidden in the current state (Note and Slide need bass).
 function itemShown(key) {
 	if (!key) return false;
-	if ((key === "note" || key === "slide") && !selBass) return false;
+	if ((key === "note" || key === "slide" || key === "slideTime" || key === "slideCurve") && !selBass) return false;
 	return true;
 }
 

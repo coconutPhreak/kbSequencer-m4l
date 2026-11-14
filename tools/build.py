@@ -22,7 +22,7 @@ AMXD_MIDI = int.from_bytes(b"mmmm", "big")  # 1835887981
 
 # Shown on every device and printed to the Max Console at load, so it's easy
 # to tell which build is running. VERSION: bump the minor per spec build step.
-VERSION = "0.8.2"
+VERSION = "0.9.2"
 BUILD = datetime.datetime.now().strftime("%m%d.%H%M")  # build time, MMDD.HHMM
 STAMP = f"v{VERSION} · {BUILD}"
 
@@ -65,7 +65,7 @@ DISPLAY_PARAMS = (
     [("kickChannel", "KickCh", "Kick Ch", "int", 1, 16, None),
      ("bassChannel", "BassCh", "Bass Ch", "int", 1, 16, None),
      ("kickNote", "KickNote", "Kick Note", "note", 0, 127, None),
-     ("bendRange", "BendRange", "Bend", "int", 1, 48, "%d st"),
+     ("bendRange", "BendRange", "Bend", "int", 1, 96, "%d st"),  # each way
      ("scaleFollow", "ScaleFollow", "Scale", "enum", 0, 1, OFF_ON),
      ("swing", "Swing", "Swing", "int", 50, 75, "%d %%")]
     + [(f"ccNum{n}", f"CCNum{n}", f"CC# {n}", "int", 0, 127, None) for n in range(1, 9)]
@@ -90,7 +90,10 @@ DISPLAY_PARAMS = (
        ("retrigGlide", "RtGlide", "GLIDE", "float", 0, 128, "%.2f st"),
        ("retrigLock", "RtLock", "LOCK", "enum", 0, 1, OFF_ON),
        ("retrigPMode", "RtPMode", "PMODE", "enum", 0, 2, ["Repeats", "Burst", "Note"]),
-       ("retrigVoices", "RtVoices", "VOICES", "enum", 0, 7, ["Mono", "2", "3", "4", "5", "6", "7", "8"])])
+       ("retrigVoices", "RtVoices", "VOICES", "enum", 0, 7, ["Mono", "2", "3", "4", "5", "6", "7", "8"])]
+    # Slide bank (bass)
+    + [("slideTime", "SlTime", "Sl Time", "int", 0, 200, "%d %%"),
+       ("slideCurve", "SlCurve", "Sl Curve", "int", -100, 100, None)])
 
 
 def bundle(out_name, main, modules=()):
@@ -301,7 +304,7 @@ t.write("kbTakeover")
 
 # ---- main device ----
 bundle("kbSequencer.js", "main.js", modules=[("S", "seq_model.js")])
-s = Patch("kbSequencer · retrig", size=(420, 169))
+s = Patch("kbSequencer · slides", size=(420, 169))
 common(s, "js kbSequencer.js", 5, wire_init=False)
 s.blob_pattr("pattr", "kbData", [200, 400, 100, 22])
 # On device init: first bang pattr so the stored sequence reaches the script
@@ -368,7 +371,7 @@ s.wire("ev_off", 0, "ev_pipe", 5)
 s.wire("ev_rest", 1, "ev_pipe", 0)
 for k in range(5):
     s.wire("ev_pipe", k, "ev_pack", k)
-s.obj("ev_route", "route 0 1", [120, 790, 60, 22], 1, 3)
+s.obj("ev_route", "route 0 1 2", [120, 790, 70, 22], 1, 4)
 s.wire("clk_t", 1, "clk_mod", 0)
 s.wire("clk_mod", 0, "ev_coll", 0)
 s.wire("js", 3, "ev_coll", 0)
@@ -433,6 +436,30 @@ for lane, x in ((0, 120), (1, 300)):
     s.wire(mf, 0, "midiout", 0)
     s.wire(mf, 0, f"lane_pack{lane}", 0)
     s.wire(mf, 0, "dbg_split", 0)
+
+# Bass pitch bend: event "2 value 0 0 channel" -> raw bytes E0+ch, LSB, MSB,
+# to the track output and the bass kbLane (same path as the bass notes).
+s.obj("pb_unpack", "unpack 0 0 0 0", [480, 830, 90, 22], 1, 4, ["int"] * 4)
+s.obj("pb_pack", "pack 0 1", [480, 860, 55, 22], 2, 1)
+s.obj("pb_t", "t l l l", [480, 890, 50, 22], 1, 3, ["", "", ""])
+s.obj("pb_st", "expr 223 + $i2", [480, 920, 90, 22], 2, 1)
+s.obj("pb_lsb", "expr $i1 & 127", [580, 920, 90, 22], 2, 1)
+s.obj("pb_msb", "expr ($i1 >> 7) & 127", [680, 920, 120, 22], 2, 1)
+s.obj("pb_bytes", "pack 0 0 0", [480, 950, 70, 22], 3, 1)
+s.obj("pb_iter", "iter", [480, 980, 35, 22], 1, 1)
+s.wire("ev_route", 2, "pb_unpack", 0)
+s.wire("pb_unpack", 3, "pb_pack", 1)
+s.wire("pb_unpack", 0, "pb_pack", 0)
+s.wire("pb_pack", 0, "pb_t", 0)
+s.wire("pb_t", 2, "pb_msb", 0)
+s.wire("pb_t", 1, "pb_lsb", 0)
+s.wire("pb_t", 0, "pb_st", 0)
+s.wire("pb_msb", 0, "pb_bytes", 2)
+s.wire("pb_lsb", 0, "pb_bytes", 1)
+s.wire("pb_st", 0, "pb_bytes", 0)
+s.wire("pb_bytes", 0, "pb_iter", 0)
+s.wire("pb_iter", 0, "midiout", 0)
+s.wire("pb_iter", 0, "lane_pack1", 0)
 
 buttons(s, ["rescan", "dump", "testfill", "clearall", "palette 0", "palette -1", "undo", "redo"])
 

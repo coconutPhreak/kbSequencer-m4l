@@ -110,7 +110,8 @@ function run(argv) {
 	pm.addTrig(K, 32);
 	pm.setLock(B, 0, P.length, M.RETRIG_LENS.indexOf(1));
 	var stepMs = 100;
-	var ev = pm.eventsAt(0, stepMs, 0);
+	function notes(evs) { return evs.filter(function (e) { return e.lane < 2; }); }
+	var ev = notes(pm.eventsAt(0, stepMs, 0));
 	eq("two events at 0", ev.length, 2);
 	eq("kick event", [ev[0].lane, ev[0].pitch, ev[0].velocity, ev[0].durMs, ev[0].channel], [K, 36, 100, 50, 1]);
 	eq("bass event", [ev[1].lane, ev[1].pitch, ev[1].durMs, ev[1].channel], [B, 41, 100, 2]);
@@ -118,7 +119,7 @@ function run(argv) {
 	eq("empty silent", pm.eventsAt(1, stepMs, 0).length, 0);
 	// loop = page 1 only: abs 32 wraps to step 0, page 2 trig never plays
 	eq("loop wrap", pm.seqIndexFor(32), 0);
-	eq("loop wrap events", pm.eventsAt(32, stepMs, 0).length, 2);
+	eq("loop wrap events", notes(pm.eventsAt(32, stepMs, 0)).length, 2);
 	pm.setLoop(0, 1);
 	eq("loop 2 pages", [pm.seqIndexFor(32), pm.seqIndexFor(64)], [32, 0]);
 	pm.setLoop(1, 2);
@@ -243,6 +244,81 @@ function run(argv) {
 	eq("v1 lock migrated", [M.RETRIG_LENS[m1.value(K, 3, P.length)], m1.isLocked(K, 3, 1)], [2, false]);
 	eq("v1 default migrated", M.RETRIG_LENS[m1.lanes[K].defaults[P.length]], 1);
 	eq("v2 round trip", new M.Model().decode(m1.encode()), true);
+
+	// ---- slides / ties / mono ----
+	var sm = new M.Model(), sms = 100;
+	function ev2(m, a) { return m.eventsAt(a, sms, 0, 0).filter(function (e) { return e.lane === B; }); }
+	function bends(m, a) { return m.eventsAt(a, sms, 0, 0).filter(function (e) { return e.lane === 2; }); }
+	sm.setLoop(0, 3);
+	sm.addTrig(B, 0, 40); sm.setLock(B, 0, P.slide, 1); sm.setLock(B, 0, P.length, M.RETRIG_LENS.indexOf(2));
+	sm.addTrig(B, 4, 47); sm.setLock(B, 4, P.velocity, 10); sm.setLock(B, 4, P.length, M.RETRIG_LENS.indexOf(0.25));
+	var e0 = ev2(sm, 0);
+	eq("slide: one note-on", e0.length, 1);
+	eq("slide note: first's Length from its start", [e0[0].pitch, e0[0].durMs, e0[0].velocity], [40, 200, 100]);
+	sm.setLock(B, 0, P.length, M.RETRIG_LENS.indexOf(8));
+	eq("target: no note-on", ev2(sm, 4).length, 0);
+	eq("reset before note", bends(sm, 0)[0].pitch, 8192);
+	eq("100%: glide spans the gap", bends(sm, 1).length > 0 && bends(sm, 3).length > 0, true);
+	var b4 = bends(sm, 4); // arrives on step 4's beat (last value at end of step 3)
+	var b3 = bends(sm, 3);
+	eq("lands exactly on the target's beat", [b4.length, b4[0] && b4[0].offMs, b4[0] && b4[0].pitch], [1, 0, Math.round(8192 + 7 / 24 * 8191)]);
+	eq("glide still short of target at step 3", b3[b3.length - 1].pitch < b4[0].pitch, true);
+	eq("nothing after arrival", bends(sm, 5).length, 0);
+	sm.setLock(B, 0, P.slideTime, 25);  // last quarter of the gap only
+	eq("25%: no bend early", [bends(sm, 1).length, bends(sm, 2).length, bends(sm, 3).length > 0], [0, 0, true]);
+	sm.setLock(B, 0, P.slideTime, 150); // starts at the first note, arrives 2 steps late
+	eq("150%: still gliding after target", bends(sm, 5).length > 0, true);
+	sm.clearLock(B, 0, P.slideTime);
+	// chain: B also slides on
+	sm.setLock(B, 4, P.slide, 1); sm.addTrig(B, 8, 36);
+	eq("chain: step 8 is where the 8-step note ends: new note", ev2(sm, 8).length, 1);
+	sm.setLock(B, 0, P.length, M.RETRIG_LENS.indexOf(16));
+	eq("chain: one note-on, first's Length (cut by nothing)", ev2(sm, 0)[0].durMs, 1600);
+	eq("chain continues: no note-on at 8", ev2(sm, 8).length, 0);
+	sm.clearLock(B, 4, P.slide);
+	eq("chain ends at 4: step 8 new note", ev2(sm, 8).length, 1);
+	// tie: instant jump at the target
+	sm.clearLock(B, 0, P.slide); sm.setLock(B, 0, P.tie, 1);
+	var bt = bends(sm, 4);
+	eq("tie: one jump on target", [bends(sm, 1).length, bt.length, bt[0].offMs], [0, 1, 0]);
+	sm.clearLock(B, 0, P.tie);
+	// out of range: new note
+	sm.setLock(B, 0, P.slide, 1); sm.setNote(B, 4, 70);
+	eq("out of bend range: new note", ev2(sm, 4).length, 1);
+	sm.setNote(B, 4, 47);
+	// retrig step doesn't slide
+	sm.setLock(B, 0, P.retrig, 1);
+	eq("retrig: no slide", ev2(sm, 4).length, 1);
+	sm.clearLock(B, 0, P.retrig);
+	// mono cut: plain long note cut by the next note
+	var mc = new M.Model(); mc.setLoop(0, 1);
+	mc.addTrig(B, 0, 40); mc.setLock(B, 0, P.length, M.RETRIG_LENS.indexOf(8)); mc.addTrig(B, 2, 41);
+	eq("mono cut", mc.eventsAt(0, sms, 0, 0).filter(function (e) { return e.lane === B; })[0].durMs, 199);
+	mc.setLock(B, 2, P.retrigVoices, 1);
+	eq("2 voices: no cut", mc.eventsAt(0, sms, 0, 0).filter(function (e) { return e.lane === B; })[0].durMs, 800);
+	// kick tie holds
+	var kt = new M.Model(); kt.setLoop(0, 1); kt.addTrig(K, 0); kt.setLock(K, 0, P.tie, 1); kt.setLock(K, 0, P.length, M.RETRIG_LENS.indexOf(4)); kt.addTrig(K, 3);
+	eq("kick tie: held, no retrigger", [kt.eventsAt(0, sms, 0, 0)[0].durMs, kt.eventsAt(3, sms, 0, 0).length], [400, 0]);
+
+	// shortest Length on a slide: note ends before the glide, no bends after it
+	var cl = new M.Model(); cl.setLoop(0, 1);
+	cl.addTrig(B, 0, 40); cl.setLock(B, 0, P.slide, 1); cl.setLock(B, 0, P.length, 0); cl.addTrig(B, 4, 47);
+	var cle = cl.eventsAt(0, 100, 0, 0);
+	eq("click: 12.5 ms note", cle.filter(function (e) { return e.lane === B; })[0].durMs, 13);
+	eq("click: no bends after it ends", [1, 2, 3].map(function (a) { return cl.eventsAt(a, 100, 0, 0).length; }), [0, 0, 0]);
+	eq("click: target plays as a new note", cl.eventsAt(4, 100, 0, 0).filter(function (e) { return e.lane === B; }).map(function (e) { return e.pitch; }), [47]);
+	// long Length: the next new note still cuts it
+	cl.setLock(B, 0, P.length, M.RETRIG_LENS.indexOf(16)); cl.wipe(B, 4); cl.addTrig(B, 6, 50); cl.setLock(B, 4 - 4 + 0, P.slide, 1);
+	cl.addTrig(B, 3, 45);
+	eq("chain cut by next new note", cl.eventsAt(0, 100, 0, 0).filter(function (e) { return e.lane === B; })[0].durMs, 599);
+
+	// Length 4 steps, target 5 steps away: no slide, target is a new note
+	var far = new M.Model(); far.setLoop(0, 1);
+	far.addTrig(B, 0, 40); far.setLock(B, 0, P.slide, 1); far.setLock(B, 0, P.length, M.RETRIG_LENS.indexOf(4)); far.addTrig(B, 5, 47);
+	eq("far target: no bends", [1, 2, 3].map(function (a) { return far.eventsAt(a, 100, 0, 0).length; }), [0, 0, 0]);
+	eq("far target: new note", far.eventsAt(5, 100, 0, 0).filter(function (e) { return e.lane === B; }).length, 1);
+	far.wipe(B, 5); far.addTrig(B, 3, 47);
+	eq("near target: slides", [far.eventsAt(3, 100, 0, 0).filter(function (e) { return e.lane === B; }).length, far.eventsAt(1, 100, 0, 0).length > 0], [0, true]);
 
 	log.push(passes + " passed, " + fails + " failed");
 	return log.join("\n");

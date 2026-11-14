@@ -374,7 +374,7 @@
       400,
       20
      ],
-     "text": "kbSequencer \u00b7 retrig   v0.8.2 \u00b7 1115.0241",
+     "text": "kbSequencer \u00b7 slides   v0.9.2 \u00b7 1115.0338",
      "numinlets": 1,
      "numoutlets": 0
     }
@@ -852,13 +852,14 @@
      "patching_rect": [
       120,
       790,
-      60,
+      70,
       22
      ],
-     "text": "route 0 1",
+     "text": "route 0 1 2",
      "numinlets": 1,
-     "numoutlets": 3,
+     "numoutlets": 4,
      "outlettype": [
+      "",
       "",
       "",
       ""
@@ -1294,6 +1295,155 @@
    },
    {
     "box": {
+     "id": "pb_unpack",
+     "maxclass": "newobj",
+     "patching_rect": [
+      480,
+      830,
+      90,
+      22
+     ],
+     "text": "unpack 0 0 0 0",
+     "numinlets": 1,
+     "numoutlets": 4,
+     "outlettype": [
+      "int",
+      "int",
+      "int",
+      "int"
+     ]
+    }
+   },
+   {
+    "box": {
+     "id": "pb_pack",
+     "maxclass": "newobj",
+     "patching_rect": [
+      480,
+      860,
+      55,
+      22
+     ],
+     "text": "pack 0 1",
+     "numinlets": 2,
+     "numoutlets": 1,
+     "outlettype": [
+      ""
+     ]
+    }
+   },
+   {
+    "box": {
+     "id": "pb_t",
+     "maxclass": "newobj",
+     "patching_rect": [
+      480,
+      890,
+      50,
+      22
+     ],
+     "text": "t l l l",
+     "numinlets": 1,
+     "numoutlets": 3,
+     "outlettype": [
+      "",
+      "",
+      ""
+     ]
+    }
+   },
+   {
+    "box": {
+     "id": "pb_st",
+     "maxclass": "newobj",
+     "patching_rect": [
+      480,
+      920,
+      90,
+      22
+     ],
+     "text": "expr 223 + $i2",
+     "numinlets": 2,
+     "numoutlets": 1,
+     "outlettype": [
+      ""
+     ]
+    }
+   },
+   {
+    "box": {
+     "id": "pb_lsb",
+     "maxclass": "newobj",
+     "patching_rect": [
+      580,
+      920,
+      90,
+      22
+     ],
+     "text": "expr $i1 & 127",
+     "numinlets": 2,
+     "numoutlets": 1,
+     "outlettype": [
+      ""
+     ]
+    }
+   },
+   {
+    "box": {
+     "id": "pb_msb",
+     "maxclass": "newobj",
+     "patching_rect": [
+      680,
+      920,
+      120,
+      22
+     ],
+     "text": "expr ($i1 >> 7) & 127",
+     "numinlets": 2,
+     "numoutlets": 1,
+     "outlettype": [
+      ""
+     ]
+    }
+   },
+   {
+    "box": {
+     "id": "pb_bytes",
+     "maxclass": "newobj",
+     "patching_rect": [
+      480,
+      950,
+      70,
+      22
+     ],
+     "text": "pack 0 0 0",
+     "numinlets": 3,
+     "numoutlets": 1,
+     "outlettype": [
+      ""
+     ]
+    }
+   },
+   {
+    "box": {
+     "id": "pb_iter",
+     "maxclass": "newobj",
+     "patching_rect": [
+      480,
+      980,
+      35,
+      22
+     ],
+     "text": "iter",
+     "numinlets": 1,
+     "numoutlets": 1,
+     "outlettype": [
+      ""
+     ]
+    }
+   },
+   {
+    "box": {
      "id": "msg_rescan",
      "maxclass": "message",
      "patching_rect": [
@@ -1610,7 +1760,7 @@
        "parameter_initial_enable": 0,
        "parameter_type": 1,
        "parameter_mmin": 1,
-       "parameter_mmax": 48,
+       "parameter_mmax": 96,
        "parameter_unitstyle": 9,
        "parameter_units": "%d st"
       }
@@ -3027,6 +3177,69 @@
    },
    {
     "box": {
+     "id": "pv_slideTime",
+     "maxclass": "live.numbox",
+     "patching_rect": [
+      1270,
+      164,
+      80,
+      15
+     ],
+     "numinlets": 1,
+     "numoutlets": 2,
+     "outlettype": [
+      "",
+      "float"
+     ],
+     "parameter_enable": 1,
+     "varname": "pv_slideTime",
+     "saved_attribute_attributes": {
+      "valueof": {
+       "parameter_longname": "SlTime",
+       "parameter_shortname": "Sl Time",
+       "parameter_initial_enable": 0,
+       "parameter_type": 1,
+       "parameter_mmin": 0,
+       "parameter_mmax": 200,
+       "parameter_unitstyle": 9,
+       "parameter_units": "%d %%"
+      }
+     }
+    }
+   },
+   {
+    "box": {
+     "id": "pv_slideCurve",
+     "maxclass": "live.numbox",
+     "patching_rect": [
+      1270,
+      188,
+      80,
+      15
+     ],
+     "numinlets": 1,
+     "numoutlets": 2,
+     "outlettype": [
+      "",
+      "float"
+     ],
+     "parameter_enable": 1,
+     "varname": "pv_slideCurve",
+     "saved_attribute_attributes": {
+      "valueof": {
+       "parameter_longname": "SlCurve",
+       "parameter_shortname": "Sl Curve",
+       "parameter_initial_enable": 0,
+       "parameter_type": 1,
+       "parameter_mmin": -100,
+       "parameter_mmax": 100,
+       "parameter_unitstyle": 0
+      }
+     }
+    }
+   },
+   {
+    "box": {
      "id": "banks",
      "maxclass": "newobj",
      "patching_rect": [
@@ -4039,6 +4252,162 @@
    {
     "patchline": {
      "source": [
+      "ev_route",
+      2
+     ],
+     "destination": [
+      "pb_unpack",
+      0
+     ]
+    }
+   },
+   {
+    "patchline": {
+     "source": [
+      "pb_unpack",
+      3
+     ],
+     "destination": [
+      "pb_pack",
+      1
+     ]
+    }
+   },
+   {
+    "patchline": {
+     "source": [
+      "pb_unpack",
+      0
+     ],
+     "destination": [
+      "pb_pack",
+      0
+     ]
+    }
+   },
+   {
+    "patchline": {
+     "source": [
+      "pb_pack",
+      0
+     ],
+     "destination": [
+      "pb_t",
+      0
+     ]
+    }
+   },
+   {
+    "patchline": {
+     "source": [
+      "pb_t",
+      2
+     ],
+     "destination": [
+      "pb_msb",
+      0
+     ]
+    }
+   },
+   {
+    "patchline": {
+     "source": [
+      "pb_t",
+      1
+     ],
+     "destination": [
+      "pb_lsb",
+      0
+     ]
+    }
+   },
+   {
+    "patchline": {
+     "source": [
+      "pb_t",
+      0
+     ],
+     "destination": [
+      "pb_st",
+      0
+     ]
+    }
+   },
+   {
+    "patchline": {
+     "source": [
+      "pb_msb",
+      0
+     ],
+     "destination": [
+      "pb_bytes",
+      2
+     ]
+    }
+   },
+   {
+    "patchline": {
+     "source": [
+      "pb_lsb",
+      0
+     ],
+     "destination": [
+      "pb_bytes",
+      1
+     ]
+    }
+   },
+   {
+    "patchline": {
+     "source": [
+      "pb_st",
+      0
+     ],
+     "destination": [
+      "pb_bytes",
+      0
+     ]
+    }
+   },
+   {
+    "patchline": {
+     "source": [
+      "pb_bytes",
+      0
+     ],
+     "destination": [
+      "pb_iter",
+      0
+     ]
+    }
+   },
+   {
+    "patchline": {
+     "source": [
+      "pb_iter",
+      0
+     ],
+     "destination": [
+      "midiout",
+      0
+     ]
+    }
+   },
+   {
+    "patchline": {
+     "source": [
+      "pb_iter",
+      0
+     ],
+     "destination": [
+      "lane_pack1",
+      0
+     ]
+    }
+   },
+   {
+    "patchline": {
+     "source": [
       "msg_rescan",
       0
      ],
@@ -4385,6 +4754,16 @@
    "pv_retrigVoices": [
     "RtVoices",
     "VOICES",
+    0
+   ],
+   "pv_slideTime": [
+    "SlTime",
+    "Sl Time",
+    0
+   ],
+   "pv_slideCurve": [
+    "SlCurve",
+    "Sl Curve",
     0
    ],
    "inherited_shortname": 1
