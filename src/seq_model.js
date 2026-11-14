@@ -15,7 +15,34 @@ var TICKS_PER_STEP = 24;
 var CONDITIONS = ["always", "1st", "!1st", "pre", "!pre",
 	"1:2", "2:2", "1:3", "2:3", "3:3", "1:4", "2:4", "3:4", "4:4",
 	"1:8", "2:8", "3:8", "4:8", "5:8", "6:8", "7:8", "8:8"];
-var RETRIG_RATES = ["1/16", "1/24", "1/32", "1/48", "1/64"];
+// ---- retrig (ported from retrig-m4l, see its REQUIREMENTS.md) ----
+// RATE: time between repeats, 1/N of a whole note (17 values, Elektron list).
+var RETRIG_RATES = ["1/1", "1/2", "1/3", "1/4", "1/5", "1/6", "1/8", "1/10", "1/12",
+	"1/16", "1/20", "1/24", "1/32", "1/40", "1/48", "1/64", "1/80"];
+var RETRIG_DIV = [1, 2, 3, 4, 5, 6, 8, 10, 12, 16, 20, 24, 32, 40, 48, 64, 80];
+function rateSteps(idx) { return 16 / RETRIG_DIV[idx]; } // interval in 1/16 steps
+// LEN: burst length in steps. 0.125–2 by 1/16 step, then by 0.125 to 4,
+// 0.25 to 8, 0.5 to 16, 1 to 32, 2 to 64, 4 to 128, then INF (last entry).
+var RETRIG_LENS = (function () {
+	var out = [], v;
+	for (v = 0.125; v <= 2 + 1e-9; v += 0.0625) out.push(Math.round(v * 10000) / 10000);
+	var runs = [[0.125, 4], [0.25, 8], [0.5, 16], [1, 32], [2, 64], [4, 128]];
+	for (var r = 0; r < runs.length; r++)
+		for (v = out[out.length - 1] + runs[r][0]; v <= runs[r][1] + 1e-9; v += runs[r][0]) out.push(Math.round(v * 10000) / 10000);
+	out.push(Infinity);
+	return out;
+})();
+var LEN_NOTES = { 0.25: "1/64", 0.5: "1/32", 1: "1/16", 2: "1/8", 4: "1/4", 8: "1/2", 16: "1/1" };
+var RETRIG_LEN_LABELS = RETRIG_LENS.map(function (v) {
+	if (v === Infinity) return "INF";
+	if (LEN_NOTES[v]) return LEN_NOTES[v];
+	var d = v >= 100 ? 0 : v >= 10 ? 1 : v >= 1 ? 2 : 3; // 3 significant digits
+	return String(Math.round(v * Math.pow(10, d) + 1e-9) / Math.pow(10, d));
+});
+var RETRIG_PMODES = ["Repeats", "Burst", "Note"];
+var RETRIG_VOICES = ["Mono", "2", "3", "4", "5", "6", "7", "8"];
+var RETRIG_HIT_CAP = 256; // with TRATE on and a finite LEN (as retrig-m4l)
+var RETRIG_LOOKBACK = 256; // steps searched back for bursts still running
 
 // Lockable step parameters. The id (array index) is the save format:
 // APPEND ONLY, never reorder or remove.
@@ -23,7 +50,9 @@ var RETRIG_RATES = ["1/16", "1/24", "1/32", "1/48", "1/64"];
 // lanes: which lanes the parameter applies to.
 var PARAMS = [
 	{ key: "velocity",    min: 0,   max: 127, def: 100, lanes: [1, 1] },
-	{ key: "length",      min: 1,   max: TICKS_PER_STEP * 16, def: 12, lanes: [1, 1] },
+	// Legacy gate length in ticks (save format v1). Replaced by "length" below;
+	// decode converts v1 locks and defaults. Not shown or played.
+	{ key: "gateTicks",   min: 1,   max: TICKS_PER_STEP * 16, def: 12, lanes: [1, 1] },
 	{ key: "microtime",   min: -12, max: 12,  def: 0,   lanes: [1, 1] },
 	{ key: "probability", min: 0,   max: 100, def: 100, lanes: [1, 1] },
 	{ key: "condition",   min: 0,   max: CONDITIONS.length - 1, def: 0, lanes: [1, 1] },
@@ -31,12 +60,26 @@ var PARAMS = [
 	{ key: "slide",       min: 0,   max: 1,   def: 0,   lanes: [0, 1] },
 	{ key: "tie",         min: 0,   max: 1,   def: 0,   lanes: [1, 1] },
 	{ key: "retrig",      min: 0,   max: 1,   def: 0,   lanes: [1, 1] },
-	{ key: "retrigRate",  min: 0,   max: RETRIG_RATES.length - 1, def: 2, lanes: [1, 1] },
-	{ key: "retrigFade",  min: -64, max: 63,  def: 0,   lanes: [1, 1] },
+	{ key: "retrigRate",  min: 0,   max: RETRIG_RATES.length - 1, def: 9, lanes: [1, 1] }, // 1/16
+	{ key: "retrigFade",  min: -100, max: 100, def: 0,  lanes: [1, 1] },  // VFAD %
 	{ key: "fill",        min: 0,   max: 1,   def: 0,   lanes: [1, 1] }
 ];
 for (var _c = 0; _c < CC_SLOTS; _c++)
 	PARAMS.push({ key: "cc" + (_c + 1), min: 0, max: 127, def: -1, lanes: [1, 1], cc: _c });
+
+// Retrig, appended after the CC slots (ids are the save format).
+PARAMS.push(
+	// Length (index into RETRIG_LENS): a plain note's gate and a retrig burst's
+	// length, one value (merged). Default 1/32 (half a step), as before.
+	{ key: "length",       min: 0, max: RETRIG_LENS.length - 1, def: RETRIG_LENS.indexOf(0.5), lanes: [1, 1] },
+	{ key: "retrigCurve",  min: 0, max: 100, def: 0,   lanes: [1, 1] },  // CRV %
+	{ key: "retrigProb",   min: 0, max: 100, def: 100, lanes: [1, 1] },  // PROB %
+	{ key: "retrigLock",   min: 0, max: 1,   def: 0,   lanes: [1, 1] },  // LOCK: ignore PROB
+	{ key: "retrigPMode",  min: 0, max: RETRIG_PMODES.length - 1, def: 0, lanes: [1, 1] },
+	{ key: "retrigTRate",  min: 0, max: RETRIG_RATES.length, def: 0, lanes: [1, 1] }, // 0 Off, else RATE idx + 1
+	{ key: "retrigGlide",  min: 0, max: 512, def: 16,  lanes: [1, 1] },  // quarter steps (0–128 steps)
+	{ key: "retrigVoices", min: 0, max: RETRIG_VOICES.length - 1, def: 0, lanes: [1, 1] }
+);
 
 var PARAM_ID = {};
 for (var _p = 0; _p < PARAMS.length; _p++) PARAM_ID[PARAMS[_p].key] = _p;
@@ -54,7 +97,18 @@ var SETTINGS = [
 var DEFAULT_CC = [[20, 21, 22, 23, 24, 25, 26, 27], [70, 71, 72, 73, 74, 75, 76, 77]];
 var DEFAULT_BASS_NOTE = 36;
 
-var MAGIC = 7101, VERSION = 1;
+// v2: step length is an index into RETRIG_LENS (v1: gate ticks, param 1).
+var MAGIC = 7101, VERSION = 2;
+
+// Nearest LEN entry (by ratio) to a length in steps.
+function nearestLen(steps) {
+	var best = 0, bd = Infinity;
+	for (var i = 0; i < RETRIG_LENS.length - 1; i++) {
+		var d = Math.abs(Math.log(RETRIG_LENS[i]) - Math.log(Math.max(steps, 0.01)));
+		if (d < bd) { bd = d; best = i; }
+	}
+	return best;
+}
 
 function clamp(v, lo, hi) { v = Math.round(Number(v)); if (isNaN(v)) v = lo; return v < lo ? lo : v > hi ? hi : v; }
 
@@ -228,24 +282,118 @@ function chance(absStep, lane, seed) {
 	return x - Math.floor(x);
 }
 
-// Events to play at absStep: [{lane, pitch, velocity, durMs, channel}].
-// Applies mute, probability, velocity, length. stepMs = one 1/16 in ms.
-// Not yet: microtime, conditions, fill, retrig, accent, slide/tie (later steps).
-Model.prototype.eventsAt = function (absStep, stepMs, seed) {
-	var out = [], idx = this.seqIndexFor(absStep);
+// One lane's note at absStep, or null (no trig, muted, probability or a
+// PMODE Note roll failed). Carries the step's retrig settings.
+Model.prototype.noteAt = function (l, absStep, stepMs, seed) {
+	var idx = this.seqIndexFor(absStep), st = this.lanes[l].steps[idx];
+	if (!st || st.muted) return null;
+	var self = this, v = function (key) { return self.value(l, idx, PARAM_ID[key]); };
+	var prob = v("probability");
+	if (prob < 100 && chance(absStep, l, seed || 0) * 100 >= prob) return null;
+	var n = {
+		lane: l, abs: absStep,
+		pitch: l === KICK ? this.settings.kickNote : st.note,
+		velocity: Math.max(1, v("velocity")),
+		lenSteps: RETRIG_LENS[v("length")],
+		channel: l === KICK ? this.settings.kickChannel : this.settings.bassChannel,
+		retrig: v("retrig") === 1,
+		voices: v("retrigVoices") + 1
+	};
+	if (!n.retrig) return n;
+	n.rate = rateSteps(v("retrigRate"));
+	n.len = n.lenSteps;
+	n.fade = v("retrigFade") / 100;
+	n.curve = v("retrigCurve") / 100;
+	n.lock = v("retrigLock") === 1;
+	n.pmode = v("retrigPMode");
+	n.rprob = v("retrigProb");
+	var tr = v("retrigTRate");
+	n.trate = tr > 0 ? rateSteps(tr - 1) : 0;
+	n.glide = v("retrigGlide") / 4;
+	var pass = function (k) { return n.lock || chance(absStep * 1.0 + k * 1000.37, l + 10, seed || 0) * 100 < n.rprob; };
+	if (n.pmode === 2 && !pass(-1)) return null; // Note: dropped before anything happens
+	n.burstOk = n.pmode !== 1 || pass(-2);       // Burst: one roll for all repeats
+	n.pass = pass;
+	return n;
+};
+
+// A note's hits: [{t (steps from its start), iv (steps to the next hit), vel, play}],
+// up to `until` steps for INF. Plain notes are one hit. Timing, fade, curve,
+// chance and speed fade follow retrig-m4l.
+function burstHits(n, until) {
+	if (!n.retrig) return { hits: [{ t: 0, iv: n.lenSteps, vel: n.velocity, play: true, plain: true }], span: n.lenSteps };
+	var hits = [], t = 0, finite = n.len !== Infinity;
+	var cap = n.trate && finite ? RETRIG_HIT_CAP : 100000;
+	var interval = function (t) {
+		if (!n.trate) return n.rate;
+		if (n.glide <= 0) return n.trate;
+		return t < n.glide ? n.rate * Math.pow(n.trate / n.rate, t / n.glide) : n.trate;
+	};
+	while (hits.length < cap) {
+		if (finite ? t >= n.len - 1e-9 : t >= until) break;
+		var iv = interval(t);
+		hits.push({ t: t, iv: iv });
+		t += iv;
+	}
+	var last = hits.length ? hits[hits.length - 1] : null;
+	var v0 = n.velocity, f = n.fade;
+	var ve = v0 + Math.max(f, 0) * (127 - v0) + Math.min(f, 0) * (v0 - 1);
+	for (var k = 0; k < hits.length; k++) {
+		var vel = v0;
+		if (finite && hits.length > 1 && last.t > 0) {
+			var x = hits[k].t / last.t;
+			var lin = v0 + (ve - v0) * x, ex = v0 * Math.pow(ve / v0, x);
+			vel = (1 - n.curve) * lin + n.curve * ex;
+		}
+		hits[k].vel = Math.max(1, Math.min(127, Math.floor(vel + 0.5)));
+		hits[k].play = k === 0 || (n.burstOk && (n.pmode !== 0 || n.pass(k)));
+	}
+	return { hits: hits, span: finite && last ? last.t + last.iv : Infinity };
+}
+
+// Abs step of the lane's next played note after `from` (for INF gates).
+Model.prototype.nextNoteAbs = function (l, from, stepMs, seed) {
+	for (var b = from + 1; b <= from + RETRIG_LOOKBACK; b++) if (this.noteAt(l, b, stepMs, seed)) return b;
+	return from + RETRIG_LOOKBACK;
+};
+
+// Events to play during absStep: [{offMs, lane, pitch, velocity, durMs, channel}],
+// offMs = time after the step's start. Includes retrig hits of bursts that
+// started on earlier steps (back to startAbs, the play start: nothing ran
+// before it). Voices: each new note may keep at most VOICES−1 bursts running
+// (its own VOICES setting; Mono = 1): the oldest are stopped at its start.
+// Not yet: microtime, conditions, fill, accent, slide/tie (later steps).
+Model.prototype.eventsAt = function (absStep, stepMs, seed, startAbs) {
+	if (startAbs === undefined || startAbs > absStep) startAbs = absStep;
+	var out = [];
 	for (var l = 0; l < 2; l++) {
-		var st = this.lanes[l].steps[idx];
-		if (!st || st.muted) continue;
-		var prob = this.value(l, idx, PARAM_ID.probability);
-		if (prob < 100 && chance(absStep, l, seed || 0) * 100 >= prob) continue;
-		var len = this.value(l, idx, PARAM_ID.length);
-		out.push({
-			lane: l,
-			pitch: l === KICK ? this.settings.kickNote : st.note,
-			velocity: Math.max(1, this.value(l, idx, PARAM_ID.velocity)),
-			durMs: Math.max(1, Math.round(len / TICKS_PER_STEP * stepMs)),
-			channel: l === KICK ? this.settings.kickChannel : this.settings.bassChannel
-		});
+		var from = Math.max(startAbs, absStep - RETRIG_LOOKBACK), running = [], bursts = [];
+		for (var b = from; b <= absStep; b++) {
+			var n = this.noteAt(l, b, stepMs, seed);
+			if (!n) continue;
+			running = running.filter(function (x) { return x.end > b + 1e-9; });
+			while (running.length >= n.voices) running.shift().end = b; // steal the oldest
+			var h = burstHits(n, absStep + 1 - b);
+			var burst = { n: n, hits: h.hits, end: b + h.span };
+			running.push(burst);
+			bursts.push(burst);
+		}
+		for (var k = 0; k < bursts.length; k++) {
+			var bu = bursts[k], st0 = bu.n.abs;
+			if (bu.end <= absStep) continue;
+			for (var j = 0; j < bu.hits.length; j++) {
+				var hit = bu.hits[j], at = st0 + hit.t;
+				if (at < absStep - 1e-9 || at >= absStep + 1 - 1e-9 || at >= bu.end - 1e-9 || !hit.play) continue;
+				var dur;
+				if (hit.plain && hit.iv === Infinity) dur = (this.nextNoteAbs(l, st0, stepMs, seed) - st0) * stepMs - 1; // INF: until the next note
+				else dur = hit.plain ? hit.iv * stepMs : Math.max(1, hit.iv * stepMs - 1); // retrig: held until the next hit
+				out.push({
+					offMs: Math.max(0, Math.round((at - absStep) * stepMs * 100) / 100),
+					lane: l, pitch: bu.n.pitch, velocity: hit.vel,
+					durMs: Math.max(1, Math.round(dur)), channel: bu.n.channel
+				});
+			}
+		}
 	}
 	return out;
 };
@@ -332,6 +480,7 @@ Model.prototype.decode = function (list) {
 				var d = next();
 				if (lane && i < PARAMS.length) lane.defaults[i] = d === -1 && PARAMS[i].def === -1 ? -1 : clamp(d, PARAMS[i].min, PARAMS[i].max);
 			}
+			if (lane && ver < 2) lane.defaults[PARAM_ID.length] = nearestLen(lane.defaults[1] / TICKS_PER_STEP);
 			var nsteps = next();
 			for (var s = 0; s < nsteps; s++) {
 				var idx = next(), flags = next(), note = next(), nlocks = next();
@@ -339,6 +488,10 @@ Model.prototype.decode = function (list) {
 				for (var j = 0; j < nlocks; j++) {
 					var pid = next(), val = next();
 					if (pid >= 0 && pid < PARAMS.length && PARAMS[pid].lanes[l]) st.locks[pid] = clamp(val, PARAMS[pid].min, PARAMS[pid].max);
+				}
+				if (ver < 2 && (1 in st.locks)) { // v1 gate ticks -> length index
+					st.locks[PARAM_ID.length] = nearestLen(st.locks[1] / TICKS_PER_STEP);
+					delete st.locks[1];
 				}
 				if (lane && idx >= 0 && idx < NUM_STEPS) lane.steps[idx] = st;
 			}
@@ -357,7 +510,8 @@ Model.prototype.decode = function (list) {
 var api = {
 	Model: Model,
 	PARAMS: PARAMS, PARAM_ID: PARAM_ID, SETTINGS: SETTINGS,
-	CONDITIONS: CONDITIONS, RETRIG_RATES: RETRIG_RATES,
+	CONDITIONS: CONDITIONS, RETRIG_RATES: RETRIG_RATES, RETRIG_LENS: RETRIG_LENS,
+	RETRIG_LEN_LABELS: RETRIG_LEN_LABELS, RETRIG_PMODES: RETRIG_PMODES, RETRIG_VOICES: RETRIG_VOICES,
 	STEPS_PER_PAGE: STEPS_PER_PAGE, PAGES: PAGES, NUM_STEPS: NUM_STEPS,
 	TICKS_PER_STEP: TICKS_PER_STEP, CC_SLOTS: CC_SLOTS,
 	KICK: KICK, BASS: BASS, LANE_NAMES: LANE_NAMES,

@@ -120,7 +120,7 @@ mono note cutting, CC locks (later build steps).
 | Rows 7–8 | Note keyboard: 16 notes of Live's scale (bottom row lower). Root = blue, others = dim white, brush = bright white; all dim when only kick is selected |
 | Tap a note pad | Makes it the brush note and auditions it (kick only: auditions the kick) |
 | Octave up / down | Shift the keyboard (lit while it can move further) |
-| Lower display button 6 | Follow mode on/off: the viewed page follows the playhead |
+| Tap the playing (green) page pad, or Shift + any page pad | Follow mode back on (tapping another page turns it off). No dedicated button since v0.8.2 |
 
 Colours are still placeholders: use **palette 0** / **palette 64** to pick
 indices, and send them back.
@@ -182,14 +182,14 @@ The encoders stay grabbed and edit the sequence directly; the script sets
 the display parameters only so Push shows the values. Push must be showing
 kbSequencer (Device mode, device selected) to see the bank.
 
-| Context | Display buttons 3 / 4 / 5 (the row under the knobs) | Encoders |
+| Context | Display buttons 3–8 (the row under the knobs) | Encoders |
 |---|---|---|
-| Nothing held | **Settings** / **CC Setup** / – | Edit them (one Undo per turn) |
-| Step held | **Step** / **More** / **CC Locks** | Show the held step's values (writing locks is step 7) |
+| Nothing held | 3 **Settings**, 4 **CC Setup** (5–8 free) | Edit them (one Undo per turn) |
+| Step or page held | 3 **Step**, 4 **Retrig**, 5 **Rt Chance**, 6 **More** (Fill, Cond), 7 **CC Locks** (8 free) | Show and lock the held step's values |
 
 - Settings: Kick Ch, Bass Ch, Kick Note, Bend, Scale (follow), Swing.
 - CC Setup: CC number of the 8 slots. CC Locks: the held step's lock per slot (-1 = none).
-- Step: Note, Velocity, Length (in steps), Micro (1/24 step), Prob, Accent, Slide, Tie.
+- Step: Note, Velocity, Length (retrig's LEN list: 0.125 … 128 steps, INF), Micro (1/24 step), Prob, Accent, Slide, Tie.
   Note and Slide are hidden when bass isn't selected.
 - More: Retrig, Rt Rate, Rt Fade, Fill, Cond.
 - CC Setup / CC Locks use the first selected lane (kick when both are selected).
@@ -219,3 +219,46 @@ kbSequencer (Device mode, device selected) to see the bank.
   slide, tie, retrig, fill, condition, microtime and CC locks are stored and
   shown but play in steps 8–10.
 - The first 4 touch messages are printed to the Max Console (`touch raw …`).
+
+## Retrig (from retrig-m4l)
+
+Every retrig control from [retrig-m4l](../retrig-m4l) as per-step p-locks,
+on two banks while a step (or page) is held:
+
+| Display button | Bank | Encoders |
+|---|---|---|
+| 4 | **Retrig** | RTRG, RATE, Length (LEN), VFAD, CRV, PROB, TRATE, GLIDE |
+| 5 | **Rt Chance** | PROB, LOCK, PMODE, VOICES |
+
+(The **More** bank keeps Fill and Cond.) Values, defaults and behaviour
+follow retrig-m4l's REQUIREMENTS.md:
+
+- **Length** is one value for both: a plain note's gate and a retrig
+  burst's LEN, from retrig's list (0.125 … 128 steps, INF). It's on the Step
+  bank and in the LEN slot of the Retrig bank (same value). Default 1/32
+  (half a step), so raise it when turning RTRG on. A plain note at INF is
+  held until the lane's next note. Sets saved before v0.8.1 are converted to
+  the nearest entry.
+- **RTRG** on makes the step a burst: hits at RATE (1/1 … 1/80) for Length.
+  Hit 0 is the step itself. Each hit is held until the next one.
+- **VFAD / CRV**: velocity fade from the step's velocity, landing exactly on
+  the last hit; CRV blends linear → exponential. No fade with INF.
+- **PROB / LOCK / PMODE**: Repeats = each repeat rolls (first hit always
+  plays); Burst = one roll for all repeats; Note = one roll decides if the
+  step plays at all. LOCK ignores PROB. The step's own Prob is rolled first.
+- **TRATE / GLIDE**: speed fade from RATE to TRATE over GLIDE steps (even
+  ratio per time), then holds TRATE. 256-hit cap with TRATE on and finite LEN.
+- **VOICES**: Mono = the next note on the lane cuts the burst (INF runs until
+  then). 2–8 = bursts overlap; a new note stops the oldest only when that many
+  are running. Every note counts, read from the new step (plain steps default
+  to Mono, so they cut).
+
+Timing: bursts are worked out ahead by the script (deterministic, so
+refills give the same rolls) and each hit is held in a `[pipe]` until its
+time inside the step, in Max's high-priority thread. Bursts never reach back
+past where playback started. Stopping the transport drops waiting hits.
+
+Not carried over: retrigs while the transport is stopped (there's nothing
+to play by hand here), Shift for fine encoder steps. Lane defaults for the
+retrig controls can't be edited yet (same open question as the other step
+parameters).

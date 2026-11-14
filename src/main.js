@@ -3,7 +3,7 @@
 // Pad layout (y 0 = top): rows 0–3 steps of the viewed page · tap empty =
 // trig, lit = mute, muted = unmute · hold Delete + tap = wipe; rows 4–5 page
 // pads; rows 6–7 note keyboard. Lower display buttons: 1 kick, 2 bass,
-// 6 follow.
+// 3–8 banks. Follow on: tap the playing page pad, or Shift + page pad.
 // Build step 3: playback (see "playback" section for the timing design).
 // Build step 4: pad UI: step / page / note rows, follow mode, page viewing,
 // loop by holding two page pads, note brush + audition, octave buttons.
@@ -217,6 +217,7 @@ var TICKS_PER_16TH = 120; // Live transport: 480 per quarter
 var playing = false;
 var lastAbs = -1;         // last abs step the patch played (or the start point)
 var playStep = -1;        // sequence index under the playhead, -1 = none
+var playStartAbs = 0;     // abs step playback started from (bursts don't reach back past it)
 var tempo = 120;
 var randSeed = Math.floor(Math.random() * 100000);
 var transportApi = null, tempoApi = null, songTimeApi = null;
@@ -283,12 +284,14 @@ function syncToSongTime(beats) {
 	if (isNaN(beats)) return;
 	// The first tick will be at abs step ceil(beats*4); fill from there.
 	lastAbs = Math.ceil(beats * 4 - 1e-6) - 1;
+	playStartAbs = lastAbs + 1;
 }
 
 // From the patch, low priority, right after the clock played absStep.
 function tick(absStep) {
 	absStep = absStep | 0;
 	var jumped = absStep !== lastAbs + 1; // start, song loop, or locate
+	if (jumped) playStartAbs = absStep; // retrig bursts only from here on
 	lastAbs = absStep;
 	if (!playing) playing = true; // tick can arrive before the is_playing notification
 	if (jumped) refillWindow(); else fillSlot(absStep + LOOKAHEAD);
@@ -309,12 +312,12 @@ function refillWindow() {
 
 function fillSlot(absStep) {
 	var slot = ((absStep % SLOTS) + SLOTS) % SLOTS;
-	var ev = model.eventsAt(absStep, stepMs(), randSeed);
+	var ev = model.eventsAt(absStep, stepMs(), randSeed, playStartAbs);
 	var msg = [slot];
 	if (!ev.length) msg.push(-1);
 	for (var i = 0; i < ev.length; i++) {
 		var e = ev[i];
-		msg.push(e.lane, e.pitch, e.velocity, e.durMs, e.channel);
+		msg.push(e.offMs, e.lane, e.pitch, e.velocity, e.durMs, e.channel);
 	}
 	outlet(3, msg);
 }
@@ -532,15 +535,14 @@ function handleInput(role, v) {
 	if (role === "touches") { onTouch(v); return; }
 }
 
-// Lower display buttons: 1 kick, 2 bass, 3–5 banks (step 6), 6 follow.
+// Display buttons: 1 kick, 2 bass, 3–8 banks (see BANK_BUTTONS).
 function onDisplayButton(x) {
 	if (x === 0) { selKick = !selKick; if (!selKick && !selBass) selBass = true; } // one lane stays on
 	else if (x === 1) { selBass = !selBass; if (!selKick && !selBass) selKick = true; }
-	else if (x === 5) { follow = !follow; if (follow) followPlayhead(); }
-	else if (x >= 2 && x <= 4) {
-		var c = context();
-		if (x - 2 >= BANKS[c].length) return;
-		bankSel[c] = x - 2;
+	else if (BANK_BUTTONS.indexOf(x) >= 0) {
+		var c = context(), bi = BANK_BUTTONS.indexOf(x);
+		if (bi >= BANKS[c].length) return;
+		bankSel[c] = bi;
 		encAcc = [0, 0, 0, 0, 0, 0, 0, 0];
 	}
 	else return;
@@ -639,10 +641,17 @@ var BANKS = {
 	],
 	step: [
 		{ name: "Step", items: ["note", "velocity", "length", "microtime", "probability", "accent", "slide", "tie"] },
-		{ name: "More", items: ["retrig", "retrigRate", "retrigFade", "fill", "condition", null, null, null] },
+		{ name: "Retrig", items: ["retrig", "retrigRate", "length", "retrigFade", "retrigCurve", "retrigProb", "retrigTRate", "retrigGlide"] }, // Length = the Step bank's Length
+		{ name: "Rt Chance", items: ["retrigProb", "retrigLock", "retrigPMode", "retrigVoices", null, null, null, null] },
+		{ name: "More", items: ["fill", "condition", null, null, null, null, null, null] },
 		{ name: "CC Locks", items: ["cc1", "cc2", "cc3", "cc4", "cc5", "cc6", "cc7", "cc8"] }
 	]
 };
+// Display buttons that pick banks (0-based): 3–8. Button 8 is free while a
+// step is held; 5–8 are free with nothing held.
+var BANK_BUTTONS = [2, 3, 4, 5, 6, 7];
+// Display units -> stored units, for values shown in steps.
+var DISPLAY_SCALE = { retrigGlide: 4 };
 var bankSel = { settings: 0, step: 0 };
 var banksReady = false, lastBankSig = "";
 var encAcc = [0, 0, 0, 0, 0, 0, 0, 0];
@@ -704,7 +713,7 @@ function itemValue(key) {
 	var pid = S.PARAM_ID[key];
 	var v = t ? model.value(t.lane, t.i, pid) : model.lanes[editLane()].defaults[pid];
 	if (key.indexOf("cc") === 0 && !(t && model.isLocked(t.lane, t.i, pid))) return -1; // no lock: sends nothing
-	if (key === "length") return v / S.TICKS_PER_STEP;
+	if (DISPLAY_SCALE[key]) return v / DISPLAY_SCALE[key];
 	return v;
 }
 
@@ -747,8 +756,9 @@ function updateDisplay() {
 // Encoder ticks per value step: small ranges (menus, channels) move slower.
 function ticksPerStep(key) {
 	var d = DISPLAY_PARAMS[key];
-	if (key === "length") return 1; // shown in steps, edited in 1/24-step ticks
-	return d.kind === "enum" || (d.hi - d.lo) <= 48 ? 4 : 1;
+	if (DISPLAY_SCALE[key]) return 1; // shown in steps, edited in the stored unit
+	if (d.kind === "enum") return d.items > 8 ? 2 : 4; // long lists (RATE, LEN) move faster
+	return (d.hi - d.lo) <= 48 ? 4 : 1;
 }
 
 // Push encoders are relative: 1..63 = clockwise ticks, 65..127 = counter-clockwise.
@@ -791,7 +801,7 @@ function editLock(key, steps) {
 		for (k = 0; k < targets.length; k++) if (targets[k].lane === S.BASS) model.setNote(S.BASS, targets[k].i, base + steps);
 	} else {
 		var pid = S.PARAM_ID[key];
-		if (key === "length") base = Math.round(base * S.TICKS_PER_STEP);
+		if (DISPLAY_SCALE[key]) base = Math.round(base * DISPLAY_SCALE[key]);
 		var v = base + steps;
 		for (k = 0; k < targets.length; k++) {
 			if (key.indexOf("cc") === 0 && v < 0) model.clearLock(targets[k].lane, targets[k].i, pid);
@@ -945,7 +955,16 @@ function cancelPageHold() {
 }
 
 // Plain tap or Select + pad: edit that page; follow turns off.
+// Follow back on (no dedicated button): tap the playing (green) page pad,
+// or Shift + any page pad (also works while stopped).
 function viewPageAndStopFollow(page) {
+	if (shiftHeld || (playing && !follow && page === playPage())) {
+		follow = true;
+		if (!followPlayhead()) viewPage = page;
+		renderAll();
+		showStatus();
+		return;
+	}
 	viewPage = page;
 	follow = false;
 	renderAll();
@@ -1035,7 +1054,7 @@ function shiftOctave(d) {
 // fine for auditioning, never used for sequenced notes.
 function audition(lane, pitch) {
 	var ch = lane === S.KICK ? model.settings.kickChannel : model.settings.bassChannel;
-	outlet(4, [lane, pitch, 100, Math.round(stepMs() * 2), ch]);
+	outlet(4, [0, lane, pitch, 100, Math.round(stepMs() * 2), ch]);
 }
 
 function selectedLanes() {
@@ -1174,13 +1193,8 @@ function renderDisplayButtons() {
 	api.call("send_value", 0, 0, selKick ? COL.kick : COL.laneOff);
 	api.call("send_value", 1, 0, selBass ? COL.bass : COL.laneOff);
 	var c = context();
-	for (var x = 2; x < 5; x++) {
-		var n = x - 2;
-		api.call("send_value", x, 0, n >= BANKS[c].length ? COL.off : n === bankSel[c] ? COL.followOn : COL.followOff);
-	}
-	api.call("send_value", 5, 0, follow ? COL.followOn : COL.followOff);
-	api.call("send_value", 6, 0, COL.off);
-	api.call("send_value", 7, 0, COL.off);
+	for (var k = 0; k < BANK_BUTTONS.length; k++)
+		api.call("send_value", BANK_BUTTONS[k], 0, k >= BANKS[c].length ? COL.off : k === bankSel[c] ? COL.followOn : COL.followOff);
 }
 
 // Undo LED: lit while there is something to undo.

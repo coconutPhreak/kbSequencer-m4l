@@ -108,7 +108,7 @@ function run(argv) {
 	pm.addTrig(B, 0, 41);
 	pm.addTrig(K, 4); pm.setMuted(K, 4, true);
 	pm.addTrig(K, 32);
-	pm.setLock(B, 0, P.length, 24);
+	pm.setLock(B, 0, P.length, M.RETRIG_LENS.indexOf(1));
 	var stepMs = 100;
 	var ev = pm.eventsAt(0, stepMs, 0);
 	eq("two events at 0", ev.length, 2);
@@ -169,6 +169,80 @@ function run(argv) {
 	eq("paste detached from clip", clip[0].locks[P.velocity], 90);
 	eq("paste clipped at end", cm.pasteSteps(B, 510, clip), 2);
 	eq("page copy", cm.copySteps(B, 0, 32).length, 32);
+
+	// ---- retrig ----
+	eq("len list size", M.RETRIG_LENS.length, 128);
+	eq("len ends INF", M.RETRIG_LEN_LABELS[127], "INF");
+	eq("len labels", [M.RETRIG_LEN_LABELS[0], M.RETRIG_LEN_LABELS[1], M.RETRIG_LEN_LABELS[2], M.RETRIG_LEN_LABELS[M.RETRIG_LENS.indexOf(4)], M.RETRIG_LEN_LABELS[126]], ["0.125", "0.188", "1/64", "1/4", "128"]);
+	eq("len 1.13 label", M.RETRIG_LEN_LABELS[M.RETRIG_LENS.indexOf(1.125)], "1.13");
+	eq("rates", [M.RETRIG_RATES.length, M.RETRIG_RATES[9]], [17, "1/16"]);
+	var rt = new M.Model(), ms = 100;
+	function on(m, l, i, o) { m.addTrig(l, i, 40); m.setLock(l, i, P.retrig, 1); m.setLock(l, i, P.length, M.RETRIG_LENS.indexOf(4)); for (var k in o) m.setLock(l, i, P[k], o[k]); }
+	function evs(m, a, start) { return m.eventsAt(a, ms, 0, start === undefined ? 0 : start).filter(function (e) { return e.lane === K; }); }
+	rt.setLoop(0, 3);
+	on(rt, K, 0, {});                                     // 1/16, LEN 1/4 = 4 hits
+	eq("burst hit per step", [0, 1, 2, 3, 4].map(function (a) { return evs(rt, a).length; }), [1, 1, 1, 1, 0]);
+	eq("hit gate", evs(rt, 1)[0].durMs, 99);
+	rt.setLock(K, 0, P.retrigFade, -100);
+	eq("vfad -100 to last hit", [0, 1, 2, 3].map(function (a) { return evs(rt, a)[0].velocity; }), [100, 67, 34, 1]);
+	rt.setLock(K, 0, P.retrigCurve, 100);
+	eq("crv 100 exponential", [0, 1, 2, 3].map(function (a) { return evs(rt, a)[0].velocity; }), [100, 22, 5, 1]);
+	rt.clearLock(K, 0, P.retrigCurve); rt.setLock(K, 0, P.retrigFade, 100);
+	eq("vfad +100 to 127", evs(rt, 3)[0].velocity, 127);
+	rt.clearLock(K, 0, P.retrigFade);
+	rt.setLock(K, 0, P.retrigRate, M.RETRIG_RATES.indexOf("1/32"));
+	eq("1/32: two hits in a step", evs(rt, 0).map(function (e) { return e.offMs; }), [0, 50]);
+	rt.setLock(K, 0, P.retrigRate, 9);
+	// no lookback start: only the step's own first hit
+	eq("startAbs default", rt.eventsAt(2, ms, 0).filter(function (e) { return e.lane === K; }).length, 0);
+	eq("before play start: nothing", evs(rt, 2, 2).length, 0);
+	// mono: a later note cuts the burst
+	rt.addTrig(K, 2);
+	eq("mono cut", [evs(rt, 2).length, evs(rt, 3).length], [1, 0]);
+	rt.setLock(K, 2, P.retrigVoices, 1);                  // 2 voices: burst keeps going
+	eq("2 voices overlap", evs(rt, 3).length, 1);
+	rt.wipe(K, 2);
+	// INF runs until the next note
+	rt.setLock(K, 0, P.length, 127);
+	eq("INF keeps going", evs(rt, 40).length, 1);
+	rt.addTrig(K, 50);
+	eq("INF cut by next note", [evs(rt, 50).length, evs(rt, 51).length], [1, 0]);
+	rt.wipe(K, 50); rt.setLock(K, 0, P.length, M.RETRIG_LENS.indexOf(4));
+	// PROB / PMODE
+	rt.setLock(K, 0, P.retrigProb, 0);
+	eq("repeats prob 0: first hit only", [0, 1, 2].map(function (a) { return evs(rt, a).length; }), [1, 0, 0]);
+	rt.setLock(K, 0, P.retrigLock, 1);
+	eq("lock ignores prob", evs(rt, 1).length, 1);
+	rt.clearLock(K, 0, P.retrigLock);
+	rt.setLock(K, 0, P.retrigPMode, 1);
+	eq("burst mode fail: no repeats", [evs(rt, 0).length, evs(rt, 1).length], [1, 0]);
+	rt.setLock(K, 0, P.retrigPMode, 2);
+	eq("note mode fail: nothing", evs(rt, 0).length, 0);
+	rt.clearLock(K, 0, P.retrigProb); rt.clearLock(K, 0, P.retrigPMode);
+	// speed fade: 1/16 -> 1/32 with GLIDE 0: second gap already 1/32
+	rt.setLock(K, 0, P.retrigTRate, M.RETRIG_RATES.indexOf("1/32") + 1);
+	rt.setLock(K, 0, P.retrigGlide, 0);
+	eq("trate glide 0", evs(rt, 1).map(function (e) { return e.offMs; }), [0, 50]);
+	rt.setLock(K, 0, P.retrigGlide, 16);                   // glide over 4 steps
+	var n2 = 0; for (var a2 = 0; a2 < 4; a2++) n2 += evs(rt, a2).length;
+	eq("glide: more hits than 4, fewer than 8", n2 > 4 && n2 < 8, true);
+	// plain note on the other lane unaffected; bass plain still plays
+	rt.addTrig(B, 1, 45);
+	eq("bass plain", rt.eventsAt(1, ms, 0, 0).filter(function (e) { return e.lane === B; }).map(function (e) { return [e.offMs, e.pitch, e.durMs]; }), [[0, 45, 50]]);
+
+	// ---- merged length ----
+	var ml = new M.Model();
+	eq("default length 1/32", M.RETRIG_LENS[ml.lanes[K].defaults[P.length]], 0.5);
+	ml.addTrig(B, 0, 40); ml.setLock(B, 0, P.length, 127); ml.addTrig(B, 5, 41);
+	eq("INF gate until next note", ml.eventsAt(0, 100, 0, 0).filter(function (e) { return e.lane === B; })[0].durMs, 499);
+	// v1 save: gate ticks lock + default -> length index
+	var v1 = new M.Model(); v1.addTrig(K, 3); v1.lanes[K].steps[3].locks[1] = 48; v1.lanes[K].defaults[1] = 24;
+	var e1 = v1.encode(); e1[1] = 1;
+	var m1 = new M.Model();
+	eq("v1 decodes", m1.decode(e1), true);
+	eq("v1 lock migrated", [M.RETRIG_LENS[m1.value(K, 3, P.length)], m1.isLocked(K, 3, 1)], [2, false]);
+	eq("v1 default migrated", M.RETRIG_LENS[m1.lanes[K].defaults[P.length]], 1);
+	eq("v2 round trip", new M.Model().decode(m1.encode()), true);
 
 	log.push(passes + " passed, " + fails + " failed");
 	return log.join("\n");

@@ -374,7 +374,7 @@
       400,
       20
      ],
-     "text": "kbSequencer \u00b7 step 7: p-locks   v0.7.1 \u00b7 1115.0133",
+     "text": "kbSequencer \u00b7 retrig   v0.8.2 \u00b7 1115.0241",
      "numinlets": 1,
      "numoutlets": 0
     }
@@ -739,11 +739,108 @@
       60,
       22
      ],
-     "text": "zl iter 5",
+     "text": "zl iter 6",
      "numinlets": 2,
      "numoutlets": 2,
      "outlettype": [
       "",
+      ""
+     ]
+    }
+   },
+   {
+    "box": {
+     "id": "ev_t",
+     "maxclass": "newobj",
+     "patching_rect": [
+      120,
+      775,
+      40,
+      22
+     ],
+     "text": "t l l",
+     "numinlets": 1,
+     "numoutlets": 2,
+     "outlettype": [
+      "",
+      ""
+     ]
+    }
+   },
+   {
+    "box": {
+     "id": "ev_off",
+     "maxclass": "newobj",
+     "patching_rect": [
+      200,
+      775,
+      55,
+      22
+     ],
+     "text": "zl nth 1",
+     "numinlets": 2,
+     "numoutlets": 2,
+     "outlettype": [
+      "",
+      ""
+     ]
+    }
+   },
+   {
+    "box": {
+     "id": "ev_rest",
+     "maxclass": "newobj",
+     "patching_rect": [
+      120,
+      790,
+      60,
+      22
+     ],
+     "text": "zl slice 1",
+     "numinlets": 2,
+     "numoutlets": 2,
+     "outlettype": [
+      "",
+      ""
+     ]
+    }
+   },
+   {
+    "box": {
+     "id": "ev_pipe",
+     "maxclass": "newobj",
+     "patching_rect": [
+      120,
+      805,
+      120,
+      22
+     ],
+     "text": "pipe 0 0 0 0 0 0",
+     "numinlets": 6,
+     "numoutlets": 5,
+     "outlettype": [
+      "int",
+      "int",
+      "int",
+      "int",
+      "int"
+     ]
+    }
+   },
+   {
+    "box": {
+     "id": "ev_pack",
+     "maxclass": "newobj",
+     "patching_rect": [
+      120,
+      820,
+      110,
+      22
+     ],
+     "text": "pack 0 0 0 0 0",
+     "numinlets": 5,
+     "numoutlets": 1,
+     "outlettype": [
       ""
      ]
     }
@@ -764,6 +861,24 @@
      "outlettype": [
       "",
       "",
+      ""
+     ]
+    }
+   },
+   {
+    "box": {
+     "id": "ev_clear",
+     "maxclass": "message",
+     "patching_rect": [
+      260,
+      805,
+      40,
+      22
+     ],
+     "text": "clear",
+     "numinlets": 2,
+     "numoutlets": 1,
+     "outlettype": [
       ""
      ]
     }
@@ -1881,7 +1996,7 @@
    {
     "box": {
      "id": "pv_length",
-     "maxclass": "live.numbox",
+     "maxclass": "live.menu",
      "patching_rect": [
       1090,
       116,
@@ -1889,8 +2004,9 @@
       15
      ],
      "numinlets": 1,
-     "numoutlets": 2,
+     "numoutlets": 3,
      "outlettype": [
+      "",
       "",
       "float"
      ],
@@ -1901,11 +2017,138 @@
        "parameter_longname": "Length",
        "parameter_shortname": "Length",
        "parameter_initial_enable": 0,
-       "parameter_type": 0,
-       "parameter_mmin": 0.041666666666666664,
-       "parameter_mmax": 16,
-       "parameter_unitstyle": 9,
-       "parameter_units": "%.2f st"
+       "parameter_type": 2,
+       "parameter_enum": [
+        "0.125",
+        "0.188",
+        "1/64",
+        "0.313",
+        "0.375",
+        "0.438",
+        "1/32",
+        "0.563",
+        "0.625",
+        "0.688",
+        "0.75",
+        "0.813",
+        "0.875",
+        "0.938",
+        "1/16",
+        "1.06",
+        "1.13",
+        "1.19",
+        "1.25",
+        "1.31",
+        "1.38",
+        "1.44",
+        "1.5",
+        "1.56",
+        "1.63",
+        "1.69",
+        "1.75",
+        "1.81",
+        "1.88",
+        "1.94",
+        "1/8",
+        "2.13",
+        "2.25",
+        "2.38",
+        "2.5",
+        "2.63",
+        "2.75",
+        "2.88",
+        "3",
+        "3.13",
+        "3.25",
+        "3.38",
+        "3.5",
+        "3.63",
+        "3.75",
+        "3.88",
+        "1/4",
+        "4.25",
+        "4.5",
+        "4.75",
+        "5",
+        "5.25",
+        "5.5",
+        "5.75",
+        "6",
+        "6.25",
+        "6.5",
+        "6.75",
+        "7",
+        "7.25",
+        "7.5",
+        "7.75",
+        "1/2",
+        "8.5",
+        "9",
+        "9.5",
+        "10",
+        "10.5",
+        "11",
+        "11.5",
+        "12",
+        "12.5",
+        "13",
+        "13.5",
+        "14",
+        "14.5",
+        "15",
+        "15.5",
+        "1/1",
+        "17",
+        "18",
+        "19",
+        "20",
+        "21",
+        "22",
+        "23",
+        "24",
+        "25",
+        "26",
+        "27",
+        "28",
+        "29",
+        "30",
+        "31",
+        "32",
+        "34",
+        "36",
+        "38",
+        "40",
+        "42",
+        "44",
+        "46",
+        "48",
+        "50",
+        "52",
+        "54",
+        "56",
+        "58",
+        "60",
+        "62",
+        "64",
+        "68",
+        "72",
+        "76",
+        "80",
+        "84",
+        "88",
+        "92",
+        "96",
+        "100",
+        "104",
+        "108",
+        "112",
+        "116",
+        "120",
+        "124",
+        "128",
+        "INF"
+       ],
+       "parameter_mmax": 127
       }
      }
     }
@@ -2078,113 +2321,11 @@
    },
    {
     "box": {
-     "id": "pv_retrig",
+     "id": "pv_fill",
      "maxclass": "live.menu",
      "patching_rect": [
       1090,
       260,
-      80,
-      15
-     ],
-     "numinlets": 1,
-     "numoutlets": 3,
-     "outlettype": [
-      "",
-      "",
-      "float"
-     ],
-     "parameter_enable": 1,
-     "varname": "pv_retrig",
-     "saved_attribute_attributes": {
-      "valueof": {
-       "parameter_longname": "Retrig",
-       "parameter_shortname": "Retrig",
-       "parameter_initial_enable": 0,
-       "parameter_type": 2,
-       "parameter_enum": [
-        "Off",
-        "On"
-       ],
-       "parameter_mmax": 1
-      }
-     }
-    }
-   },
-   {
-    "box": {
-     "id": "pv_retrigRate",
-     "maxclass": "live.menu",
-     "patching_rect": [
-      1090,
-      284,
-      80,
-      15
-     ],
-     "numinlets": 1,
-     "numoutlets": 3,
-     "outlettype": [
-      "",
-      "",
-      "float"
-     ],
-     "parameter_enable": 1,
-     "varname": "pv_retrigRate",
-     "saved_attribute_attributes": {
-      "valueof": {
-       "parameter_longname": "RtRate",
-       "parameter_shortname": "Rt Rate",
-       "parameter_initial_enable": 0,
-       "parameter_type": 2,
-       "parameter_enum": [
-        "1/16",
-        "1/24",
-        "1/32",
-        "1/48",
-        "1/64"
-       ],
-       "parameter_mmax": 4
-      }
-     }
-    }
-   },
-   {
-    "box": {
-     "id": "pv_retrigFade",
-     "maxclass": "live.numbox",
-     "patching_rect": [
-      1180,
-      20,
-      80,
-      15
-     ],
-     "numinlets": 1,
-     "numoutlets": 2,
-     "outlettype": [
-      "",
-      "float"
-     ],
-     "parameter_enable": 1,
-     "varname": "pv_retrigFade",
-     "saved_attribute_attributes": {
-      "valueof": {
-       "parameter_longname": "RtFade",
-       "parameter_shortname": "Rt Fade",
-       "parameter_initial_enable": 0,
-       "parameter_type": 1,
-       "parameter_mmin": -64,
-       "parameter_mmax": 63,
-       "parameter_unitstyle": 0
-      }
-     }
-    }
-   },
-   {
-    "box": {
-     "id": "pv_fill",
-     "maxclass": "live.menu",
-     "patching_rect": [
-      1180,
-      44,
       80,
       15
      ],
@@ -2217,8 +2358,8 @@
      "id": "pv_condition",
      "maxclass": "live.menu",
      "patching_rect": [
-      1180,
-      68,
+      1090,
+      284,
       80,
       15
      ],
@@ -2272,7 +2413,7 @@
      "maxclass": "live.numbox",
      "patching_rect": [
       1180,
-      92,
+      20,
       80,
       15
      ],
@@ -2303,7 +2444,7 @@
      "maxclass": "live.numbox",
      "patching_rect": [
       1180,
-      116,
+      44,
       80,
       15
      ],
@@ -2334,7 +2475,7 @@
      "maxclass": "live.numbox",
      "patching_rect": [
       1180,
-      140,
+      68,
       80,
       15
      ],
@@ -2365,7 +2506,7 @@
      "maxclass": "live.numbox",
      "patching_rect": [
       1180,
-      164,
+      92,
       80,
       15
      ],
@@ -2396,7 +2537,7 @@
      "maxclass": "live.numbox",
      "patching_rect": [
       1180,
-      188,
+      116,
       80,
       15
      ],
@@ -2427,7 +2568,7 @@
      "maxclass": "live.numbox",
      "patching_rect": [
       1180,
-      212,
+      140,
       80,
       15
      ],
@@ -2458,7 +2599,7 @@
      "maxclass": "live.numbox",
      "patching_rect": [
       1180,
-      236,
+      164,
       80,
       15
      ],
@@ -2489,7 +2630,7 @@
      "maxclass": "live.numbox",
      "patching_rect": [
       1180,
-      260,
+      188,
       80,
       15
      ],
@@ -2510,6 +2651,376 @@
        "parameter_mmin": -1,
        "parameter_mmax": 127,
        "parameter_unitstyle": 0
+      }
+     }
+    }
+   },
+   {
+    "box": {
+     "id": "pv_retrig",
+     "maxclass": "live.menu",
+     "patching_rect": [
+      1180,
+      212,
+      80,
+      15
+     ],
+     "numinlets": 1,
+     "numoutlets": 3,
+     "outlettype": [
+      "",
+      "",
+      "float"
+     ],
+     "parameter_enable": 1,
+     "varname": "pv_retrig",
+     "saved_attribute_attributes": {
+      "valueof": {
+       "parameter_longname": "Retrig",
+       "parameter_shortname": "RTRG",
+       "parameter_initial_enable": 0,
+       "parameter_type": 2,
+       "parameter_enum": [
+        "Off",
+        "On"
+       ],
+       "parameter_mmax": 1
+      }
+     }
+    }
+   },
+   {
+    "box": {
+     "id": "pv_retrigRate",
+     "maxclass": "live.menu",
+     "patching_rect": [
+      1180,
+      236,
+      80,
+      15
+     ],
+     "numinlets": 1,
+     "numoutlets": 3,
+     "outlettype": [
+      "",
+      "",
+      "float"
+     ],
+     "parameter_enable": 1,
+     "varname": "pv_retrigRate",
+     "saved_attribute_attributes": {
+      "valueof": {
+       "parameter_longname": "RtRate",
+       "parameter_shortname": "RATE",
+       "parameter_initial_enable": 0,
+       "parameter_type": 2,
+       "parameter_enum": [
+        "1/1",
+        "1/2",
+        "1/3",
+        "1/4",
+        "1/5",
+        "1/6",
+        "1/8",
+        "1/10",
+        "1/12",
+        "1/16",
+        "1/20",
+        "1/24",
+        "1/32",
+        "1/40",
+        "1/48",
+        "1/64",
+        "1/80"
+       ],
+       "parameter_mmax": 16
+      }
+     }
+    }
+   },
+   {
+    "box": {
+     "id": "pv_retrigFade",
+     "maxclass": "live.numbox",
+     "patching_rect": [
+      1180,
+      260,
+      80,
+      15
+     ],
+     "numinlets": 1,
+     "numoutlets": 2,
+     "outlettype": [
+      "",
+      "float"
+     ],
+     "parameter_enable": 1,
+     "varname": "pv_retrigFade",
+     "saved_attribute_attributes": {
+      "valueof": {
+       "parameter_longname": "RtVFade",
+       "parameter_shortname": "VFAD",
+       "parameter_initial_enable": 0,
+       "parameter_type": 1,
+       "parameter_mmin": -100,
+       "parameter_mmax": 100,
+       "parameter_unitstyle": 9,
+       "parameter_units": "%d %%"
+      }
+     }
+    }
+   },
+   {
+    "box": {
+     "id": "pv_retrigCurve",
+     "maxclass": "live.numbox",
+     "patching_rect": [
+      1180,
+      284,
+      80,
+      15
+     ],
+     "numinlets": 1,
+     "numoutlets": 2,
+     "outlettype": [
+      "",
+      "float"
+     ],
+     "parameter_enable": 1,
+     "varname": "pv_retrigCurve",
+     "saved_attribute_attributes": {
+      "valueof": {
+       "parameter_longname": "RtCurve",
+       "parameter_shortname": "CRV",
+       "parameter_initial_enable": 0,
+       "parameter_type": 1,
+       "parameter_mmin": 0,
+       "parameter_mmax": 100,
+       "parameter_unitstyle": 9,
+       "parameter_units": "%d %%"
+      }
+     }
+    }
+   },
+   {
+    "box": {
+     "id": "pv_retrigProb",
+     "maxclass": "live.numbox",
+     "patching_rect": [
+      1270,
+      20,
+      80,
+      15
+     ],
+     "numinlets": 1,
+     "numoutlets": 2,
+     "outlettype": [
+      "",
+      "float"
+     ],
+     "parameter_enable": 1,
+     "varname": "pv_retrigProb",
+     "saved_attribute_attributes": {
+      "valueof": {
+       "parameter_longname": "RtProb",
+       "parameter_shortname": "PROB",
+       "parameter_initial_enable": 0,
+       "parameter_type": 1,
+       "parameter_mmin": 0,
+       "parameter_mmax": 100,
+       "parameter_unitstyle": 9,
+       "parameter_units": "%d %%"
+      }
+     }
+    }
+   },
+   {
+    "box": {
+     "id": "pv_retrigTRate",
+     "maxclass": "live.menu",
+     "patching_rect": [
+      1270,
+      44,
+      80,
+      15
+     ],
+     "numinlets": 1,
+     "numoutlets": 3,
+     "outlettype": [
+      "",
+      "",
+      "float"
+     ],
+     "parameter_enable": 1,
+     "varname": "pv_retrigTRate",
+     "saved_attribute_attributes": {
+      "valueof": {
+       "parameter_longname": "RtTRate",
+       "parameter_shortname": "TRATE",
+       "parameter_initial_enable": 0,
+       "parameter_type": 2,
+       "parameter_enum": [
+        "Off",
+        "1/1",
+        "1/2",
+        "1/3",
+        "1/4",
+        "1/5",
+        "1/6",
+        "1/8",
+        "1/10",
+        "1/12",
+        "1/16",
+        "1/20",
+        "1/24",
+        "1/32",
+        "1/40",
+        "1/48",
+        "1/64",
+        "1/80"
+       ],
+       "parameter_mmax": 17
+      }
+     }
+    }
+   },
+   {
+    "box": {
+     "id": "pv_retrigGlide",
+     "maxclass": "live.numbox",
+     "patching_rect": [
+      1270,
+      68,
+      80,
+      15
+     ],
+     "numinlets": 1,
+     "numoutlets": 2,
+     "outlettype": [
+      "",
+      "float"
+     ],
+     "parameter_enable": 1,
+     "varname": "pv_retrigGlide",
+     "saved_attribute_attributes": {
+      "valueof": {
+       "parameter_longname": "RtGlide",
+       "parameter_shortname": "GLIDE",
+       "parameter_initial_enable": 0,
+       "parameter_type": 0,
+       "parameter_mmin": 0,
+       "parameter_mmax": 128,
+       "parameter_unitstyle": 9,
+       "parameter_units": "%.2f st"
+      }
+     }
+    }
+   },
+   {
+    "box": {
+     "id": "pv_retrigLock",
+     "maxclass": "live.menu",
+     "patching_rect": [
+      1270,
+      92,
+      80,
+      15
+     ],
+     "numinlets": 1,
+     "numoutlets": 3,
+     "outlettype": [
+      "",
+      "",
+      "float"
+     ],
+     "parameter_enable": 1,
+     "varname": "pv_retrigLock",
+     "saved_attribute_attributes": {
+      "valueof": {
+       "parameter_longname": "RtLock",
+       "parameter_shortname": "LOCK",
+       "parameter_initial_enable": 0,
+       "parameter_type": 2,
+       "parameter_enum": [
+        "Off",
+        "On"
+       ],
+       "parameter_mmax": 1
+      }
+     }
+    }
+   },
+   {
+    "box": {
+     "id": "pv_retrigPMode",
+     "maxclass": "live.menu",
+     "patching_rect": [
+      1270,
+      116,
+      80,
+      15
+     ],
+     "numinlets": 1,
+     "numoutlets": 3,
+     "outlettype": [
+      "",
+      "",
+      "float"
+     ],
+     "parameter_enable": 1,
+     "varname": "pv_retrigPMode",
+     "saved_attribute_attributes": {
+      "valueof": {
+       "parameter_longname": "RtPMode",
+       "parameter_shortname": "PMODE",
+       "parameter_initial_enable": 0,
+       "parameter_type": 2,
+       "parameter_enum": [
+        "Repeats",
+        "Burst",
+        "Note"
+       ],
+       "parameter_mmax": 2
+      }
+     }
+    }
+   },
+   {
+    "box": {
+     "id": "pv_retrigVoices",
+     "maxclass": "live.menu",
+     "patching_rect": [
+      1270,
+      140,
+      80,
+      15
+     ],
+     "numinlets": 1,
+     "numoutlets": 3,
+     "outlettype": [
+      "",
+      "",
+      "float"
+     ],
+     "parameter_enable": 1,
+     "varname": "pv_retrigVoices",
+     "saved_attribute_attributes": {
+      "valueof": {
+       "parameter_longname": "RtVoices",
+       "parameter_shortname": "VOICES",
+       "parameter_initial_enable": 0,
+       "parameter_type": 2,
+       "parameter_enum": [
+        "Mono",
+        "2",
+        "3",
+        "4",
+        "5",
+        "6",
+        "7",
+        "8"
+       ],
+       "parameter_mmax": 7
       }
      }
     }
@@ -2916,6 +3427,114 @@
    {
     "patchline": {
      "source": [
+      "ev_t",
+      0
+     ],
+     "destination": [
+      "ev_rest",
+      0
+     ]
+    }
+   },
+   {
+    "patchline": {
+     "source": [
+      "ev_t",
+      1
+     ],
+     "destination": [
+      "ev_off",
+      0
+     ]
+    }
+   },
+   {
+    "patchline": {
+     "source": [
+      "ev_off",
+      0
+     ],
+     "destination": [
+      "ev_pipe",
+      5
+     ]
+    }
+   },
+   {
+    "patchline": {
+     "source": [
+      "ev_rest",
+      1
+     ],
+     "destination": [
+      "ev_pipe",
+      0
+     ]
+    }
+   },
+   {
+    "patchline": {
+     "source": [
+      "ev_pipe",
+      0
+     ],
+     "destination": [
+      "ev_pack",
+      0
+     ]
+    }
+   },
+   {
+    "patchline": {
+     "source": [
+      "ev_pipe",
+      1
+     ],
+     "destination": [
+      "ev_pack",
+      1
+     ]
+    }
+   },
+   {
+    "patchline": {
+     "source": [
+      "ev_pipe",
+      2
+     ],
+     "destination": [
+      "ev_pack",
+      2
+     ]
+    }
+   },
+   {
+    "patchline": {
+     "source": [
+      "ev_pipe",
+      3
+     ],
+     "destination": [
+      "ev_pack",
+      3
+     ]
+    }
+   },
+   {
+    "patchline": {
+     "source": [
+      "ev_pipe",
+      4
+     ],
+     "destination": [
+      "ev_pack",
+      4
+     ]
+    }
+   },
+   {
+    "patchline": {
+     "source": [
       "clk_t",
       1
      ],
@@ -2968,7 +3587,43 @@
       0
      ],
      "destination": [
+      "ev_t",
+      0
+     ]
+    }
+   },
+   {
+    "patchline": {
+     "source": [
+      "ev_pack",
+      0
+     ],
+     "destination": [
       "ev_route",
+      0
+     ]
+    }
+   },
+   {
+    "patchline": {
+     "source": [
+      "clk_edge",
+      1
+     ],
+     "destination": [
+      "ev_clear",
+      0
+     ]
+    }
+   },
+   {
+    "patchline": {
+     "source": [
+      "ev_clear",
+      0
+     ],
+     "destination": [
+      "ev_pipe",
       0
      ]
     }
@@ -3632,21 +4287,6 @@
     "Tie",
     0
    ],
-   "pv_retrig": [
-    "Retrig",
-    "Retrig",
-    0
-   ],
-   "pv_retrigRate": [
-    "RtRate",
-    "Rt Rate",
-    0
-   ],
-   "pv_retrigFade": [
-    "RtFade",
-    "Rt Fade",
-    0
-   ],
    "pv_fill": [
     "Fill",
     "Fill",
@@ -3695,6 +4335,56 @@
    "pv_cc8": [
     "CCLock8",
     "CC 8",
+    0
+   ],
+   "pv_retrig": [
+    "Retrig",
+    "RTRG",
+    0
+   ],
+   "pv_retrigRate": [
+    "RtRate",
+    "RATE",
+    0
+   ],
+   "pv_retrigFade": [
+    "RtVFade",
+    "VFAD",
+    0
+   ],
+   "pv_retrigCurve": [
+    "RtCurve",
+    "CRV",
+    0
+   ],
+   "pv_retrigProb": [
+    "RtProb",
+    "PROB",
+    0
+   ],
+   "pv_retrigTRate": [
+    "RtTRate",
+    "TRATE",
+    0
+   ],
+   "pv_retrigGlide": [
+    "RtGlide",
+    "GLIDE",
+    0
+   ],
+   "pv_retrigLock": [
+    "RtLock",
+    "LOCK",
+    0
+   ],
+   "pv_retrigPMode": [
+    "RtPMode",
+    "PMODE",
+    0
+   ],
+   "pv_retrigVoices": [
+    "RtVoices",
+    "VOICES",
     0
    ],
    "inherited_shortname": 1
