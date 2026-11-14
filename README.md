@@ -10,6 +10,7 @@ Spec: [Push Kick + Bass Sequencer (M4L) — Spec v1](https://claude.ai/artifact/
 | `src/seq_model.js` | Sequence data model + save format (pure JS, tested) |
 | `src/kbTakeover.js` | Step 1 takeover test logic (kept as a reference) |
 | `device/` | **Generated** — `kbSequencer.amxd` + one bundled `kbSequencer.js` (and the takeover test). Don't edit. |
+| `device/kbLane.amxd` | Receiving-track device: plays one lane (Kick/Bass) of the sequencer with the same Group |
 | `docs/push3-notes.md` | Confirmed Push 3 control names and pad orientation |
 | `tools/build.py` | Bundles src/ into device/ and generates the .amxd/.maxpat files |
 | `tools/test_model.js` | Model tests (run with osascript, no Node needed) |
@@ -69,3 +70,40 @@ left→right, top→bottom); **palette 64** shows 64–127. Pressing a pad print
 its index. Send back the indices you want for orange (kick), blue (bass),
 purple (both), a dim orange / dim blue (muted), white and two greys.
 **palette -1** returns to the sequencer.
+
+## Step 3 — Playback ✅
+
+Max runs all JavaScript in its low-priority thread, so notes are **not** sent
+from the script. The patch does the timing: a `metro 16n @quantize 16n` on
+Live's transport reads the song position each 1/16, looks up that step's
+events in a `[coll]`, and sends them through `makenote` → `midiformat` →
+`midiout`. The script keeps the coll filled 4 steps ahead (≈400 ms at
+150 BPM) and refreshes it on every edit.
+
+Lanes reach other tracks through **kbLane** (Max `send kb_<group>_<lane>` /
+`receive`), not MIDI From routing. Give each kbSequencer its own **Group**
+(a duplicated track keeps the same Group — change it). The sequencer's own
+track output still carries both lanes on channels 1 and 2.
+
+What plays: trigs on the kick lane (channel 1, note 36) and bass lane
+(channel 2, the step's note), skipping muted steps, applying probability,
+velocity and length (default: velocity 100, half a step). The pattern is
+locked to the song position and loops over the loop pages (page 1 by
+default; testfill sets pages 1–2). The playhead step shows white on Push.
+
+Not yet: swing, microtime, conditions, fill, retrig, accent, slide/tie,
+mono note cutting, CC locks (later build steps).
+
+### Test
+
+1. Make two other MIDI tracks. Put **kbLane** first on each, then the
+   instrument: Lane **Kick** on one, **Bass** on the other, both Group 1
+   (= the sequencer's Group). Leave **MIDI From** empty — nothing is routed
+   through Live: Live drops the MIDI channel when routing one track into
+   another, so each lane goes straight to its kbLane via Max send/receive.
+2. Drop in the new `kbSequencer.amxd`, click **testfill**, press Play in Live.
+3. Expect four-on-the-floor kick (one beat silent: step 13 is muted) and an
+   offbeat bass line, looping every 2 bars. The white playhead moves on Push.
+4. Enter or mute steps while it plays: the change is heard within a step or two.
+5. Start playback from a different bar: the pattern stays aligned to the bar.
+6. Change tempo: timing follows.

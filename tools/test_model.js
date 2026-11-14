@@ -102,6 +102,44 @@ function run(argv) {
 	var big2 = new M.Model();
 	eq("big round trip", big2.decode(bigEnc) && big2.encode().length === bigEnc.length, true);
 
+	// ---- playback ----
+	var pm = new M.Model();
+	pm.addTrig(K, 0);
+	pm.addTrig(B, 0, 41);
+	pm.addTrig(K, 4); pm.setMuted(K, 4, true);
+	pm.addTrig(K, 32);
+	pm.setLock(B, 0, P.length, 24);
+	var stepMs = 100;
+	var ev = pm.eventsAt(0, stepMs, 0);
+	eq("two events at 0", ev.length, 2);
+	eq("kick event", [ev[0].lane, ev[0].pitch, ev[0].velocity, ev[0].durMs, ev[0].channel], [K, 36, 100, 50, 1]);
+	eq("bass event", [ev[1].lane, ev[1].pitch, ev[1].durMs, ev[1].channel], [B, 41, 100, 2]);
+	eq("muted silent", pm.eventsAt(4, stepMs, 0).length, 0);
+	eq("empty silent", pm.eventsAt(1, stepMs, 0).length, 0);
+	// loop = page 1 only: abs 32 wraps to step 0, page 2 trig never plays
+	eq("loop wrap", pm.seqIndexFor(32), 0);
+	eq("loop wrap events", pm.eventsAt(32, stepMs, 0).length, 2);
+	pm.setLoop(0, 1);
+	eq("loop 2 pages", [pm.seqIndexFor(32), pm.seqIndexFor(64)], [32, 0]);
+	pm.setLoop(1, 2);
+	eq("loop from page 2", [pm.seqIndexFor(0), pm.seqIndexFor(33), pm.seqIndexFor(64)], [32, 65, 32]);
+	eq("negative abs", pm.seqIndexFor(-1), 95);
+	// probability: 0 never, 100 always, 50 about half and stable per step
+	pm.setLoop(0, 0);
+	pm.setLock(K, 0, P.probability, 0);
+	var any = 0;
+	for (var a = 0; a < 3200; a += 32) any += pm.eventsAt(a, stepMs, 0).filter(function (e) { return e.lane === K; }).length;
+	eq("prob 0 never", any, 0);
+	pm.setLock(K, 0, P.probability, 50);
+	var hits = 0, stable = true;
+	for (a = 0; a < 32000; a += 32) {
+		var h = pm.eventsAt(a, stepMs, 7).filter(function (e) { return e.lane === K; }).length;
+		if (pm.eventsAt(a, stepMs, 7).filter(function (e) { return e.lane === K; }).length !== h) stable = false;
+		hits += h;
+	}
+	eq("prob 50 about half", hits > 400 && hits < 600, true);
+	eq("prob roll stable on refill", stable, true);
+
 	log.push(passes + " passed, " + fails + " failed");
 	return log.join("\n");
 }

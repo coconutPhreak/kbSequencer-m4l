@@ -182,6 +182,49 @@ Model.prototype.countTrigs = function (lane) {
 	return n;
 };
 
+// ---------- playback ----------
+// absStep: 1/16 steps since song start (from Live's transport).
+// Maps it into the loop range (whole pages), so the pattern stays locked to
+// the song position.
+Model.prototype.loopLength = function () {
+	return (this.loopEnd - this.loopStart + 1) * STEPS_PER_PAGE;
+};
+Model.prototype.seqIndexFor = function (absStep) {
+	var len = this.loopLength();
+	var m = absStep % len;
+	if (m < 0) m += len;
+	return this.loopStart * STEPS_PER_PAGE + m;
+};
+
+// Deterministic 0..1 noise per (absStep, lane, seed): refilling the same
+// step gives the same probability roll, so the lookahead can recompute freely.
+function chance(absStep, lane, seed) {
+	var x = Math.sin(absStep * 12.9898 + lane * 78.233 + seed * 37.719) * 43758.5453;
+	return x - Math.floor(x);
+}
+
+// Events to play at absStep: [{lane, pitch, velocity, durMs, channel}].
+// Applies mute, probability, velocity, length. stepMs = one 1/16 in ms.
+// Not yet: microtime, conditions, fill, retrig, accent, slide/tie (later steps).
+Model.prototype.eventsAt = function (absStep, stepMs, seed) {
+	var out = [], idx = this.seqIndexFor(absStep);
+	for (var l = 0; l < 2; l++) {
+		var st = this.lanes[l].steps[idx];
+		if (!st || st.muted) continue;
+		var prob = this.value(l, idx, PARAM_ID.probability);
+		if (prob < 100 && chance(absStep, l, seed || 0) * 100 >= prob) continue;
+		var len = this.value(l, idx, PARAM_ID.length);
+		out.push({
+			lane: l,
+			pitch: l === KICK ? this.settings.kickNote : st.note,
+			velocity: Math.max(1, this.value(l, idx, PARAM_ID.velocity)),
+			durMs: Math.max(1, Math.round(len / TICKS_PER_STEP * stepMs)),
+			channel: l === KICK ? this.settings.kickChannel : this.settings.bassChannel
+		});
+	}
+	return out;
+};
+
 // ---------- serialisation ----------
 // Flat int list (safe to store in a [pattr] blob, no quoting issues). Sparse:
 // only steps with a trig are written.

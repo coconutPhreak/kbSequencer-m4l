@@ -361,17 +361,17 @@
      "patching_rect": [
       30,
       460,
-      260,
+      360,
       20
      ],
      "presentation": 1,
      "presentation_rect": [
       10,
       2,
-      300,
+      400,
       20
      ],
-     "text": "kbSequencer \u00b7 Push takeover test",
+     "text": "kbSequencer \u00b7 Push takeover test   v0.3.1 \u00b7 1114.2225",
      "numinlets": 1,
      "numoutlets": 0
     }

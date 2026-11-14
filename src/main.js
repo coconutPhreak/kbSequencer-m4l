@@ -1,17 +1,19 @@
 // kbSequencer.js — main device script.
-// Build step 2: step data + storage, on top of the step 1 Push takeover.
+// Build steps 1–2: Push takeover, step data + storage.
 // A minimal pad UI is included only so storage can be tested by hand:
 //   rows 0–3 (top): 32 steps of the viewed page · tap empty = trig, lit = mute,
 //                   muted = unmute · hold Delete + tap = wipe
 //   rows 4–5: page pads · Select + page pad = view that page
 //   lower display buttons 1/2: kick / bass lane select
-// Playback, encoders, p-lock gestures etc. come in later build steps.
+// Build step 3: playback (see "playback" section for the timing design).
+// Encoders, p-lock gestures etc. come in later build steps.
 //
 // ES5 on purpose: runs in both [js] (Max 8) and [v8] (Max 9).
 
 autowatch = 1;
 inlets = 1;
-outlets = 3; // 0: status text, 1: last event text, 2: storage list -> [pattr]
+outlets = 4; // 0: status text, 1: last event text, 2: storage list -> [pattr],
+             // 3: event slots -> [coll] read by the patch's transport clock
 
 // S (the sequence model, src/seq_model.js) is bundled in above this line by tools/build.py.
 var model = new S.Model();
@@ -26,7 +28,8 @@ var COL = {
 	pageViewed: 122,  // white
 	pageTrigs: 123,   // light grey
 	pageEmpty: 124,   // dark grey (spec: dim grey)
-	laneOff: 124
+	laneOff: 124,
+	playhead: 122     // white
 };
 
 // ---------- UI state ----------
@@ -77,7 +80,9 @@ var restoring = false, saving = false;
 var lastSaved = "";
 var saveTask = new Task(saveNow, this);
 model.onChange = function () {
-	if (!restoring) saveTask.schedule(250); // debounce bursts of edits
+	if (restoring) return;
+	saveTask.schedule(250); // debounce bursts of edits
+	refillSoon();           // edits reach the next steps without waiting a tick
 };
 function saveNow() {
 	var enc = model.encode();
@@ -104,8 +109,124 @@ function restore() {
 	restoring = false;
 	if (ok) post("kbSequencer: restored " + model.countTrigs(S.KICK) + " kick + " + model.countTrigs(S.BASS) + " bass trigs\n");
 	else post("kbSequencer: restore failed (" + model.lastError + "), starting empty\n");
+	refillSoon();
 	if (grabbed) defer(renderAll);
 	showStatus();
+}
+
+// ---------- playback ----------
+// Timing design: Max runs ALL JavaScript in the low-priority thread, so notes
+// are never sent from here. The patch does the timing:
+//   [metro 16n @quantize 16n] (Live transport, high priority)
+//     -> [transport] raw ticks -> abs step = round(ticks / 120)
+//     -> [% SLOTS] -> [coll] -> [makenote] -> [midiformat] -> [midiout]
+// This script keeps the coll filled LOOKAHEAD steps ahead: after each tick
+// (sent back here via [deferlow] as "tick <absStep>") and after every edit.
+// At 150 BPM 4 steps is 400 ms of slack for the low-priority thread.
+// Coll entry: slot, then per event: lane pitch velocity durMs channel;
+// "slot -1" means nothing to play.
+var SLOTS = 64;           // must match [% 64] in the patch (tools/build.py)
+var LOOKAHEAD = 4;
+var TICKS_PER_16TH = 120; // Live transport: 480 per quarter
+var playing = false;
+var lastAbs = -1;         // last abs step the patch played (or the start point)
+var playStep = -1;        // sequence index under the playhead, -1 = none
+var tempo = 120;
+var randSeed = Math.floor(Math.random() * 100000);
+var transportApi = null, tempoApi = null, songTimeApi = null;
+var refillTask = new Task(refillWindow, this);
+
+function stepMs() { return 60000 / tempo / 4; }
+
+function setupTransport() {
+	if (transportApi) return;
+	transportApi = new LiveAPI(onIsPlaying, "live_set");
+	transportApi.property = "is_playing";
+	tempoApi = new LiveAPI(onTempo, "live_set");
+	tempoApi.property = "tempo";
+	songTimeApi = new LiveAPI(onSongTime, "live_set");
+	songTimeApi.property = "current_song_time";
+	tempo = Number(tempoApi.get("tempo")) || 120;
+	playing = Number(transportApi.get("is_playing")) === 1;
+	if (!playing) syncToSongTime(Number(songTimeApi.get("current_song_time")));
+	refillWindow();
+}
+
+function teardownTransport() {
+	if (transportApi) transportApi.property = "";
+	if (tempoApi) tempoApi.property = "";
+	if (songTimeApi) songTimeApi.property = "";
+	transportApi = tempoApi = songTimeApi = null;
+	refillTask.cancel();
+}
+
+function onIsPlaying(args) {
+	var a = flatten(args);
+	if (a[0] !== "is_playing") return;
+	var was = playing;
+	playing = Number(a[1]) === 1;
+	if (was === playing) return;
+	if (!playing) {
+		var old = playStep;
+		playStep = -1;
+		defer(function () { renderStep(old); });
+		defer(function () { syncToSongTime(Number(songTimeApi.get("current_song_time"))); refillWindow(); });
+	}
+	showStatus();
+}
+
+function onTempo(args) {
+	var a = flatten(args);
+	if (a[0] !== "tempo") return;
+	tempo = Number(a[1]) || tempo;
+	refillSoon(); // note lengths are in ms
+}
+
+// While stopped, keep the steps from the start position ready so the very
+// first tick after pressing Play already has its events.
+function onSongTime(args) {
+	if (playing) return;
+	var a = flatten(args);
+	if (a[0] !== "current_song_time") return;
+	var before = lastAbs;
+	syncToSongTime(Number(a[1]));
+	if (lastAbs !== before) refillSoon();
+}
+
+function syncToSongTime(beats) {
+	if (isNaN(beats)) return;
+	// The first tick will be at abs step ceil(beats*4); fill from there.
+	lastAbs = Math.ceil(beats * 4 - 1e-6) - 1;
+}
+
+// From the patch, low priority, right after the clock played absStep.
+function tick(absStep) {
+	absStep = absStep | 0;
+	var jumped = absStep !== lastAbs + 1; // start, song loop, or locate
+	lastAbs = absStep;
+	if (!playing) playing = true; // tick can arrive before the is_playing notification
+	if (jumped) refillWindow(); else fillSlot(absStep + LOOKAHEAD);
+	var old = playStep;
+	playStep = model.seqIndexFor(absStep);
+	if (grabbed && old !== playStep) { renderStep(old); renderStep(playStep); }
+}
+
+function refillSoon() { refillTask.schedule(0); }
+
+function refillWindow() {
+	for (var k = 1; k <= LOOKAHEAD; k++) fillSlot(lastAbs + k);
+}
+
+function fillSlot(absStep) {
+	var slot = ((absStep % SLOTS) + SLOTS) % SLOTS;
+	var ev = model.eventsAt(absStep, stepMs(), randSeed);
+	var msg = [slot];
+	if (!ev.length) msg.push(-1);
+	for (var i = 0; i < ev.length; i++) {
+		var e = ev[i];
+		msg.push(e.lane, e.pitch, e.velocity, e.durMs, e.channel);
+	}
+	outlet(3, msg);
 }
 
 // ---------- messages from the device UI ----------
@@ -176,6 +297,7 @@ function notifydeleted() {
 	saveTask.cancel();
 	grabTask.cancel();
 	repaintTask.cancel();
+	teardownTransport();
 	release();
 	if (selObserver) selObserver.property = "";
 }
@@ -183,6 +305,8 @@ function notifydeleted() {
 // ---------- setup ----------
 function init() {
 	initialised = true;
+	post("kbSequencer " + BUILD_STAMP + "\n");
+	setupTransport(); // playback works with or without Push
 	findPush();
 	if (!surface) { status("No Push found — is Push set as a control surface?"); return; }
 	resolveControls();
@@ -371,11 +495,13 @@ function renderAll() {
 }
 
 function renderStep(i) {
+	if (!grabbed || !controls.matrix || paletteBase >= 0) return;
 	var local = i - viewPage * S.STEPS_PER_PAGE;
 	if (local < 0 || local >= S.STEPS_PER_PAGE) return;
 	var k = selKick && model.step(S.KICK, i), b = selBass && model.step(S.BASS, i);
 	var c = COL.off;
-	if (k && b) c = (k.muted && b.muted) ? COL.muted : COL.both;
+	if (i === playStep) c = COL.playhead;
+	else if (k && b) c = (k.muted && b.muted) ? COL.muted : COL.both;
 	else if (k) c = k.muted ? COL.muted : COL.kick;
 	else if (b) c = b.muted ? COL.muted : COL.bass;
 	sendPad(local % 8, local >> 3, c);
@@ -408,6 +534,7 @@ function showStatus() {
 	else if (followFocus && !focused) parts.push("(track not selected)");
 	parts.push("lanes " + (selKick ? "K" : "") + (selBass ? "B" : ""));
 	parts.push("page " + (viewPage + 1));
+	parts.push((playing ? "playing" : "stopped") + " loop " + (model.loopStart + 1) + "-" + (model.loopEnd + 1));
 	parts.push("trigs " + model.countTrigs(S.KICK) + "/" + model.countTrigs(S.BASS));
 	status(parts.join(" · "));
 }
