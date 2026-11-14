@@ -22,7 +22,7 @@ AMXD_MIDI = int.from_bytes(b"mmmm", "big")  # 1835887981
 
 # Shown on every device and printed to the Max Console at load, so it's easy
 # to tell which build is running. VERSION: bump the minor per spec build step.
-VERSION = "0.9.2"
+VERSION = "0.10.1"
 BUILD = datetime.datetime.now().strftime("%m%d.%H%M")  # build time, MMDD.HHMM
 STAMP = f"v{VERSION} · {BUILD}"
 
@@ -304,7 +304,7 @@ t.write("kbTakeover")
 
 # ---- main device ----
 bundle("kbSequencer.js", "main.js", modules=[("S", "seq_model.js")])
-s = Patch("kbSequencer · slides", size=(420, 169))
+s = Patch("kbSequencer · CC locks", size=(420, 169))
 common(s, "js kbSequencer.js", 5, wire_init=False)
 s.blob_pattr("pattr", "kbData", [200, 400, 100, 22])
 # On device init: first bang pattr so the stored sequence reaches the script
@@ -371,7 +371,7 @@ s.wire("ev_off", 0, "ev_pipe", 5)
 s.wire("ev_rest", 1, "ev_pipe", 0)
 for k in range(5):
     s.wire("ev_pipe", k, "ev_pack", k)
-s.obj("ev_route", "route 0 1 2", [120, 790, 70, 22], 1, 4)
+s.obj("ev_route", "route 0 1 2 3 4", [120, 790, 90, 22], 1, 6)
 s.wire("clk_t", 1, "clk_mod", 0)
 s.wire("clk_mod", 0, "ev_coll", 0)
 s.wire("js", 3, "ev_coll", 0)
@@ -460,6 +460,30 @@ s.wire("pb_st", 0, "pb_bytes", 0)
 s.wire("pb_bytes", 0, "pb_iter", 0)
 s.wire("pb_iter", 0, "midiout", 0)
 s.wire("pb_iter", 0, "lane_pack1", 0)
+
+# CC locks: event "3|4 controller value 0 channel" (kick / bass) -> raw bytes
+# B0+ch, controller, value, to the track output and that lane's kbLane.
+for lane in (0, 1):
+    p, x = f"cc{lane}_", 820 + lane * 200
+    # unpack fires right to left: channel (stored), value, then controller,
+    # which bangs the status byte last into the hot inlet of the byte list.
+    s.obj(p + "unpack", "unpack 0 0 0 0", [x, 830, 90, 22], 1, 4, ["int"] * 4)
+    s.obj(p + "ch", "i 1", [x + 100, 860, 30, 22], 2, 1, ["int"])
+    s.obj(p + "t", "t b i", [x, 860, 40, 22], 1, 2, ["bang", "int"])
+    s.obj(p + "st", "expr 175 + $i1", [x, 890, 85, 22], 2, 1)
+    s.obj(p + "bytes", "pack 0 0 0", [x, 920, 70, 22], 3, 1)
+    s.obj(p + "iter", "iter", [x, 950, 35, 22], 1, 1)
+    s.wire("ev_route", 3 + lane, p + "unpack", 0)
+    s.wire(p + "unpack", 3, p + "ch", 1)       # channel
+    s.wire(p + "unpack", 1, p + "bytes", 2)    # value
+    s.wire(p + "unpack", 0, p + "t", 0)        # controller
+    s.wire(p + "t", 1, p + "bytes", 1)
+    s.wire(p + "t", 0, p + "ch", 0)
+    s.wire(p + "ch", 0, p + "st", 0)
+    s.wire(p + "st", 0, p + "bytes", 0)
+    s.wire(p + "bytes", 0, p + "iter", 0)
+    s.wire(p + "iter", 0, "midiout", 0)
+    s.wire(p + "iter", 0, f"lane_pack{lane}", 0)
 
 buttons(s, ["rescan", "dump", "testfill", "clearall", "palette 0", "palette -1", "undo", "redo"])
 

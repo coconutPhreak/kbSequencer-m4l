@@ -374,7 +374,7 @@
       400,
       20
      ],
-     "text": "kbSequencer \u00b7 slides   v0.9.2 \u00b7 1115.0338",
+     "text": "kbSequencer \u00b7 CC locks   v0.10.1 \u00b7 1115.0359",
      "numinlets": 1,
      "numoutlets": 0
     }
@@ -852,13 +852,15 @@
      "patching_rect": [
       120,
       790,
-      70,
+      90,
       22
      ],
-     "text": "route 0 1 2",
+     "text": "route 0 1 2 3 4",
      "numinlets": 1,
-     "numoutlets": 4,
+     "numoutlets": 6,
      "outlettype": [
+      "",
+      "",
       "",
       "",
       "",
@@ -1431,6 +1433,230 @@
      "patching_rect": [
       480,
       980,
+      35,
+      22
+     ],
+     "text": "iter",
+     "numinlets": 1,
+     "numoutlets": 1,
+     "outlettype": [
+      ""
+     ]
+    }
+   },
+   {
+    "box": {
+     "id": "cc0_unpack",
+     "maxclass": "newobj",
+     "patching_rect": [
+      820,
+      830,
+      90,
+      22
+     ],
+     "text": "unpack 0 0 0 0",
+     "numinlets": 1,
+     "numoutlets": 4,
+     "outlettype": [
+      "int",
+      "int",
+      "int",
+      "int"
+     ]
+    }
+   },
+   {
+    "box": {
+     "id": "cc0_ch",
+     "maxclass": "newobj",
+     "patching_rect": [
+      920,
+      860,
+      30,
+      22
+     ],
+     "text": "i 1",
+     "numinlets": 2,
+     "numoutlets": 1,
+     "outlettype": [
+      "int"
+     ]
+    }
+   },
+   {
+    "box": {
+     "id": "cc0_t",
+     "maxclass": "newobj",
+     "patching_rect": [
+      820,
+      860,
+      40,
+      22
+     ],
+     "text": "t b i",
+     "numinlets": 1,
+     "numoutlets": 2,
+     "outlettype": [
+      "bang",
+      "int"
+     ]
+    }
+   },
+   {
+    "box": {
+     "id": "cc0_st",
+     "maxclass": "newobj",
+     "patching_rect": [
+      820,
+      890,
+      85,
+      22
+     ],
+     "text": "expr 175 + $i1",
+     "numinlets": 2,
+     "numoutlets": 1,
+     "outlettype": [
+      ""
+     ]
+    }
+   },
+   {
+    "box": {
+     "id": "cc0_bytes",
+     "maxclass": "newobj",
+     "patching_rect": [
+      820,
+      920,
+      70,
+      22
+     ],
+     "text": "pack 0 0 0",
+     "numinlets": 3,
+     "numoutlets": 1,
+     "outlettype": [
+      ""
+     ]
+    }
+   },
+   {
+    "box": {
+     "id": "cc0_iter",
+     "maxclass": "newobj",
+     "patching_rect": [
+      820,
+      950,
+      35,
+      22
+     ],
+     "text": "iter",
+     "numinlets": 1,
+     "numoutlets": 1,
+     "outlettype": [
+      ""
+     ]
+    }
+   },
+   {
+    "box": {
+     "id": "cc1_unpack",
+     "maxclass": "newobj",
+     "patching_rect": [
+      1020,
+      830,
+      90,
+      22
+     ],
+     "text": "unpack 0 0 0 0",
+     "numinlets": 1,
+     "numoutlets": 4,
+     "outlettype": [
+      "int",
+      "int",
+      "int",
+      "int"
+     ]
+    }
+   },
+   {
+    "box": {
+     "id": "cc1_ch",
+     "maxclass": "newobj",
+     "patching_rect": [
+      1120,
+      860,
+      30,
+      22
+     ],
+     "text": "i 1",
+     "numinlets": 2,
+     "numoutlets": 1,
+     "outlettype": [
+      "int"
+     ]
+    }
+   },
+   {
+    "box": {
+     "id": "cc1_t",
+     "maxclass": "newobj",
+     "patching_rect": [
+      1020,
+      860,
+      40,
+      22
+     ],
+     "text": "t b i",
+     "numinlets": 1,
+     "numoutlets": 2,
+     "outlettype": [
+      "bang",
+      "int"
+     ]
+    }
+   },
+   {
+    "box": {
+     "id": "cc1_st",
+     "maxclass": "newobj",
+     "patching_rect": [
+      1020,
+      890,
+      85,
+      22
+     ],
+     "text": "expr 175 + $i1",
+     "numinlets": 2,
+     "numoutlets": 1,
+     "outlettype": [
+      ""
+     ]
+    }
+   },
+   {
+    "box": {
+     "id": "cc1_bytes",
+     "maxclass": "newobj",
+     "patching_rect": [
+      1020,
+      920,
+      70,
+      22
+     ],
+     "text": "pack 0 0 0",
+     "numinlets": 3,
+     "numoutlets": 1,
+     "outlettype": [
+      ""
+     ]
+    }
+   },
+   {
+    "box": {
+     "id": "cc1_iter",
+     "maxclass": "newobj",
+     "patching_rect": [
+      1020,
+      950,
       35,
       22
      ],
@@ -4397,6 +4623,270 @@
     "patchline": {
      "source": [
       "pb_iter",
+      0
+     ],
+     "destination": [
+      "lane_pack1",
+      0
+     ]
+    }
+   },
+   {
+    "patchline": {
+     "source": [
+      "ev_route",
+      3
+     ],
+     "destination": [
+      "cc0_unpack",
+      0
+     ]
+    }
+   },
+   {
+    "patchline": {
+     "source": [
+      "cc0_unpack",
+      3
+     ],
+     "destination": [
+      "cc0_ch",
+      1
+     ]
+    }
+   },
+   {
+    "patchline": {
+     "source": [
+      "cc0_unpack",
+      1
+     ],
+     "destination": [
+      "cc0_bytes",
+      2
+     ]
+    }
+   },
+   {
+    "patchline": {
+     "source": [
+      "cc0_unpack",
+      0
+     ],
+     "destination": [
+      "cc0_t",
+      0
+     ]
+    }
+   },
+   {
+    "patchline": {
+     "source": [
+      "cc0_t",
+      1
+     ],
+     "destination": [
+      "cc0_bytes",
+      1
+     ]
+    }
+   },
+   {
+    "patchline": {
+     "source": [
+      "cc0_t",
+      0
+     ],
+     "destination": [
+      "cc0_ch",
+      0
+     ]
+    }
+   },
+   {
+    "patchline": {
+     "source": [
+      "cc0_ch",
+      0
+     ],
+     "destination": [
+      "cc0_st",
+      0
+     ]
+    }
+   },
+   {
+    "patchline": {
+     "source": [
+      "cc0_st",
+      0
+     ],
+     "destination": [
+      "cc0_bytes",
+      0
+     ]
+    }
+   },
+   {
+    "patchline": {
+     "source": [
+      "cc0_bytes",
+      0
+     ],
+     "destination": [
+      "cc0_iter",
+      0
+     ]
+    }
+   },
+   {
+    "patchline": {
+     "source": [
+      "cc0_iter",
+      0
+     ],
+     "destination": [
+      "midiout",
+      0
+     ]
+    }
+   },
+   {
+    "patchline": {
+     "source": [
+      "cc0_iter",
+      0
+     ],
+     "destination": [
+      "lane_pack0",
+      0
+     ]
+    }
+   },
+   {
+    "patchline": {
+     "source": [
+      "ev_route",
+      4
+     ],
+     "destination": [
+      "cc1_unpack",
+      0
+     ]
+    }
+   },
+   {
+    "patchline": {
+     "source": [
+      "cc1_unpack",
+      3
+     ],
+     "destination": [
+      "cc1_ch",
+      1
+     ]
+    }
+   },
+   {
+    "patchline": {
+     "source": [
+      "cc1_unpack",
+      1
+     ],
+     "destination": [
+      "cc1_bytes",
+      2
+     ]
+    }
+   },
+   {
+    "patchline": {
+     "source": [
+      "cc1_unpack",
+      0
+     ],
+     "destination": [
+      "cc1_t",
+      0
+     ]
+    }
+   },
+   {
+    "patchline": {
+     "source": [
+      "cc1_t",
+      1
+     ],
+     "destination": [
+      "cc1_bytes",
+      1
+     ]
+    }
+   },
+   {
+    "patchline": {
+     "source": [
+      "cc1_t",
+      0
+     ],
+     "destination": [
+      "cc1_ch",
+      0
+     ]
+    }
+   },
+   {
+    "patchline": {
+     "source": [
+      "cc1_ch",
+      0
+     ],
+     "destination": [
+      "cc1_st",
+      0
+     ]
+    }
+   },
+   {
+    "patchline": {
+     "source": [
+      "cc1_st",
+      0
+     ],
+     "destination": [
+      "cc1_bytes",
+      0
+     ]
+    }
+   },
+   {
+    "patchline": {
+     "source": [
+      "cc1_bytes",
+      0
+     ],
+     "destination": [
+      "cc1_iter",
+      0
+     ]
+    }
+   },
+   {
+    "patchline": {
+     "source": [
+      "cc1_iter",
+      0
+     ],
+     "destination": [
+      "midiout",
+      0
+     ]
+    }
+   },
+   {
+    "patchline": {
+     "source": [
+      "cc1_iter",
       0
      ],
      "destination": [

@@ -278,3 +278,20 @@ parameters).
 - The bend returns to centre right before every new bass note.
 - Retrig steps don't slide. Kick has Tie (holds the note) but no Slide.
 - Lanes are **mono**: a new note cuts the previous one (unless Slide/Tie connects them, or a retrig VOICES setting above Mono lets them overlap).
+
+## Step 9 — CC locks ✅
+
+Each lane's 8 CC slots are sent on that lane's MIDI channel, with the step's
+note and just before it (same timing as the note), to the track output and
+that lane's kbLane.
+
+- Set the CC number of each slot in the **CC Setup** bank (nothing held).
+  Defaults: kick CC 20–27, bass CC 70–77.
+- Lock a value on a step in the **CC Locks** bank (step held). Unlocked
+  slots ("-1") send nothing, so the instrument keeps its last value.
+- In the instrument, MIDI-learn the CC (plugins), or map it with a mapper
+  on the receiving track (stock Live devices can't learn CCs from another
+  track's MIDI).
+- A CC lock goes out only when the step's note plays: not when muted, when
+  its probability fails, or on a step that a slide connects into. A retrig
+  burst sends it once, with its first hit.

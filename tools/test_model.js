@@ -320,6 +320,27 @@ function run(argv) {
 	far.wipe(B, 5); far.addTrig(B, 3, 47);
 	eq("near target: slides", [far.eventsAt(3, 100, 0, 0).filter(function (e) { return e.lane === B; }).length, far.eventsAt(1, 100, 0, 0).length > 0], [0, true]);
 
+	// ---- CC locks ----
+	var cm2 = new M.Model(); cm2.setLoop(0, 1);
+	cm2.addTrig(K, 0); cm2.setLock(K, 0, P.cc1, 64); cm2.setLock(K, 0, P.cc3, 0);
+	cm2.addTrig(B, 2, 40); cm2.setLock(B, 2, P.cc2, 99); cm2.setCcNumber(B, 1, 74);
+	var c0 = cm2.eventsAt(0, 100, 0, 0);
+	eq("kick CCs before the note", c0.map(function (e) { return [e.lane, e.pitch, e.velocity, e.channel]; }), [[3, 20, 64, 1], [3, 22, 0, 1], [0, 36, 100, 1]]);
+	var c2 = cm2.eventsAt(2, 100, 0, 0);
+	eq("bass CC uses CC number + bass channel", c2.filter(function (e) { return e.lane === 4; }).map(function (e) { return [e.pitch, e.velocity, e.channel]; }), [[74, 99, 2]]);
+	eq("unlocked step sends no CC", cm2.eventsAt(1, 100, 0, 0).length, 0);
+	cm2.setMuted(K, 0, true);
+	eq("muted: no CC", cm2.eventsAt(0, 100, 0, 0).length, 0);
+	cm2.setMuted(K, 0, false); cm2.setLock(K, 0, P.probability, 0);
+	eq("prob fail: no CC", cm2.eventsAt(0, 100, 0, 0).length, 0);
+	cm2.clearLock(K, 0, P.probability);
+	// slid-into step's CC lock doesn't apply
+	cm2.setLock(B, 2, P.slide, 1); cm2.setLock(B, 2, P.length, M.RETRIG_LENS.indexOf(4)); cm2.addTrig(B, 3, 42); cm2.setLock(B, 3, P.cc4, 10);
+	eq("slid-into: no CC", cm2.eventsAt(3, 100, 0, 0).filter(function (e) { return e.lane === 4; }).length, 0);
+	// retrig: CCs once, with the first hit
+	cm2.setLock(K, 0, P.retrig, 1); cm2.setLock(K, 0, P.length, M.RETRIG_LENS.indexOf(2)); cm2.setLock(K, 0, P.retrigRate, M.RETRIG_RATES.indexOf("1/32"));
+	eq("retrig: CC once", [cm2.eventsAt(0, 100, 0, 0).filter(function (e) { return e.lane === 3; }).length, cm2.eventsAt(1, 100, 0, 0).filter(function (e) { return e.lane === 3; }).length], [2, 0]);
+
 	log.push(passes + " passed, " + fails + " failed");
 	return log.join("\n");
 }

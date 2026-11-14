@@ -60,6 +60,22 @@ var controls = {};
 var grabbed = false, enabled = 1, followFocus = 1, focused = false;
 var thisTrackId = 0, selObserver = null, initialised = false;
 var padCache = {}; // "x,y" -> colour last sent
+// Other LEDs: "role:x" -> value last sent. Live API objects are created once
+// per control (creating one per LED send was a big part of encoder lag).
+var ledCache = {};
+function ledApi(role) {
+	var c = controls[role];
+	if (!c) return null;
+	if (!c.out) c.out = new LiveAPI("id " + c.id);
+	return c.out;
+}
+function sendLed(role, args) {
+	var key = role + ":" + (args.length > 1 ? args[0] : ""), v = args.join(",");
+	if (ledCache[key] === v) return;
+	ledCache[key] = v;
+	var a = ledApi(role);
+	if (a) a.call.apply(a, ["send_value"].concat(args));
+}
 
 // Confirmed on Push 3 — see docs/push3-notes.md
 var CONTROL_NAMES = {
@@ -103,7 +119,8 @@ var saveTask = new Task(saveNow, this);
 model.onChange = function () {
 	if (restoring) return;
 	saveTask.schedule(250); // debounce bursts of edits
-	refillSoon();           // edits reach the next steps without waiting a tick
+	if (encoderEdit) refillTask.schedule(ENCODER_REFILL_MS); // one refill per pause, not per tick
+	else refillSoon();      // edits reach the next steps without waiting a tick
 	historyChanged();
 };
 function saveNow() {
@@ -151,6 +168,7 @@ var historyTask = new Task(commitHistory, this);
 var historyPending = false;
 
 var encoderEdit = false;   // set while an encoder edits: group a turn into one undo
+var ENCODER_REFILL_MS = 60;
 var ENCODER_UNDO_MS = 600;
 function historyChanged() {
 	if (encoderEdit) { historyPending = true; historyTask.schedule(ENCODER_UNDO_MS); return; }
@@ -375,7 +393,7 @@ function clearall() {
 // prints its index. Use to choose the final pad colours.
 function palette(base) {
 	base = base | 0;
-	padCache = {};
+	padCache = {}; ledCache = {};
 	if (base < 0) {
 		paletteBase = -1;
 		post("kbSequencer: palette test off\n");
@@ -481,7 +499,7 @@ function grab() {
 	heldSteps = [];
 	pageHold = null;
 	pageShowTask.cancel();
-	padCache = {};
+	padCache = {}; ledCache = {};
 	renderAll();
 	// Push resets the LEDs of controls it hands over a moment after the grab,
 	// wiping what was just sent (lane buttons stayed dark until pressed).
@@ -493,7 +511,7 @@ function grab() {
 var REPAINT_AFTER_GRAB_MS = 200;
 var repaintTask = new Task(function () {
 	if (!grabbed) return;
-	padCache = {};
+	padCache = {}; ledCache = {};
 	renderAll();
 }, this);
 
@@ -718,9 +736,14 @@ function itemValue(key) {
 	return v;
 }
 
+var pvObjs = {}, pvSent = {};
 function setDisplayParam(key, v) {
-	var o = this.patcher ? this.patcher.getnamed("pv_" + key) : null;
-	if (o) o.message("set", v);
+	if (pvSent[key] === v) return;
+	var o = pvObjs[key];
+	if (!o) o = pvObjs[key] = this.patcher ? this.patcher.getnamed("pv_" + key) : null;
+	if (!o) return;
+	pvSent[key] = v;
+	o.message("set", v);
 }
 
 // live.banks: make sure the device has exactly one bank, then keep it current.
@@ -738,6 +761,7 @@ function banks() {
 	b.message.apply(b, msg);
 	banksReady = true;
 	lastBankSig = "";
+	pvSent = {};
 	updateDisplay();
 }
 
@@ -810,7 +834,9 @@ function editLock(key, steps) {
 		}
 	}
 	encoderEdit = false;
-	renderAll(); // locked colour on the steps + new values on Push
+	// Only the touched steps (locked colour) and the values on Push.
+	for (k = 0; k < targets.length; k++) renderStep(targets[k].i);
+	updateDisplay();
 	if (key === "note") renderNotes();
 }
 
@@ -835,7 +861,7 @@ function endClearLatch() {
 }
 function renderDeleteButton() {
 	if (!grabbed || !controls.deleteBtn) return;
-	new LiveAPI("id " + controls.deleteBtn.id).call("send_value", clearLatch ? COL.buttonOn : COL.off);
+	sendLed("deleteBtn", [clearLatch ? COL.buttonOn : COL.off]);
 }
 
 var touchLogLeft = 4;
@@ -928,7 +954,7 @@ function onDupPage(page) {
 
 function renderDuplicateButton() {
 	if (!grabbed || !controls.duplicateBtn) return;
-	new LiveAPI("id " + controls.duplicateBtn.id).call("send_value", clip ? COL.buttonOn : COL.off);
+	sendLed("duplicateBtn", [clip ? COL.buttonOn : COL.off]);
 }
 
 // Page pads. Select + pad: view that page (follow off). Hold one pad and
@@ -1108,7 +1134,7 @@ function keyboardNotes() {
 function col(name, idx) {
 	if (!(name in COL)) { post("kbSequencer: no colour '" + name + "'\n"); return; }
 	COL[name] = Math.max(0, Math.min(127, idx | 0));
-	padCache = {};
+	padCache = {}; ledCache = {};
 	if (grabbed) defer(renderAll);
 }
 function cols() { post("kbSequencer colours: " + JSON.stringify(COL) + "\n"); }
@@ -1118,7 +1144,8 @@ function sendPad(x, y, colour) {
 	var key = x + "," + y;
 	if (padCache[key] === colour) return;
 	padCache[key] = colour;
-	new LiveAPI("id " + controls.matrix.id).call("send_value", x, y, colour);
+	var a = ledApi("matrix");
+	if (a) a.call("send_value", x, y, colour);
 }
 
 function renderAll() {
@@ -1190,24 +1217,23 @@ function renderNotes() {
 function renderDisplayButtons() {
 	var d = controls.display;
 	if (!grabbed || !d) return;
-	var api = new LiveAPI("id " + d.id);
-	api.call("send_value", 0, 0, selKick ? COL.kick : COL.laneOff);
-	api.call("send_value", 1, 0, selBass ? COL.bass : COL.laneOff);
+	sendLed("display", [0, 0, selKick ? COL.kick : COL.laneOff]);
+	sendLed("display", [1, 0, selBass ? COL.bass : COL.laneOff]);
 	var c = context();
 	for (var k = 0; k < BANK_BUTTONS.length; k++)
-		api.call("send_value", BANK_BUTTONS[k], 0, k >= BANKS[c].length ? COL.off : k === bankSel[c] ? COL.followOn : COL.followOff);
+		sendLed("display", [BANK_BUTTONS[k], 0, k >= BANKS[c].length ? COL.off : k === bankSel[c] ? COL.followOn : COL.followOff]);
 }
 
 // Undo LED: lit while there is something to undo.
 function renderUndoButton() {
 	if (!grabbed || !controls.undoBtn) return;
-	new LiveAPI("id " + controls.undoBtn.id).call("send_value", undoStack.length ? COL.buttonOn : COL.off);
+	sendLed("undoBtn", [undoStack.length ? COL.buttonOn : COL.off]);
 }
 
 function renderOctaveButtons() {
 	if (!grabbed) return;
-	if (controls.octaveUp) new LiveAPI("id " + controls.octaveUp.id).call("send_value", octave < S.MAX_OCTAVE ? COL.buttonOn : COL.off);
-	if (controls.octaveDown) new LiveAPI("id " + controls.octaveDown.id).call("send_value", octave > S.MIN_OCTAVE ? COL.buttonOn : COL.off);
+	sendLed("octaveUp", [octave < S.MAX_OCTAVE ? COL.buttonOn : COL.off]);
+	sendLed("octaveDown", [octave > S.MIN_OCTAVE ? COL.buttonOn : COL.off]);
 }
 
 // Follow mode: keep the viewed page on the playhead's page.

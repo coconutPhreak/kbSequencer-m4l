@@ -136,7 +136,24 @@ Model.prototype.clear = function () {
 
 // Called on every edit; the device hooks this to schedule a save.
 Model.prototype.onChange = null;
-Model.prototype.changed = function () { if (this.onChange) this.onChange(); };
+Model.prototype.changed = function () { this._reach = null; if (this.onChange) this.onChange(); };
+
+// How many steps back a note could still be sounding, per lane: the longest
+// Length (INF: RETRIG_LOOKBACK), plus one 1/1 interval on retrig steps.
+// eventsAt only looks back this far (was always RETRIG_LOOKBACK: slow).
+Model.prototype.reach = function (l) {
+	if (!this._reach) this._reach = [];
+	if (this._reach[l] !== undefined) return this._reach[l];
+	var steps = this.lanes[l].steps, r = 1;
+	for (var i = 0; i < NUM_STEPS; i++) {
+		if (!steps[i]) continue;
+		var len = RETRIG_LENS[this.value(l, i, PARAM_ID.length)];
+		if (len === Infinity) { r = RETRIG_LOOKBACK; break; }
+		if (this.value(l, i, PARAM_ID.retrig) === 1) len += 16;
+		if (len > r) r = len;
+	}
+	return (this._reach[l] = Math.min(RETRIG_LOOKBACK, Math.ceil(r) + 1));
+};
 
 Model.prototype.step = function (lane, i) { return this.lanes[lane].steps[i]; };
 Model.prototype.hasTrig = function (lane, i) { return this.lanes[lane].steps[i] !== null; };
@@ -434,7 +451,8 @@ function bendValue(off, range) {
 
 // Events to play during absStep: [{offMs, lane, pitch, velocity, durMs, channel}],
 // offMs = time after the step's start. lane 2 = a bass pitch bend (pitch =
-// 14-bit value). Includes retrig hits and held / sliding notes that started
+// 14-bit value); lane 3 / 4 = a kick / bass CC (pitch = controller number,
+// velocity = value), sent with the step's note. Includes retrig hits and held / sliding notes that started
 // on earlier steps (back to startAbs, the play start: nothing ran before
 // it). Voices: each new note may keep at most VOICES−1 notes or bursts
 // running (its own VOICES; Mono = 1): the oldest are cut at its start, so
@@ -445,7 +463,7 @@ Model.prototype.eventsAt = function (absStep, stepMs, seed, startAbs) {
 	var inStep = function (at) { return at >= absStep - 1e-9 && at < absStep + 1 - 1e-9; };
 	var ms = function (at) { return Math.max(0, Math.round((at - absStep) * stepMs * 100) / 100); };
 	for (var l = 0; l < 2; l++) {
-		var from = Math.max(startAbs, absStep - RETRIG_LOOKBACK), running = [], items = [];
+		var from = Math.max(startAbs, absStep - this.reach(l)), running = [], items = [];
 		var chains = this.laneChains(l, from, absStep, stepMs, seed);
 		for (var ci = 0; ci < chains.length; ci++) {
 			var c = chains[ci], n = c.first, b = n.abs;
@@ -471,8 +489,17 @@ Model.prototype.eventsAt = function (absStep, stepMs, seed, startAbs) {
 			if (item.end <= absStep) continue;
 			var cut = item.end < item.natural; // stopped by a later note
 			var endOrNext = item.end === Infinity ? this.nextNoteAbs(l, st0, stepMs, seed) : item.end;
-			if (l === BASS && inStep(st0)) // centre the bend before every new bass note
-				out.push({ offMs: ms(st0), lane: 2, pitch: 8192, velocity: 0, durMs: 0, channel: ch });
+			if (inStep(st0)) {
+				// CC locks go out with the note, just before it (lane 3 / 4 = kick / bass
+				// CC: pitch = controller, velocity = value). Slid-into steps send none.
+				var lane = this.lanes[l], idx0 = this.seqIndexFor(st0);
+				for (var cc = 0; cc < CC_SLOTS; cc++) {
+					var cv = this.value(l, idx0, PARAM_ID["cc" + (cc + 1)]);
+					if (cv >= 0) out.push({ offMs: ms(st0), lane: 3 + l, pitch: lane.ccNums[cc], velocity: cv, durMs: 0, channel: ch });
+				}
+				if (l === BASS) // centre the bend before every new bass note
+					out.push({ offMs: ms(st0), lane: 2, pitch: 8192, velocity: 0, durMs: 0, channel: ch });
+			}
 			if (c2.notes.length > 1) {
 				if (inStep(st0))
 					out.push({ offMs: ms(st0), lane: l, pitch: f.pitch, velocity: f.velocity,
