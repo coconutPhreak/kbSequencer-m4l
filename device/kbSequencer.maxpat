@@ -374,7 +374,7 @@
       400,
       20
      ],
-     "text": "kbSequencer \u00b7 CC locks   v0.13.1 \u00b7 1115.1917",
+     "text": "kbSequencer \u00b7 CC locks   v0.14.0 \u00b7 1115.1923",
      "numinlets": 1,
      "numoutlets": 0
     }

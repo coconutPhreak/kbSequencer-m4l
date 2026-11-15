@@ -41,7 +41,8 @@ var COL = {
 	laneOff: 124,     // lane button not selected
 	followOn: 122, followOff: 124,
 	buttonOn: 127,    // white-LED buttons (octave)
-	euKick: 4, euBass: 46, euBoth: 50 // Euclid hits (no manual step there): dimmer lane colours
+	euKick: 4, euBass: 46, euBoth: 50, // Euclid hits (no manual step there): dimmer lane colours
+	maskSel: 5, maskUnsel: 7          // lane button while its live mask is on
 };
 
 // ---------- UI state ----------
@@ -564,7 +565,8 @@ function handleInput(role, v) {
 
 // Display buttons: 1 kick, 2 bass, 3–8 banks (see BANK_BUTTONS).
 function onDisplayButton(x) {
-	if (shiftHeld && (x === 0 || x === 1)) { maskLanes(x === 0 ? S.KICK : S.BASS); return; }
+	if (muteHeld && (x === 0 || x === 1)) { maskLanes(x === 0 ? S.KICK : S.BASS); return; }
+	if (shiftHeld && (x === 0 || x === 1)) { toggleMask(x === 0 ? S.KICK : S.BASS); return; }
 	if (x === 0) { selKick = !selKick; if (!selKick && !selBass) selBass = true; } // one lane stays on
 	else if (x === 1) { selBass = !selBass; if (!selKick && !selBass) selKick = true; }
 	else if (BANK_BUTTONS.indexOf(x) >= 0) {
@@ -952,8 +954,18 @@ var dupAnchorStep = -1;
 // steps (one Undo). Existing steps keep their locks.
 var dupPrinted = false;
 
-// Shift + Kick button: mute the bass wherever the kick plays; Shift + Bass
-// button: the reverse. Manual trigs are muted (locks kept); one Undo.
+// Shift + Kick / Bass button: that lane's live mask on/off (it silences
+// the other lane's notes where it plays, exactly on every pass).
+// Mute + Kick / Bass button: print that mask into the other lane's steps
+// as mutes (any overlap over the combined cycle). One Undo each.
+function toggleMask(src) {
+	var key = src === S.KICK ? "maskKick" : "maskBass";
+	model.setSetting(key, model.settings[key] ? 0 : 1);
+	post("kbSequencer: " + S.LANE_NAMES[src] + " mask " + (model.settings[key] ? "on" : "off") + "\n");
+	commitHistory();
+	renderDisplayButtons();
+	showStatus();
+}
 function maskLanes(src) {
 	var dst = src === S.KICK ? S.BASS : S.KICK;
 	var n = model.maskLane(src, dst);
@@ -962,6 +974,7 @@ function maskLanes(src) {
 	renderAll();
 	showStatus();
 }
+
 function printEuclid() {
 	var lanes = selectedLanes(), n = 0;
 	for (var k = 0; k < lanes.length; k++) n += model.printEuclid(lanes[k]);
@@ -1320,8 +1333,10 @@ function renderNotes() {
 function renderDisplayButtons() {
 	var d = controls.display;
 	if (!grabbed || !d) return;
-	sendLed("display", [0, 0, selKick ? COL.kick : COL.laneOff]);
-	sendLed("display", [1, 0, selBass ? COL.bass : COL.laneOff]);
+	// A lane whose live mask is on shows the mask colour (bright when selected).
+	var mk = model.settings.maskKick, mb = model.settings.maskBass;
+	sendLed("display", [0, 0, mk ? (selKick ? COL.maskSel : COL.maskUnsel) : selKick ? COL.kick : COL.laneOff]);
+	sendLed("display", [1, 0, mb ? (selBass ? COL.maskSel : COL.maskUnsel) : selBass ? COL.bass : COL.laneOff]);
 	var c = context();
 	for (var k = 0; k < BANK_BUTTONS.length; k++)
 		sendLed("display", [BANK_BUTTONS[k], 0, k >= BANKS[c].length ? COL.off : k === bankSel[c] ? COL.followOn : COL.followOff]);

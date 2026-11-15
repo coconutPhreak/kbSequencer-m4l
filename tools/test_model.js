@@ -410,21 +410,38 @@ function run(argv) {
 	eq("print keeps locks, un-mutes, replaces note", [lm.step(B, 2).note, lm.step(B, 2).locks[P.cc1], lm.step(B, 2).muted], [43, 9, false]);
 	eq("print new step: euclid velocity lock", [lm.value(K, 8, P.velocity), lm.value(K, 4, P.velocity), lm.step(K, 4).muted], [77, 50, false]);
 	eq("print leaves non-hits", [lm.hasTrig(K, 1), lm.hasTrig(K, 2)], [false, true]);
-	// negative mask
+	// negative mask, printed (any overlap over the combined cycle)
 	var mk = new M.Model(); mk.setLoop(0, 0);
 	mk.addTrig(K, 0); mk.addTrig(K, 4); mk.addTrig(K, 8); mk.setMuted(K, 8, true);
 	mk.addTrig(B, 0, 40); mk.setLock(B, 0, P.cc2, 33); mk.addTrig(B, 2, 41); mk.addTrig(B, 8, 42);
 	mk.setEuclid(B, "steps", 4); mk.setEuclid(B, "pulses", 1); // bass hits on 0, 4, 8…
-	mk.setEuclid(K, "steps", 16); mk.setEuclid(K, "pulses", 1); mk.setEuclid(K, "rotate", 12); // kick hit on 12
-	eq("kick masks bass", mk.maskLane(K, B), 4);
+	mk.setEuclid(K, "steps", 16); mk.setEuclid(K, "pulses", 1); mk.setEuclid(K, "rotate", 12); // kick hit on 12, 28
+	eq("kick masks bass (same length)", mk.maskLane(K, B), 4);
 	eq("manual muted, locks kept, others untouched", [mk.step(B, 0).muted, mk.step(B, 0).locks[P.cc2], mk.step(B, 2).muted, mk.step(B, 8).muted], [true, 33, false, false]);
 	eq("euclid hit gets muted manual step", [mk.step(B, 4).muted, mk.step(B, 12).muted, mk.step(B, 28).muted], [true, true, true]);
 	eq("masked hits silent", [0, 4, 12].map(function (a) { return mk.eventsAt(a, 100, 0, 0).filter(function (e) { return e.lane === B; }).length; }), [0, 0, 0]);
 	eq("unmasked still play", [2, 8].map(function (a) { return mk.eventsAt(a, 100, 0, 0).filter(function (e) { return e.lane === B; }).length > 0; }), [true, true]);
 	eq("kick untouched", [mk.step(K, 0).muted, mk.step(K, 4).muted], [false, false]);
 	eq("mask again: nothing new", mk.maskLane(K, B), 0);
-	eq("bass masks kick (bass plays on 2, 8)", [mk.maskLane(B, K), mk.hasTrig(K, 2), mk.step(K, 8).muted], [0, false, true]);
-
+	// different lengths: kick 12 (trig on 3), bass 16 (trigs on 3, 7, 11, 5)
+	var md = new M.Model(); md.setLoop(0, 0); md.setLaneLength(K, 12); md.setLaneLength(B, 16);
+	md.addTrig(K, 3); [3, 7, 11, 5].forEach(function (i) { md.addTrig(B, i, 40); });
+	eq("print: every pass's overlap", [md.maskLane(K, B), md.step(B, 3).muted, md.step(B, 7).muted, md.step(B, 11).muted, md.step(B, 5).muted], [3, true, true, true, false]);
+	// live mask: exact per pass, nothing written
+	var lv = new M.Model(); lv.setLoop(0, 0); lv.setLaneLength(K, 12); lv.setLaneLength(B, 16);
+	lv.addTrig(K, 3); [3, 7, 11].forEach(function (i) { lv.addTrig(B, i, 40); });
+	var bassAt = function (a) { return lv.eventsAt(a, 100, 0, 0).filter(function (e) { return e.lane === B; }).length > 0; };
+	lv.setSetting("maskKick", 1);
+	// abs 3: kick 3 & bass 3 → masked; abs 7: kick idx 7 (empty) → bass plays;
+	// abs 19: bass 3, kick 7 → plays; abs 23: bass 7, kick 11 → plays; abs 27: bass 11, kick 3 → masked
+	eq("live mask per pass", [3, 7, 11, 19, 23, 27].map(bassAt), [false, true, true, true, true, false]);
+	eq("live mask writes nothing", [lv.step(B, 3).muted, lv.step(B, 11).muted], [false, false]);
+	eq("kick still plays", lv.eventsAt(3, 100, 0, 0).filter(function (e) { return e.lane === K; }).length, 1);
+	lv.setSetting("maskKick", 0);
+	eq("mask off", [3, 27].map(bassAt), [true, true]);
+	lv.setSetting("maskBass", 1);
+	eq("bass masks kick", lv.eventsAt(3, 100, 0, 0).filter(function (e) { return e.lane === K; }).length, 0);
+	var lv2 = new M.Model(); lv2.decode(lv.encode()); eq("mask saved", [lv2.settings.maskKick, lv2.settings.maskBass], [0, 1]);
 	var um = new M.Model(); um.addTrig(K, 1); um.addTrig(K, 2); um.addTrig(K, 40); um.setMuted(K, 1, true); um.setMuted(K, 40, true); um.setLock(K, 1, P.cc1, 7);
 	eq("unmute page", [um.unmutePage(K, 0), um.step(K, 1).muted, um.step(K, 1).locks[P.cc1], um.step(K, 40).muted], [1, false, 7, true]);
 

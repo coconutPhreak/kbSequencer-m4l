@@ -134,6 +134,7 @@ indices, and send them back.
 | Hold a step + turn an encoder | Releasing is no longer a tap: the step is not muted (the encoder sets p-locks in step 7) |
 | Hold step(s) + tap a note pad | Sets or replaces the held bass steps' note (brush unchanged); the keyboard shows the held step's note in bright white |
 | Hold Delete + tap a step | Wipes it (on press) |
+| Hold Mute + tap a lane button (Kick / Bass) | Prints that lane's mask into the other lane as mutes (see Negative mask) |
 | Hold Mute + tap a page pad | Un-mutes every step on that page for the selected lanes (p-locks untouched; view and loop unchanged). One Undo |
 | Hold Delete + tap a page pad | Wipes every step on that page (trigs, notes, p-locks) for the selected lanes; the loop is unchanged |
 
@@ -353,13 +354,18 @@ a generated pattern kept apart from the manual steps.
   step un-mutes it and takes the Euclid note (bass), keeping its locks; a
   new step gets the Euclid velocity. Steps without a hit are left alone.
   One Undo.
-- **Negative mask.** Shift + Kick lane button mutes the bass wherever the
-  kick plays; Shift + Bass lane button mutes the kick wherever the bass
-  plays. "Plays" means an un-muted manual trig or a Euclid hit, by that
-  lane's Layer, compared step by step over the target lane's Length.
-  Manual trigs are muted, never deleted, and keep their p-locks. A Euclid
-  hit gets a muted manual step on top, which silences it in the Both layer
-  (not in the Euclid layer, which ignores manual steps). One Undo.
+- **Negative mask.** Two ways, per lane (Kick masks bass, Bass masks kick):
+  - **Live: Shift + lane button** turns that lane's mask on/off (the lane
+    button shows the mask colour while on). During playback the other
+    lane's new notes don't start on steps where this lane plays a note
+    (after its probability), so it is exact on every pass even when the
+    Lengths differ. Nothing is written; saved with the set.
+  - **Print: hold Mute + tap a lane button** writes the mask into the other
+    lane as mutes: a step is muted if this lane plays on it in any pass of
+    the combined cycle (the two Lengths' LCM, lined up from the song start
+    as playback does). Manual trigs are muted, never deleted, and keep
+    their p-locks. A Euclid hit gets a muted manual step on top, which
+    silences it in the Both layer (not in the Euclid layer). One Undo.
 - Setting a page loop (long-press or two page pads) sets both lanes' Length
   to those pages. The loop's last page follows the longer lane. Follow
   mode follows the first selected lane.
