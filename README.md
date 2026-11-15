@@ -352,6 +352,13 @@ a generated pattern kept apart from the manual steps.
   step un-mutes it and takes the Euclid note (bass), keeping its locks; a
   new step gets the Euclid velocity. Steps without a hit are left alone.
   One Undo.
+- **Negative mask.** Shift + Kick lane button mutes the bass wherever the
+  kick plays; Shift + Bass lane button mutes the kick wherever the bass
+  plays. "Plays" means an un-muted manual trig or a Euclid hit, by that
+  lane's Layer, compared step by step over the target lane's Length.
+  Manual trigs are muted, never deleted, and keep their p-locks. A Euclid
+  hit gets a muted manual step on top, which silences it in the Both layer
+  (not in the Euclid layer, which ignores manual steps). One Undo.
 - Setting a page loop (long-press or two page pads) sets both lanes' Length
   to those pages. The loop's last page follows the longer lane. Follow
   mode follows the first selected lane.

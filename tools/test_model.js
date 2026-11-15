@@ -410,6 +410,21 @@ function run(argv) {
 	eq("print keeps locks, un-mutes, replaces note", [lm.step(B, 2).note, lm.step(B, 2).locks[P.cc1], lm.step(B, 2).muted], [43, 9, false]);
 	eq("print new step: euclid velocity lock", [lm.value(K, 8, P.velocity), lm.value(K, 4, P.velocity), lm.step(K, 4).muted], [77, 50, false]);
 	eq("print leaves non-hits", [lm.hasTrig(K, 1), lm.hasTrig(K, 2)], [false, true]);
+	// negative mask
+	var mk = new M.Model(); mk.setLoop(0, 0);
+	mk.addTrig(K, 0); mk.addTrig(K, 4); mk.addTrig(K, 8); mk.setMuted(K, 8, true);
+	mk.addTrig(B, 0, 40); mk.setLock(B, 0, P.cc2, 33); mk.addTrig(B, 2, 41); mk.addTrig(B, 8, 42);
+	mk.setEuclid(B, "steps", 4); mk.setEuclid(B, "pulses", 1); // bass hits on 0, 4, 8…
+	mk.setEuclid(K, "steps", 16); mk.setEuclid(K, "pulses", 1); mk.setEuclid(K, "rotate", 12); // kick hit on 12
+	eq("kick masks bass", mk.maskLane(K, B), 4);
+	eq("manual muted, locks kept, others untouched", [mk.step(B, 0).muted, mk.step(B, 0).locks[P.cc2], mk.step(B, 2).muted, mk.step(B, 8).muted], [true, 33, false, false]);
+	eq("euclid hit gets muted manual step", [mk.step(B, 4).muted, mk.step(B, 12).muted, mk.step(B, 28).muted], [true, true, true]);
+	eq("masked hits silent", [0, 4, 12].map(function (a) { return mk.eventsAt(a, 100, 0, 0).filter(function (e) { return e.lane === B; }).length; }), [0, 0, 0]);
+	eq("unmasked still play", [2, 8].map(function (a) { return mk.eventsAt(a, 100, 0, 0).filter(function (e) { return e.lane === B; }).length > 0; }), [true, true]);
+	eq("kick untouched", [mk.step(K, 0).muted, mk.step(K, 4).muted], [false, false]);
+	eq("mask again: nothing new", mk.maskLane(K, B), 0);
+	eq("bass masks kick (bass plays on 2, 8)", [mk.maskLane(B, K), mk.hasTrig(K, 2), mk.step(K, 8).muted], [0, false, true]);
+
 	// save v3
 	var sv = new M.Model(); sv.setLoop(2, 3); sv.setLaneLength(B, 23); sv.setEuclid(B, "pulses", 5); sv.setEuclid(K, "layer", 1);
 	var sv2 = new M.Model(); sv2.decode(sv.encode());

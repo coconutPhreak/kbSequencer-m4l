@@ -385,6 +385,28 @@ Model.prototype.countTrigs = function (lane) {
 	return n;
 };
 
+// Negative mask: mutes lane dst wherever lane src plays (an un-muted manual
+// trig or a Euclid hit, by its Layer), over dst's Length. Manual trigs are
+// muted, never deleted, and keep their locks. A Euclid hit with no manual
+// step gets a muted manual step on top (silences it in the Both layer).
+// Returns the number of steps muted.
+Model.prototype.maskLane = function (src, dst) {
+	var lane = this.lanes[dst], n = 0;
+	for (var i = this.loopStart * STEPS_PER_PAGE, end = i + lane.length; i < end; i++) {
+		if (!this.inLoop(src, i)) continue;
+		var s = this.playStepAt(src, i);
+		if (!s || s.muted) continue;
+		var st = lane.steps[i];
+		if (st) { if (!st.muted) { st.muted = true; n++; } continue; }
+		if (lane.euclid.layer !== 0 && this.euclidHit(dst, i)) {
+			lane.steps[i] = { muted: true, note: dst === BASS ? lane.euclid.note : -1, locks: {} };
+			n++;
+		}
+	}
+	if (n) this.changed();
+	return n;
+};
+
 // ---------- playback ----------
 // absStep: 1/16 steps since song start (from Live's transport).
 // Maps it into the lane's loop (Length steps from the loop's start page), so

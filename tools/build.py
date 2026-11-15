@@ -22,7 +22,7 @@ AMXD_MIDI = int.from_bytes(b"mmmm", "big")  # 1835887981
 
 # Shown on every device and printed to the Max Console at load, so it's easy
 # to tell which build is running. VERSION: bump the minor per spec build step.
-VERSION = "0.12.4"
+VERSION = "0.13.0"
 BUILD = datetime.datetime.now().strftime("%m%d.%H%M")  # build time, MMDD.HHMM
 STAMP = f"v{VERSION} · {BUILD}"
 

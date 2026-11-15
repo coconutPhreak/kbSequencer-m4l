@@ -561,6 +561,7 @@ function handleInput(role, v) {
 
 // Display buttons: 1 kick, 2 bass, 3–8 banks (see BANK_BUTTONS).
 function onDisplayButton(x) {
+	if (shiftHeld && (x === 0 || x === 1)) { maskLanes(x === 0 ? S.KICK : S.BASS); return; }
 	if (x === 0) { selKick = !selKick; if (!selKick && !selBass) selBass = true; } // one lane stays on
 	else if (x === 1) { selBass = !selBass; if (!selKick && !selBass) selKick = true; }
 	else if (BANK_BUTTONS.indexOf(x) >= 0) {
@@ -947,6 +948,17 @@ var dupAnchorStep = -1;
 // Shift + Duplicate: print the selected lanes' Euclid hits onto their manual
 // steps (one Undo). Existing steps keep their locks.
 var dupPrinted = false;
+
+// Shift + Kick button: mute the bass wherever the kick plays; Shift + Bass
+// button: the reverse. Manual trigs are muted (locks kept); one Undo.
+function maskLanes(src) {
+	var dst = src === S.KICK ? S.BASS : S.KICK;
+	var n = model.maskLane(src, dst);
+	post("kbSequencer: " + S.LANE_NAMES[src] + " masked " + n + " " + S.LANE_NAMES[dst] + " step" + (n === 1 ? "" : "s") + "\n");
+	commitHistory();
+	renderAll();
+	showStatus();
+}
 function printEuclid() {
 	var lanes = selectedLanes(), n = 0;
 	for (var k = 0; k < lanes.length; k++) n += model.printEuclid(lanes[k]);
