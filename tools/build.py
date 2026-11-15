@@ -22,7 +22,7 @@ AMXD_MIDI = int.from_bytes(b"mmmm", "big")  # 1835887981
 
 # Shown on every device and printed to the Max Console at load, so it's easy
 # to tell which build is running. VERSION: bump the minor per spec build step.
-VERSION = "0.10.2"
+VERSION = "0.12.4"
 BUILD = datetime.datetime.now().strftime("%m%d.%H%M")  # build time, MMDD.HHMM
 STAMP = f"v{VERSION} · {BUILD}"
 
@@ -93,7 +93,18 @@ DISPLAY_PARAMS = (
        ("retrigVoices", "RtVoices", "VOICES", "enum", 0, 7, ["Mono", "2", "3", "4", "5", "6", "7", "8"])]
     # Slide bank (bass)
     + [("slideTime", "SlTime", "Sl Time", "int", 0, 200, "%d %%"),
-       ("slideCurve", "SlCurve", "Sl Curve", "int", -100, 100, None)])
+       ("slideCurve", "SlCurve", "Sl Curve", "int", -100, 100, None)]
+    # Kick Euclid / Bass Euclid banks (nothing held): lane Length + generator
+    + [item for lane, L in (("k", "K"), ("b", "B")) for item in (
+        # Live Int parameters only span 0-255: Length (1-512) is a float shown as an int
+        (f"{lane}Length", f"{L}Length", "Length", "wideint", 1, 512, None),
+        (f"{lane}EuSteps", f"{L}EuSteps", "Steps", "int", 1, 64, None),
+        (f"{lane}EuPulses", f"{L}EuPulses", "Pulses", "int", 0, 64, None),
+        (f"{lane}EuRotate", f"{L}EuRotate", "Rotate", "int", 0, 63, None),
+        (f"{lane}EuLayer", f"{L}EuLayer", "Layer", "enum", 0, 2, ["Manual", "Euclid", "Both"]),
+        (f"{lane}EuVel", f"{L}EuVel", "Velocity", "int", 1, 127, None),
+        (f"{lane}EuFollow", f"{L}EuFollow", "Follow", "enum", 0, 1, OFF_ON))]
+    + [("bEuNote", "BEuNote", "Note", "note", 0, 127, None)])
 
 
 def bundle(out_name, main, modules=()):
@@ -186,7 +197,8 @@ class Patch:
                      outlettype=["", "", "float"], parameter_enable=1, varname="pv_" + key,
                      saved_attribute_attributes={"valueof": v})
         else:
-            v.update(parameter_type=0 if kind == "float" else 1, parameter_mmin=lo, parameter_mmax=hi,
+            # wideint: an int range wider than Live's Int type (0-255), as a float shown as an int
+            v.update(parameter_type=0 if kind in ("float", "wideint") else 1, parameter_mmin=lo, parameter_mmax=hi,
                      parameter_unitstyle=8 if kind == "note" else (9 if extra else (1 if kind == "float" else 0)))
             if extra:
                 v["parameter_units"] = extra

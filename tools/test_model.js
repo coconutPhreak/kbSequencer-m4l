@@ -20,7 +20,7 @@ function run(argv) {
 	var m2 = new M.Model();
 	eq("decode empty", m2.decode(empty), true);
 	eq("empty re-encode", m2.encode(), empty);
-	eq("empty size", empty.length < 100, true);
+	eq("empty size", empty.length < 120, true);
 
 	// edits
 	var changes = 0;
@@ -118,13 +118,13 @@ function run(argv) {
 	eq("muted silent", pm.eventsAt(4, stepMs, 0).length, 0);
 	eq("empty silent", pm.eventsAt(1, stepMs, 0).length, 0);
 	// loop = page 1 only: abs 32 wraps to step 0, page 2 trig never plays
-	eq("loop wrap", pm.seqIndexFor(32), 0);
+	eq("loop wrap", pm.seqIndexFor(32, 0), 0);
 	eq("loop wrap events", notes(pm.eventsAt(32, stepMs, 0)).length, 2);
 	pm.setLoop(0, 1);
-	eq("loop 2 pages", [pm.seqIndexFor(32), pm.seqIndexFor(64)], [32, 0]);
+	eq("loop 2 pages", [pm.seqIndexFor(32, 0), pm.seqIndexFor(64, 0)], [32, 0]);
 	pm.setLoop(1, 2);
-	eq("loop from page 2", [pm.seqIndexFor(0), pm.seqIndexFor(33), pm.seqIndexFor(64)], [32, 65, 32]);
-	eq("negative abs", pm.seqIndexFor(-1), 95);
+	eq("loop from page 2", [pm.seqIndexFor(0, 0), pm.seqIndexFor(33, 0), pm.seqIndexFor(64, 0)], [32, 65, 32]);
+	eq("negative abs", pm.seqIndexFor(-1, 0), 95);
 	// probability: 0 never, 100 always, 50 about half and stable per step
 	pm.setLoop(0, 0);
 	pm.setLock(K, 0, P.probability, 0);
@@ -340,6 +340,83 @@ function run(argv) {
 	// retrig: CCs once, with the first hit
 	cm2.setLock(K, 0, P.retrig, 1); cm2.setLock(K, 0, P.length, M.RETRIG_LENS.indexOf(2)); cm2.setLock(K, 0, P.retrigRate, M.RETRIG_RATES.indexOf("1/32"));
 	eq("retrig: CC once", [cm2.eventsAt(0, 100, 0, 0).filter(function (e) { return e.lane === 3; }).length, cm2.eventsAt(1, 100, 0, 0).filter(function (e) { return e.lane === 3; }).length], [2, 0]);
+
+	// ---- microtime ----
+	var mt = new M.Model(); mt.setLoop(0, 1);
+	var kn = function (ev, lane) { return ev.filter(function (e) { return e.lane === lane; }).map(function (e) { return [e.offMs, e.durMs]; }); };
+	mt.addTrig(K, 4); mt.setLock(K, 4, P.microtime, 6);
+	eq("late: offset in step", kn(mt.eventsAt(4, 100, 0, 0), K), [[25, 50]]);
+	mt.addTrig(K, 8); mt.setLock(K, 8, P.microtime, -6);
+	eq("early: plays in the step before", [kn(mt.eventsAt(7, 100, 0, 0), K), kn(mt.eventsAt(8, 100, 0, 0), K)], [[[75, 50]], []]);
+	eq("early on the play start step: on it", kn(mt.eventsAt(8, 100, 0, 8), K), [[0, 50]]);
+	mt.addTrig(K, 12); mt.setLock(K, 12, P.microtime, -12); mt.addTrig(K, 11); mt.setLock(K, 11, P.microtime, 12);
+	eq("+12 and next -12 at the same time: one note", [kn(mt.eventsAt(11, 100, 0, 0), K), kn(mt.eventsAt(12, 100, 0, 0), K)], [[[50, 50]], []]);
+	// mono cut by an early next note
+	mt.addTrig(B, 16, 40); mt.setLock(B, 16, P.length, M.RETRIG_LENS.indexOf(2)); mt.addTrig(B, 17, 43); mt.setLock(B, 17, P.microtime, -6);
+	eq("cut by early next note", kn(mt.eventsAt(16, 100, 0, 0), B), [[0, 74], [75, 50]]);
+	// retrig hits move with the note
+	mt.addTrig(K, 24); mt.setLock(K, 24, P.microtime, 3); mt.setLock(K, 24, P.retrig, 1); mt.setLock(K, 24, P.length, M.RETRIG_LENS.indexOf(1)); mt.setLock(K, 24, P.retrigRate, M.RETRIG_RATES.indexOf("1/32"));
+	eq("retrig shifted", kn(mt.eventsAt(24, 100, 0, 0), K).map(function (x) { return x[0]; }), [12.5, 62.5]);
+	// late slide: glide window is measured from the shifted start
+	mt.addTrig(B, 20, 40); mt.setLock(B, 20, P.microtime, 12); mt.setLock(B, 20, P.slide, 1); mt.setLock(B, 20, P.length, M.RETRIG_LENS.indexOf(4)); mt.addTrig(B, 21, 42);
+	var sb = mt.eventsAt(20, 100, 0, 0), bends = sb.filter(function (e) { return e.lane === 2 && e.pitch !== 8192; });
+	eq("late slide: note at 50", kn(sb, B).map(function (x) { return x[0]; }), [50]);
+	eq("late slide: bends after the note", bends.length > 0 && bends[0].offMs > 50, true);
+	eq("late slide: lands on step 21", mt.eventsAt(21, 100, 0, 0).filter(function (e) { return e.lane === 2; }).slice(-1)[0].pitch, Math.round(8192 + 2 / 24 * 8191));
+
+	// ---- per-lane Length + Euclid ----
+	var eu = new M.Model();
+	eq("default length 32", [eu.lanes[K].length, eu.lanes[B].length], [32, 32]);
+	eu.setLoop(1, 2);
+	eq("page loop sets lengths", [eu.lanes[K].length, eu.lanes[B].length, eu.loopEnd], [64, 64, 2]);
+	eu.setLaneLength(K, 12); eu.setLaneLength(B, 40);
+	eq("odd lengths, loop end follows longer", [eu.seqIndexFor(12, K), eu.seqIndexFor(13, K), eu.seqIndexFor(40, B), eu.loopEnd], [32, 33, 32, 2]);
+	eq("length capped from start page", (eu.setLaneLength(K, 999), eu.lanes[K].length), 512 - 32);
+	eu.setLoop(0, 0); eu.setLaneLength(K, 16);
+	eu.setEuclid(K, "steps", 8); eu.setEuclid(K, "pulses", 3);
+	var hits = function (m, l, n) { var o = ""; for (var i = 0; i < n; i++) o += m.euclidHit(l, i) ? "x" : "."; return o; };
+	eq("E(3,8)", hits(eu, K, 16), "x..x..x.x..x..x.");
+	eu.setEuclid(K, "rotate", 1);
+	eq("rotate 1", hits(eu, K, 8), ".x..x..x");
+	eu.setEuclid(K, "rotate", 0); eu.setEuclid(K, "pulses", 9);
+	eq("pulses capped at steps", hits(eu, K, 8), "xxxxxxxx");
+	eu.setEuclid(K, "pulses", 0);
+	eq("0 pulses", hits(eu, K, 8), "........");
+	eu.setEuclid(K, "pulses", 4); eu.setLaneLength(K, 6);
+	eq("restarts each Length, none outside", hits(eu, K, 8), "x.x.x.xx".slice(0, 6) + "..");
+	var fm = new M.Model(); fm.setLoop(0, 0); fm.setLaneLength(K, 12); fm.setEuclid(K, "steps", 8); fm.setEuclid(K, "pulses", 3);
+	eq("follow off: Steps 8", hits(fm, K, 12), "x..x..x.x..x");
+	fm.setEuclid(K, "follow", 1);
+	eq("follow on: over Length 12", hits(fm, K, 12), "x...x...x...");
+	fm.setLaneLength(K, 9);
+	eq("follow tracks Length", hits(fm, K, 12), "x..x..x.....");
+	var fm2 = new M.Model(); fm2.decode(fm.encode()); eq("follow saved", fm2.lanes[K].euclid.follow, 1);
+	// layers
+	var lm = new M.Model(); lm.setLoop(0, 0); lm.setEuclid(K, "steps", 4); lm.setEuclid(K, "pulses", 1); lm.setEuclid(K, "velocity", 77);
+	lm.addTrig(K, 2); lm.addTrig(K, 4); lm.setLock(K, 4, P.velocity, 50);
+	var kv = function (m, a) { return m.eventsAt(a, 100, 0, 0).filter(function (e) { return e.lane === K; }).map(function (e) { return e.velocity; }); };
+	eq("Both: euclid + manual, manual wins", [kv(lm, 0), kv(lm, 2), kv(lm, 4)], [[77], [100], [50]]);
+	lm.setMuted(K, 4, true);
+	eq("Both: muted manual silences the hit", kv(lm, 4), []);
+	lm.setEuclid(K, "layer", 0);
+	eq("Manual only", [kv(lm, 0), kv(lm, 2)], [[], [100]]);
+	lm.setEuclid(K, "layer", 1);
+	eq("Euclid only", [kv(lm, 0), kv(lm, 2), kv(lm, 4)], [[77], [], [77]]);
+	lm.setEuclid(B, "steps", 2); lm.setEuclid(B, "pulses", 1); lm.setEuclid(B, "note", 43);
+	eq("bass euclid note", lm.eventsAt(0, 100, 0, 0).filter(function (e) { return e.lane === B; }).map(function (e) { return e.pitch; }), [43]);
+	// print
+	lm.setEuclid(K, "layer", 2); lm.addTrig(B, 2, 40); lm.setLock(B, 2, P.cc1, 9); lm.setMuted(B, 2, true);
+	eq("print count", [lm.printEuclid(K), lm.printEuclid(B)], [8, 16]);
+	eq("print keeps locks, un-mutes, replaces note", [lm.step(B, 2).note, lm.step(B, 2).locks[P.cc1], lm.step(B, 2).muted], [43, 9, false]);
+	eq("print new step: euclid velocity lock", [lm.value(K, 8, P.velocity), lm.value(K, 4, P.velocity), lm.step(K, 4).muted], [77, 50, false]);
+	eq("print leaves non-hits", [lm.hasTrig(K, 1), lm.hasTrig(K, 2)], [false, true]);
+	// save v3
+	var sv = new M.Model(); sv.setLoop(2, 3); sv.setLaneLength(B, 23); sv.setEuclid(B, "pulses", 5); sv.setEuclid(K, "layer", 1);
+	var sv2 = new M.Model(); sv2.decode(sv.encode());
+	eq("v3 round trip", [sv2.loopStart, sv2.loopEnd, sv2.lanes[K].length, sv2.lanes[B].length, sv2.lanes[B].euclid.pulses, sv2.lanes[K].euclid.layer], [2, 3, 64, 23, 5, 1]);
+	var v2 = sv.encode(); v2[1] = 2; v2 = v2.slice(0, v2.length - 16);
+	var sv3 = new M.Model(); eq("v2 load", sv3.decode(v2), true);
+	eq("v2: length from loop pages", [sv3.lanes[K].length, sv3.lanes[B].length, sv3.lanes[B].euclid.pulses], [64, 64, 0]);
 
 	log.push(passes + " passed, " + fails + " failed");
 	return log.join("\n");

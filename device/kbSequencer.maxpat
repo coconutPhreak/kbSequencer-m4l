@@ -374,7 +374,7 @@
       400,
       20
      ],
-     "text": "kbSequencer \u00b7 CC locks   v0.10.2 \u00b7 1115.1740",
+     "text": "kbSequencer \u00b7 CC locks   v0.12.4 \u00b7 1115.1839",
      "numinlets": 1,
      "numoutlets": 0
     }
@@ -3466,6 +3466,485 @@
    },
    {
     "box": {
+     "id": "pv_kLength",
+     "maxclass": "live.numbox",
+     "patching_rect": [
+      1270,
+      212,
+      80,
+      15
+     ],
+     "numinlets": 1,
+     "numoutlets": 2,
+     "outlettype": [
+      "",
+      "float"
+     ],
+     "parameter_enable": 1,
+     "varname": "pv_kLength",
+     "saved_attribute_attributes": {
+      "valueof": {
+       "parameter_longname": "KLength",
+       "parameter_shortname": "Length",
+       "parameter_initial_enable": 0,
+       "parameter_type": 0,
+       "parameter_mmin": 1,
+       "parameter_mmax": 512,
+       "parameter_unitstyle": 0
+      }
+     }
+    }
+   },
+   {
+    "box": {
+     "id": "pv_kEuSteps",
+     "maxclass": "live.numbox",
+     "patching_rect": [
+      1270,
+      236,
+      80,
+      15
+     ],
+     "numinlets": 1,
+     "numoutlets": 2,
+     "outlettype": [
+      "",
+      "float"
+     ],
+     "parameter_enable": 1,
+     "varname": "pv_kEuSteps",
+     "saved_attribute_attributes": {
+      "valueof": {
+       "parameter_longname": "KEuSteps",
+       "parameter_shortname": "Steps",
+       "parameter_initial_enable": 0,
+       "parameter_type": 1,
+       "parameter_mmin": 1,
+       "parameter_mmax": 64,
+       "parameter_unitstyle": 0
+      }
+     }
+    }
+   },
+   {
+    "box": {
+     "id": "pv_kEuPulses",
+     "maxclass": "live.numbox",
+     "patching_rect": [
+      1270,
+      260,
+      80,
+      15
+     ],
+     "numinlets": 1,
+     "numoutlets": 2,
+     "outlettype": [
+      "",
+      "float"
+     ],
+     "parameter_enable": 1,
+     "varname": "pv_kEuPulses",
+     "saved_attribute_attributes": {
+      "valueof": {
+       "parameter_longname": "KEuPulses",
+       "parameter_shortname": "Pulses",
+       "parameter_initial_enable": 0,
+       "parameter_type": 1,
+       "parameter_mmin": 0,
+       "parameter_mmax": 64,
+       "parameter_unitstyle": 0
+      }
+     }
+    }
+   },
+   {
+    "box": {
+     "id": "pv_kEuRotate",
+     "maxclass": "live.numbox",
+     "patching_rect": [
+      1270,
+      284,
+      80,
+      15
+     ],
+     "numinlets": 1,
+     "numoutlets": 2,
+     "outlettype": [
+      "",
+      "float"
+     ],
+     "parameter_enable": 1,
+     "varname": "pv_kEuRotate",
+     "saved_attribute_attributes": {
+      "valueof": {
+       "parameter_longname": "KEuRotate",
+       "parameter_shortname": "Rotate",
+       "parameter_initial_enable": 0,
+       "parameter_type": 1,
+       "parameter_mmin": 0,
+       "parameter_mmax": 63,
+       "parameter_unitstyle": 0
+      }
+     }
+    }
+   },
+   {
+    "box": {
+     "id": "pv_kEuLayer",
+     "maxclass": "live.menu",
+     "patching_rect": [
+      1360,
+      20,
+      80,
+      15
+     ],
+     "numinlets": 1,
+     "numoutlets": 3,
+     "outlettype": [
+      "",
+      "",
+      "float"
+     ],
+     "parameter_enable": 1,
+     "varname": "pv_kEuLayer",
+     "saved_attribute_attributes": {
+      "valueof": {
+       "parameter_longname": "KEuLayer",
+       "parameter_shortname": "Layer",
+       "parameter_initial_enable": 0,
+       "parameter_type": 2,
+       "parameter_enum": [
+        "Manual",
+        "Euclid",
+        "Both"
+       ],
+       "parameter_mmax": 2
+      }
+     }
+    }
+   },
+   {
+    "box": {
+     "id": "pv_kEuVel",
+     "maxclass": "live.numbox",
+     "patching_rect": [
+      1360,
+      44,
+      80,
+      15
+     ],
+     "numinlets": 1,
+     "numoutlets": 2,
+     "outlettype": [
+      "",
+      "float"
+     ],
+     "parameter_enable": 1,
+     "varname": "pv_kEuVel",
+     "saved_attribute_attributes": {
+      "valueof": {
+       "parameter_longname": "KEuVel",
+       "parameter_shortname": "Velocity",
+       "parameter_initial_enable": 0,
+       "parameter_type": 1,
+       "parameter_mmin": 1,
+       "parameter_mmax": 127,
+       "parameter_unitstyle": 0
+      }
+     }
+    }
+   },
+   {
+    "box": {
+     "id": "pv_kEuFollow",
+     "maxclass": "live.menu",
+     "patching_rect": [
+      1360,
+      68,
+      80,
+      15
+     ],
+     "numinlets": 1,
+     "numoutlets": 3,
+     "outlettype": [
+      "",
+      "",
+      "float"
+     ],
+     "parameter_enable": 1,
+     "varname": "pv_kEuFollow",
+     "saved_attribute_attributes": {
+      "valueof": {
+       "parameter_longname": "KEuFollow",
+       "parameter_shortname": "Follow",
+       "parameter_initial_enable": 0,
+       "parameter_type": 2,
+       "parameter_enum": [
+        "Off",
+        "On"
+       ],
+       "parameter_mmax": 1
+      }
+     }
+    }
+   },
+   {
+    "box": {
+     "id": "pv_bLength",
+     "maxclass": "live.numbox",
+     "patching_rect": [
+      1360,
+      92,
+      80,
+      15
+     ],
+     "numinlets": 1,
+     "numoutlets": 2,
+     "outlettype": [
+      "",
+      "float"
+     ],
+     "parameter_enable": 1,
+     "varname": "pv_bLength",
+     "saved_attribute_attributes": {
+      "valueof": {
+       "parameter_longname": "BLength",
+       "parameter_shortname": "Length",
+       "parameter_initial_enable": 0,
+       "parameter_type": 0,
+       "parameter_mmin": 1,
+       "parameter_mmax": 512,
+       "parameter_unitstyle": 0
+      }
+     }
+    }
+   },
+   {
+    "box": {
+     "id": "pv_bEuSteps",
+     "maxclass": "live.numbox",
+     "patching_rect": [
+      1360,
+      116,
+      80,
+      15
+     ],
+     "numinlets": 1,
+     "numoutlets": 2,
+     "outlettype": [
+      "",
+      "float"
+     ],
+     "parameter_enable": 1,
+     "varname": "pv_bEuSteps",
+     "saved_attribute_attributes": {
+      "valueof": {
+       "parameter_longname": "BEuSteps",
+       "parameter_shortname": "Steps",
+       "parameter_initial_enable": 0,
+       "parameter_type": 1,
+       "parameter_mmin": 1,
+       "parameter_mmax": 64,
+       "parameter_unitstyle": 0
+      }
+     }
+    }
+   },
+   {
+    "box": {
+     "id": "pv_bEuPulses",
+     "maxclass": "live.numbox",
+     "patching_rect": [
+      1360,
+      140,
+      80,
+      15
+     ],
+     "numinlets": 1,
+     "numoutlets": 2,
+     "outlettype": [
+      "",
+      "float"
+     ],
+     "parameter_enable": 1,
+     "varname": "pv_bEuPulses",
+     "saved_attribute_attributes": {
+      "valueof": {
+       "parameter_longname": "BEuPulses",
+       "parameter_shortname": "Pulses",
+       "parameter_initial_enable": 0,
+       "parameter_type": 1,
+       "parameter_mmin": 0,
+       "parameter_mmax": 64,
+       "parameter_unitstyle": 0
+      }
+     }
+    }
+   },
+   {
+    "box": {
+     "id": "pv_bEuRotate",
+     "maxclass": "live.numbox",
+     "patching_rect": [
+      1360,
+      164,
+      80,
+      15
+     ],
+     "numinlets": 1,
+     "numoutlets": 2,
+     "outlettype": [
+      "",
+      "float"
+     ],
+     "parameter_enable": 1,
+     "varname": "pv_bEuRotate",
+     "saved_attribute_attributes": {
+      "valueof": {
+       "parameter_longname": "BEuRotate",
+       "parameter_shortname": "Rotate",
+       "parameter_initial_enable": 0,
+       "parameter_type": 1,
+       "parameter_mmin": 0,
+       "parameter_mmax": 63,
+       "parameter_unitstyle": 0
+      }
+     }
+    }
+   },
+   {
+    "box": {
+     "id": "pv_bEuLayer",
+     "maxclass": "live.menu",
+     "patching_rect": [
+      1360,
+      188,
+      80,
+      15
+     ],
+     "numinlets": 1,
+     "numoutlets": 3,
+     "outlettype": [
+      "",
+      "",
+      "float"
+     ],
+     "parameter_enable": 1,
+     "varname": "pv_bEuLayer",
+     "saved_attribute_attributes": {
+      "valueof": {
+       "parameter_longname": "BEuLayer",
+       "parameter_shortname": "Layer",
+       "parameter_initial_enable": 0,
+       "parameter_type": 2,
+       "parameter_enum": [
+        "Manual",
+        "Euclid",
+        "Both"
+       ],
+       "parameter_mmax": 2
+      }
+     }
+    }
+   },
+   {
+    "box": {
+     "id": "pv_bEuVel",
+     "maxclass": "live.numbox",
+     "patching_rect": [
+      1360,
+      212,
+      80,
+      15
+     ],
+     "numinlets": 1,
+     "numoutlets": 2,
+     "outlettype": [
+      "",
+      "float"
+     ],
+     "parameter_enable": 1,
+     "varname": "pv_bEuVel",
+     "saved_attribute_attributes": {
+      "valueof": {
+       "parameter_longname": "BEuVel",
+       "parameter_shortname": "Velocity",
+       "parameter_initial_enable": 0,
+       "parameter_type": 1,
+       "parameter_mmin": 1,
+       "parameter_mmax": 127,
+       "parameter_unitstyle": 0
+      }
+     }
+    }
+   },
+   {
+    "box": {
+     "id": "pv_bEuFollow",
+     "maxclass": "live.menu",
+     "patching_rect": [
+      1360,
+      236,
+      80,
+      15
+     ],
+     "numinlets": 1,
+     "numoutlets": 3,
+     "outlettype": [
+      "",
+      "",
+      "float"
+     ],
+     "parameter_enable": 1,
+     "varname": "pv_bEuFollow",
+     "saved_attribute_attributes": {
+      "valueof": {
+       "parameter_longname": "BEuFollow",
+       "parameter_shortname": "Follow",
+       "parameter_initial_enable": 0,
+       "parameter_type": 2,
+       "parameter_enum": [
+        "Off",
+        "On"
+       ],
+       "parameter_mmax": 1
+      }
+     }
+    }
+   },
+   {
+    "box": {
+     "id": "pv_bEuNote",
+     "maxclass": "live.numbox",
+     "patching_rect": [
+      1360,
+      260,
+      80,
+      15
+     ],
+     "numinlets": 1,
+     "numoutlets": 2,
+     "outlettype": [
+      "",
+      "float"
+     ],
+     "parameter_enable": 1,
+     "varname": "pv_bEuNote",
+     "saved_attribute_attributes": {
+      "valueof": {
+       "parameter_longname": "BEuNote",
+       "parameter_shortname": "Note",
+       "parameter_initial_enable": 0,
+       "parameter_type": 1,
+       "parameter_mmin": 0,
+       "parameter_mmax": 127,
+       "parameter_unitstyle": 8
+      }
+     }
+    }
+   },
+   {
+    "box": {
      "id": "banks",
      "maxclass": "newobj",
      "patching_rect": [
@@ -5254,6 +5733,81 @@
    "pv_slideCurve": [
     "SlCurve",
     "Sl Curve",
+    0
+   ],
+   "pv_kLength": [
+    "KLength",
+    "Length",
+    0
+   ],
+   "pv_kEuSteps": [
+    "KEuSteps",
+    "Steps",
+    0
+   ],
+   "pv_kEuPulses": [
+    "KEuPulses",
+    "Pulses",
+    0
+   ],
+   "pv_kEuRotate": [
+    "KEuRotate",
+    "Rotate",
+    0
+   ],
+   "pv_kEuLayer": [
+    "KEuLayer",
+    "Layer",
+    0
+   ],
+   "pv_kEuVel": [
+    "KEuVel",
+    "Velocity",
+    0
+   ],
+   "pv_kEuFollow": [
+    "KEuFollow",
+    "Follow",
+    0
+   ],
+   "pv_bLength": [
+    "BLength",
+    "Length",
+    0
+   ],
+   "pv_bEuSteps": [
+    "BEuSteps",
+    "Steps",
+    0
+   ],
+   "pv_bEuPulses": [
+    "BEuPulses",
+    "Pulses",
+    0
+   ],
+   "pv_bEuRotate": [
+    "BEuRotate",
+    "Rotate",
+    0
+   ],
+   "pv_bEuLayer": [
+    "BEuLayer",
+    "Layer",
+    0
+   ],
+   "pv_bEuVel": [
+    "BEuVel",
+    "Velocity",
+    0
+   ],
+   "pv_bEuFollow": [
+    "BEuFollow",
+    "Follow",
+    0
+   ],
+   "pv_bEuNote": [
+    "BEuNote",
+    "Note",
     0
    ],
    "inherited_shortname": 1

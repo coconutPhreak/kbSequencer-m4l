@@ -97,11 +97,26 @@ var SETTINGS = [
 	{ key: "swing",       min: 50, max: 75, def: 50 }
 ];
 
+// Euclidean generator, per lane (a separate layer from the manual steps).
+// Order is the save format: APPEND ONLY. layer: which steps play.
+var EUCLID = [
+	{ key: "steps",    min: 1, max: 64,  def: 16 },  // pattern length, repeats through the lane
+	{ key: "pulses",   min: 0, max: 64,  def: 0 },   // hits per pattern (capped at steps)
+	{ key: "rotate",   min: 0, max: 63,  def: 0 },   // shifts the hits later by n steps
+	{ key: "layer",    min: 0, max: 2,   def: 2 },   // 0 Manual, 1 Euclid, 2 Both (manual wins)
+	{ key: "velocity", min: 1, max: 127, def: 100 },
+	{ key: "note",     min: 0, max: 127, def: 36 },  // bass only
+	{ key: "follow",   min: 0, max: 1,   def: 0 }    // 1: Steps = the lane's Length (Steps ignored)
+];
+var LAYERS = ["Manual", "Euclid", "Both"];
+var MAX_LENGTH = NUM_STEPS;
+
 var DEFAULT_CC = [[20, 21, 22, 23, 24, 25, 26, 27], [70, 71, 72, 73, 74, 75, 76, 77]];
 var DEFAULT_BASS_NOTE = 36;
 
 // v2: step length is an index into RETRIG_LENS (v1: gate ticks, param 1).
-var MAGIC = 7101, VERSION = 2;
+// v3: per-lane Length (steps) and Euclid settings, after the lanes.
+var MAGIC = 7101, VERSION = 3;
 
 // Nearest LEN entry (by ratio) to a length in steps.
 function nearestLen(steps) {
@@ -129,14 +144,16 @@ Model.prototype.clear = function () {
 		for (var p = 0; p < PARAMS.length; p++) defs.push(PARAMS[p].def);
 		var steps = [];
 		for (var s = 0; s < NUM_STEPS; s++) steps.push(null);
-		this.lanes.push({ steps: steps, defaults: defs, ccNums: DEFAULT_CC[l].slice() });
+		var eu = {};
+		for (var e = 0; e < EUCLID.length; e++) eu[EUCLID[e].key] = EUCLID[e].def;
+		this.lanes.push({ steps: steps, defaults: defs, ccNums: DEFAULT_CC[l].slice(), length: STEPS_PER_PAGE, euclid: eu });
 	}
 	this.changed();
 };
 
 // Called on every edit; the device hooks this to schedule a save.
 Model.prototype.onChange = null;
-Model.prototype.changed = function () { this._reach = null; if (this.onChange) this.onChange(); };
+Model.prototype.changed = function () { this._reach = null; this._eu = null; if (this.onChange) this.onChange(); };
 
 // How many steps back a note could still be sounding, per lane: the longest
 // Length (INF: RETRIG_LOOKBACK), plus one 1/1 interval on retrig steps.
@@ -145,8 +162,8 @@ Model.prototype.reach = function (l) {
 	if (!this._reach) this._reach = [];
 	if (this._reach[l] !== undefined) return this._reach[l];
 	var steps = this.lanes[l].steps, r = 1;
-	for (var i = 0; i < NUM_STEPS; i++) {
-		if (!steps[i]) continue;
+	for (var i = -1; i < NUM_STEPS; i++) {
+		if (i >= 0 && !steps[i]) continue; // -1: the lane defaults (Euclid hits use them)
 		var len = RETRIG_LENS[this.value(l, i, PARAM_ID.length)];
 		if (len === Infinity) { r = RETRIG_LOOKBACK; break; }
 		if (this.value(l, i, PARAM_ID.retrig) === 1) len += 16;
@@ -240,6 +257,12 @@ Model.prototype.hasLocks = function (lane, i) {
 	return false;
 };
 
+// Value from a step object (manual or a Euclid hit): its lock, else the default.
+Model.prototype.stepValue = function (lane, st, pid) {
+	if (st && (pid in st.locks)) return st.locks[pid];
+	return this.lanes[lane].defaults[pid];
+};
+
 // Effective value: the step's lock, else the lane default.
 Model.prototype.value = function (lane, i, pid) {
 	var st = this.lanes[lane].steps[i];
@@ -266,8 +289,89 @@ Model.prototype.setSetting = function (key, value) {
 Model.prototype.setLoop = function (startPage, endPage) {
 	var a = clamp(startPage, 0, PAGES - 1), b = clamp(endPage, 0, PAGES - 1);
 	this.loopStart = Math.min(a, b);
-	this.loopEnd = Math.max(a, b);
+	for (var l = 0; l < 2; l++) this.lanes[l].length = (Math.max(a, b) - this.loopStart + 1) * STEPS_PER_PAGE;
+	this.updateLoopEnd();
 	this.changed();
+};
+
+// Per-lane Length in steps, counted from the loop's start page (any number,
+// not just whole pages). The loop's last page follows the longer lane.
+Model.prototype.maxLength = function () { return MAX_LENGTH - this.loopStart * STEPS_PER_PAGE; };
+Model.prototype.setLaneLength = function (l, len) {
+	this.lanes[l].length = clamp(len, 1, this.maxLength());
+	this.updateLoopEnd();
+	this.changed();
+};
+Model.prototype.updateLoopEnd = function () {
+	var m = Math.max(this.lanes[0].length, this.lanes[1].length);
+	this.loopEnd = Math.min(PAGES - 1, this.loopStart + Math.ceil(m / STEPS_PER_PAGE) - 1);
+};
+// Is step i inside lane l's loop?
+Model.prototype.inLoop = function (l, i) {
+	var m = i - this.loopStart * STEPS_PER_PAGE;
+	return m >= 0 && m < this.lanes[l].length;
+};
+
+// ---------- Euclidean layer ----------
+Model.prototype.setEuclid = function (l, key, value) {
+	for (var e = 0; e < EUCLID.length; e++) {
+		if (EUCLID[e].key !== key) continue;
+		this.lanes[l].euclid[key] = clamp(value, EUCLID[e].min, EUCLID[e].max);
+		this.changed();
+		return;
+	}
+};
+// Does the Euclid pattern have a hit on step i (inside the lane's loop)?
+// Pulses spread as evenly as possible over Steps (or the whole Length with
+// Follow on) (Bjorklund), first hit on
+// the pattern's first step, then shifted later by Rotate; the pattern
+// restarts with every pass of the lane's Length.
+Model.prototype.euclidHit = function (l, i) {
+	var eu = this.lanes[l].euclid, n = eu.follow ? this.lanes[l].length : eu.steps, k = Math.min(eu.pulses, n);
+	if (k <= 0 || !this.inLoop(l, i)) return false;
+	var m = i - this.loopStart * STEPS_PER_PAGE;
+	var e = (((m % n) - eu.rotate) % n + n) % n;
+	return (e * k) % n < k;
+};
+// The step that plays at index i, by the lane's Layer: the manual step, a
+// Euclid hit (a step with the Euclid velocity and note, else the lane
+// defaults) or, in Both, the manual step if there is one (muted included).
+Model.prototype.playStepAt = function (l, i) {
+	var lane = this.lanes[l], manual = lane.steps[i], layer = lane.euclid.layer;
+	if (layer === 0 || (layer === 2 && manual)) return manual;
+	if (!this.euclidHit(l, i)) return layer === 2 ? manual : null;
+	if (!this._eu) this._eu = [];
+	if (!this._eu[l]) {
+		var locks = {};
+		locks[PARAM_ID.velocity] = lane.euclid.velocity;
+		this._eu[l] = { muted: false, note: l === BASS ? lane.euclid.note : -1, locks: locks, euclid: true };
+	}
+	return this._eu[l];
+};
+Model.prototype.pageHasEuclid = function (l, page) {
+	if (this.lanes[l].euclid.layer === 0) return false;
+	for (var i = page * STEPS_PER_PAGE; i < (page + 1) * STEPS_PER_PAGE; i++) if (this.euclidHit(l, i)) return true;
+	return false;
+};
+// Print: writes the lane's Euclid hits (over its Length) onto the manual
+// steps. A hit on an existing step replaces its note (bass) and un-mutes it,
+// keeping its locks; a new step gets the Euclid velocity (as a lock when it
+// differs from the default). Returns the number of steps written.
+Model.prototype.printEuclid = function (l) {
+	var lane = this.lanes[l], eu = lane.euclid, n = 0;
+	for (var i = this.loopStart * STEPS_PER_PAGE, end = i + lane.length; i < end; i++) {
+		if (!this.euclidHit(l, i)) continue;
+		var st = lane.steps[i];
+		if (!st) {
+			st = lane.steps[i] = { muted: false, note: -1, locks: {} };
+			if (eu.velocity !== lane.defaults[PARAM_ID.velocity]) st.locks[PARAM_ID.velocity] = eu.velocity;
+		}
+		st.muted = false;
+		if (l === BASS) st.note = eu.note;
+		n++;
+	}
+	if (n) this.changed();
+	return n;
 };
 
 Model.prototype.setCcNumber = function (lane, slot, cc) {
@@ -283,13 +387,13 @@ Model.prototype.countTrigs = function (lane) {
 
 // ---------- playback ----------
 // absStep: 1/16 steps since song start (from Live's transport).
-// Maps it into the loop range (whole pages), so the pattern stays locked to
-// the song position.
-Model.prototype.loopLength = function () {
-	return (this.loopEnd - this.loopStart + 1) * STEPS_PER_PAGE;
+// Maps it into the lane's loop (Length steps from the loop's start page), so
+// the pattern stays locked to the song position.
+Model.prototype.loopLength = function (l) {
+	return this.lanes[l].length;
 };
-Model.prototype.seqIndexFor = function (absStep) {
-	var len = this.loopLength();
+Model.prototype.seqIndexFor = function (absStep, l) {
+	var len = this.lanes[l].length;
 	var m = absStep % len;
 	if (m < 0) m += len;
 	return this.loopStart * STEPS_PER_PAGE + m;
@@ -305,13 +409,14 @@ function chance(absStep, lane, seed) {
 // One lane's note at absStep, or null (no trig, muted, probability or a
 // PMODE Note roll failed). Carries the step's retrig settings.
 Model.prototype.noteAt = function (l, absStep, stepMs, seed) {
-	var idx = this.seqIndexFor(absStep), st = this.lanes[l].steps[idx];
+	var idx = this.seqIndexFor(absStep, l), st = this.playStepAt(l, idx);
 	if (!st || st.muted) return null;
-	var self = this, v = function (key) { return self.value(l, idx, PARAM_ID[key]); };
+	var self = this, v = function (key) { return self.stepValue(l, st, PARAM_ID[key]); };
 	var prob = v("probability");
 	if (prob < 100 && chance(absStep, l, seed || 0) * 100 >= prob) return null;
 	var n = {
 		lane: l, abs: absStep,
+		t: absStep + v("microtime") / TICKS_PER_STEP, // start time in steps (microtime)
 		pitch: l === KICK ? this.settings.kickNote : st.note,
 		velocity: Math.max(1, v("velocity")),
 		lenSteps: RETRIG_LENS[v("length")],
@@ -398,18 +503,18 @@ function curveShape(x, c) {
 // Notes (chains) of one lane from `from`, until the first new note that
 // starts after absStep (needed for mono cuts) or RETRIG_LOOKBACK steps on.
 Model.prototype.laneChains = function (l, from, absStep, stepMs, seed) {
-	var chains = [], cur = null, steps = this.lanes[l].steps, range = this.settings.bendRange;
+	var chains = [], cur = null, range = this.settings.bendRange;
 	for (var b = from; b <= absStep + RETRIG_LOOKBACK; b++) {
-		var idx = this.seqIndexFor(b), st = steps[idx];
+		var idx = this.seqIndexFor(b, l), st = this.playStepAt(l, idx);
 		if (cur && cur.open) {
 			if (!st || st.muted) continue;
 			var pitch = l === KICK ? this.settings.kickNote : st.note;
 			// Connects only while the note still sounds (the first note's Length
 			// from its start) and within the bend range; else a new note.
-			var sounding = b < cur.first.abs + cur.first.lenSteps - 1e-9;
+			var sounding = b < cur.first.t + cur.first.lenSteps - 1e-9;
 			if (sounding && (l !== BASS || Math.abs(pitch - cur.first.pitch) <= range)) {
-				var sl = l === BASS && this.value(l, idx, PARAM_ID.slide) === 1, ti = this.value(l, idx, PARAM_ID.tie) === 1;
-				cur.notes.push({ abs: b, pitch: pitch, slide: sl, tie: ti });
+				var sl = l === BASS && this.stepValue(l, st, PARAM_ID.slide) === 1, ti = this.stepValue(l, st, PARAM_ID.tie) === 1;
+				cur.notes.push({ abs: b, t: b, pitch: pitch, slide: sl, tie: ti }); // on the grid
 				cur.open = sl || ti;
 				continue;
 			}
@@ -417,9 +522,11 @@ Model.prototype.laneChains = function (l, from, absStep, stepMs, seed) {
 		}
 		var n = this.noteAt(l, b, stepMs, seed);
 		if (!n) continue;
-		cur = { first: n, notes: [{ abs: b, pitch: n.pitch, slide: n.slide, tie: n.tie }], open: !n.retrig && (n.slide || n.tie) };
+		cur = { first: n, notes: [{ abs: b, t: n.t, pitch: n.pitch, slide: n.slide, tie: n.tie }], open: !n.retrig && (n.slide || n.tie) };
 		chains.push(cur);
-		if (b > absStep) break; // the next new note after the step: enough
+		// Microtime moves a note at most half a step, so a note from the next
+		// step can still start inside absStep: go one note past that.
+		if (b > absStep + 1) break;
 	}
 	return chains;
 };
@@ -428,7 +535,7 @@ Model.prototype.laneChains = function (l, from, absStep, stepMs, seed) {
 function chainWindows(c) {
 	var w = [], ns = c.notes, p = c.first.slideTime;
 	for (var k = 0; k + 1 < ns.length; k++) {
-		var a = ns[k].abs, b = ns[k + 1].abs, g = b - a, d = ns[k + 1].pitch - ns[k].pitch;
+		var a = ns[k].t, b = ns[k + 1].t, g = b - a, d = ns[k + 1].pitch - ns[k].pitch;
 		if (!d) continue;
 		if (ns[k].slide) {
 			var D = p * g;
@@ -456,7 +563,8 @@ function bendValue(off, range) {
 // on earlier steps (back to startAbs, the play start: nothing ran before
 // it). Voices: each new note may keep at most VOICES−1 notes or bursts
 // running (its own VOICES; Mono = 1): the oldest are cut at its start, so
-// lanes are mono by default. Not yet: microtime, conditions, fill, accent.
+// lanes are mono by default. Microtime shifts a note's start (t) by
+// ±12/24 step, so it may play in the step before. Not yet: conditions, fill, accent.
 Model.prototype.eventsAt = function (absStep, stepMs, seed, startAbs) {
 	if (startAbs === undefined || startAbs > absStep) startAbs = absStep;
 	var out = [], range = this.settings.bendRange;
@@ -466,10 +574,14 @@ Model.prototype.eventsAt = function (absStep, stepMs, seed, startAbs) {
 		var from = Math.max(startAbs, absStep - this.reach(l)), running = [], items = [];
 		var chains = this.laneChains(l, from, absStep, stepMs, seed);
 		for (var ci = 0; ci < chains.length; ci++) {
-			var c = chains[ci], n = c.first, b = n.abs;
+			var c = chains[ci], n = c.first;
+			// Nothing plays before the play start: an early (negative microtime)
+			// note on the first step plays on it.
+			if (n.t < startAbs) n.t = c.notes[0].t = startAbs;
+			var b = n.t;
 			running = running.filter(function (x) { return x.end > b + 1e-9; });
 			while (running.length >= n.voices) running.shift().end = b; // steal the oldest
-			if (b > absStep) break; // only needed for the cut
+			if (b >= absStep + 1 - 1e-9) break; // only needed for the cut
 			var it = { c: c, end: Infinity };
 			if (c.notes.length > 1) {
 				// The first note's Length is the whole held note, from its start: a
@@ -485,16 +597,16 @@ Model.prototype.eventsAt = function (absStep, stepMs, seed, startAbs) {
 		}
 		var ch = l === KICK ? this.settings.kickChannel : this.settings.bassChannel;
 		for (var k = 0; k < items.length; k++) {
-			var item = items[k], c2 = item.c, f = c2.first, st0 = f.abs;
+			var item = items[k], c2 = item.c, f = c2.first, st0 = f.t;
 			if (item.end <= absStep) continue;
 			var cut = item.end < item.natural; // stopped by a later note
-			var endOrNext = item.end === Infinity ? this.nextNoteAbs(l, st0, stepMs, seed) : item.end;
+			var endOrNext = item.end === Infinity ? this.nextNoteAbs(l, f.abs, stepMs, seed) : item.end;
 			if (inStep(st0)) {
 				// CC locks go out with the note, just before it (lane 3 / 4 = kick / bass
 				// CC: pitch = controller, velocity = value). Slid-into steps send none.
-				var lane = this.lanes[l], idx0 = this.seqIndexFor(st0);
+				var lane = this.lanes[l], st0s = this.playStepAt(l, this.seqIndexFor(f.abs, l));
 				for (var cc = 0; cc < CC_SLOTS; cc++) {
-					var cv = this.value(l, idx0, PARAM_ID["cc" + (cc + 1)]);
+					var cv = this.stepValue(l, st0s, PARAM_ID["cc" + (cc + 1)]);
 					if (cv >= 0) out.push({ offMs: ms(st0), lane: 3 + l, pitch: lane.ccNums[cc], velocity: cv, durMs: 0, channel: ch });
 				}
 				if (l === BASS) // centre the bend before every new bass note
@@ -526,7 +638,7 @@ Model.prototype.eventsAt = function (absStep, stepMs, seed, startAbs) {
 // Only when the 14-bit value changes; the comparison starts from the last
 // grid point / window end before the step, so steps join seamlessly.
 Model.prototype.chainBends = function (c, absStep, end, stepMs, range, ch, out) {
-	var f = c.first.abs, t0 = Math.max(absStep, f), t1 = Math.min(absStep + 1, end);
+	var f = c.first.t, t0 = Math.max(absStep, f), t1 = Math.min(absStep + 1, end);
 	if (t1 <= t0) return;
 	var dt = BEND_MS / stepMs, w = c.windows || (c.windows = chainWindows(c));
 	var prev = f + Math.floor((t0 - f - 1e-9) / dt) * dt, k;
@@ -544,9 +656,9 @@ Model.prototype.chainBends = function (c, absStep, end, stepMs, range, ch, out) 
 	}
 };
 
-// Abs step of the lane's next played note after `from` (for INF gates).
+// Start time (steps, with microtime) of the lane's next played note after step `from` (for INF gates).
 Model.prototype.nextNoteAbs = function (l, from, stepMs, seed) {
-	for (var b = from + 1; b <= from + RETRIG_LOOKBACK; b++) if (this.noteAt(l, b, stepMs, seed)) return b;
+	for (var b = from + 1; b <= from + RETRIG_LOOKBACK; b++) { var n = this.noteAt(l, b, stepMs, seed); if (n) return n.t; }
 	return from + RETRIG_LOOKBACK;
 };
 
@@ -595,6 +707,11 @@ Model.prototype.encode = function () {
 			for (var j = 0; j < keys.length; j++) out.push(keys[j], st.locks[keys[j]]);
 		}
 		out[countAt] = n;
+	}
+	// v3: per lane Length, nEuclid, euclid values…
+	for (l = 0; l < this.lanes.length; l++) {
+		out.push(this.lanes[l].length, EUCLID.length);
+		for (i = 0; i < EUCLID.length; i++) out.push(this.lanes[l].euclid[EUCLID[i].key]);
 	}
 	return out;
 };
@@ -648,6 +765,16 @@ Model.prototype.decode = function (list) {
 				if (lane && idx >= 0 && idx < NUM_STEPS) lane.steps[idx] = st;
 			}
 		}
+		var oldLen = (this.loopEnd - this.loopStart + 1) * STEPS_PER_PAGE;
+		for (l = 0; l < 2; l++) this.lanes[l].length = oldLen; // v1/v2: whole loop pages
+		if (ver >= 3) {
+			for (l = 0; l < nl; l++) {
+				var len = next(), ne = next(), ln = l < 2 ? this.lanes[l] : null;
+				if (ln) ln.length = clamp(len, 1, this.maxLength());
+				for (i = 0; i < ne; i++) { var ev = next(); if (ln && i < EUCLID.length) ln.euclid[EUCLID[i].key] = clamp(ev, EUCLID[i].min, EUCLID[i].max); }
+			}
+		}
+		this.updateLoopEnd();
 	} catch (e) {
 		this.clear();
 		this.onChange = saved;
@@ -662,6 +789,7 @@ Model.prototype.decode = function (list) {
 var api = {
 	Model: Model,
 	PARAMS: PARAMS, PARAM_ID: PARAM_ID, SETTINGS: SETTINGS,
+	EUCLID: EUCLID, LAYERS: LAYERS, MAX_LENGTH: MAX_LENGTH,
 	CONDITIONS: CONDITIONS, RETRIG_RATES: RETRIG_RATES, RETRIG_LENS: RETRIG_LENS,
 	RETRIG_LEN_LABELS: RETRIG_LEN_LABELS, RETRIG_PMODES: RETRIG_PMODES, RETRIG_VOICES: RETRIG_VOICES,
 	STEPS_PER_PAGE: STEPS_PER_PAGE, PAGES: PAGES, NUM_STEPS: NUM_STEPS,

@@ -114,7 +114,7 @@ mono note cutting, CC locks (later build steps).
 |---|---|
 | Rows 1–4 | 32 steps of the viewed page (tap / Delete + tap as before; new bass trigs use the brush note) |
 | Rows 5–6 | 16 page pads: viewed = white, playing (follow off) = green, in loop with trigs = mid grey, in loop empty = dim grey, outside loop = off |
-| Hold a page pad + press another | Loop from the first page to the second |
+| Hold a page pad + press another | Loop from the first page to the second (sets both lanes' Length to those pages) |
 | Long-press a page pad (½ s, alone) | Loop just that page, on release (not if an encoder was turned: that's a page lock) |
 | Tap a page pad (or Select + page pad) | View that page for editing without changing the loop; turns follow off |
 | Rows 7–8 | Note keyboard: 16 notes of Live's scale (bottom row lower). Root = blue, others = dim white, brush = bright white; all dim when only kick is selected |
@@ -185,8 +185,8 @@ kbSequencer (Device mode, device selected) to see the bank.
 
 | Context | Display buttons 3–8 (the row under the knobs) | Encoders |
 |---|---|---|
-| Nothing held | 3 **Settings**, 4 **CC Setup** (5–8 free) | Edit them (one Undo per turn) |
-| Step or page held | 3 **Step**, 4 **Retrig**, 5 **Rt Chance**, 6 **More** (Fill, Cond), 7 **CC Locks**, 8 **Slide** | Show and lock the held step's values |
+| Nothing held | 3 **Settings**, 4 **CC Setup**, 5 **Kick Euclid**, 6 **Bass Euclid** (7–8 free) | Edit them (one Undo per turn) |
+| Step or page held | 3 **Step**, 4 **Retrig**, 5 **Rt Chance**, 6 **More** (Fill, Cond: not played yet), 7 **CC Locks**, 8 **Slide** | Show and lock the held step's values |
 
 - Settings: Kick Ch, Bass Ch, Kick Note, Bend, Scale (follow), Swing.
 - CC Setup: CC number of the 8 slots. CC Locks: the held step's lock per slot (-1 = none).
@@ -194,6 +194,10 @@ kbSequencer (Device mode, device selected) to see the bank.
   Note and Slide are hidden when bass isn't selected.
 - More: Retrig, Rt Rate, Rt Fade, Fill, Cond.
 - CC Setup / CC Locks use the first selected lane (kick when both are selected).
+- **Shift + turn = fine adjust**: 4× the turning per value, and never more
+  than one value per encoder message (works for step locks and settings;
+  menus are unaffected). Short menus (up to 4 items, e.g. Layer) always move
+  one item at a time.
 - The last bank picked in each context is remembered. The selected bank's
   button is bright, the other available ones dim.
 - The first 6 encoder messages are printed to the Max Console
@@ -217,8 +221,8 @@ kbSequencer (Device mode, device selected) to see the bank.
 - CC locks: turning up from "-1" (none) starts a lock at 0; turning below 0 clears it.
 - One Undo takes back one encoder turn (edits within 0.6 s are grouped).
 - Playback already uses velocity, length and probability locks; accent,
-  slide, tie, retrig, fill, condition, microtime and CC locks are stored and
-  shown but play in steps 8–10.
+  slide, tie, retrig, microtime and CC locks now play too (later steps);
+  fill and condition are stored and shown but don't play (nice to have).
 - The first 4 touch messages are printed to the Max Console (`touch raw …`).
 
 ## Retrig (from retrig-m4l)
@@ -296,3 +300,60 @@ that lane's kbLane.
 - A CC lock goes out only when the step's note plays: not when muted, when
   its probability fails, or on a step that a slide connects into. A retrig
   burst sends it once, with its first hit.
+
+## Step 10 — Microtime ✅
+
+**Micro** (Step bank) moves a step's note off the grid in 1/24-step
+amounts, −12/24 to +12/24 (half a step either way). Everything that belongs
+to the note moves with it: its CC locks and bend reset, retrig hits, the
+Length (counted from the moved start) and slide timing (glides are measured
+from the moved start). Steps a slide connects into stay on the grid.
+
+- An early note (negative Micro) plays in the step before. On the step where
+  play starts it plays at once, since nothing ran before it.
+- On a mono lane an early next note cuts the current one sooner; two notes
+  landing at the same moment play once.
+
+### Nice to have (not built)
+
+- **Fill**: a step plays only while a Fill button is held.
+- **Condition**: Elektron-style trig conditions (1st, 1:2, 3:4…).
+
+Both are already stored and shown in the **More** bank, so patterns that
+use them keep their values; they just don't change playback yet.
+
+## Euclidean generator and lane Length
+
+Each lane has its own **Length** (1–512 steps, counted from the loop's
+start page; any number, not only whole pages) and its own **Euclid** layer:
+a generated pattern kept apart from the manual steps.
+
+| Bank (nothing held) | Encoders |
+|---|---|
+| 5 **Kick Euclid** | Length, Steps, Pulses, Rotate, Layer, Velocity, Follow |
+| 6 **Bass Euclid** | Length, Steps, Pulses, Rotate, Layer, Velocity, Follow, Note |
+
+- **Steps** (1–64): the pattern length. It repeats through the lane and
+  restarts with each pass of the Length, so Steps ≠ Length gives
+  polyrhythms. **Follow** On makes Steps equal the lane's Length (and
+  track it as Length changes), so the pulses spread over the whole lane;
+  the Steps value is kept for when Follow is off. **Pulses** are spread as evenly as possible over Steps
+  (first hit on the first step); **Rotate** shifts them later.
+- **Layer**: what plays on that lane: **Manual**, **Euclid** or **Both**
+  (default). In Both a manual step wins over a Euclid hit on the same step,
+  with its locks; a muted manual step silences the hit there.
+- Euclid hits play with the Euclid Velocity (and Note on bass) and the
+  lane's defaults for everything else. They have no locks of their own.
+- Pads: Euclid hits on steps with no manual step show in a dimmer lane
+  colour (`col euKick / euBass / euBoth <index>` to tune). Page pads count
+  them as trigs. Each lane has its own playhead.
+- **Shift + Duplicate: Print.** Writes the selected lanes' Euclid hits
+  (over each lane's Length) onto the manual steps. A hit on an existing
+  step un-mutes it and takes the Euclid note (bass), keeping its locks; a
+  new step gets the Euclid velocity. Steps without a hit are left alone.
+  One Undo.
+- Setting a page loop (long-press or two page pads) sets both lanes' Length
+  to those pages. The loop's last page follows the longer lane. Follow
+  mode follows the first selected lane.
+- Saved in the set (save format v3; older sets load with Length = their
+  loop pages).

@@ -40,7 +40,8 @@ var COL = {
 	noteDimmed: 124,  // only kick selected
 	laneOff: 124,     // lane button not selected
 	followOn: 122, followOff: 124,
-	buttonOn: 127     // white-LED buttons (octave)
+	buttonOn: 127,    // white-LED buttons (octave)
+	euKick: 4, euBass: 46, euBoth: 50 // Euclid hits (no manual step there): dimmer lane colours
 };
 
 // ---------- UI state ----------
@@ -170,6 +171,7 @@ var historyPending = false;
 var encoderEdit = false;   // set while an encoder edits: group a turn into one undo
 var ENCODER_REFILL_MS = 60;
 var ENCODER_UNDO_MS = 600;
+var FINE_FACTOR = 4;       // Shift + turn: ticks per value multiplied by this
 function historyChanged() {
 	if (encoderEdit) { historyPending = true; historyTask.schedule(ENCODER_UNDO_MS); return; }
 	if (historyPending) return;
@@ -234,7 +236,7 @@ var LOOKAHEAD = 4;
 var TICKS_PER_16TH = 120; // Live transport: 480 per quarter
 var playing = false;
 var lastAbs = -1;         // last abs step the patch played (or the start point)
-var playStep = -1;        // sequence index under the playhead, -1 = none
+var playSteps = [-1, -1]; // per lane: sequence index under the playhead, -1 = none
 var playStartAbs = 0;     // abs step playback started from (bursts don't reach back past it)
 var tempo = 120;
 var randSeed = Math.floor(Math.random() * 100000);
@@ -272,9 +274,9 @@ function onIsPlaying(args) {
 	playing = Number(a[1]) === 1;
 	if (was === playing) return;
 	if (!playing) {
-		var old = playStep;
-		playStep = -1;
-		defer(function () { renderStep(old); renderPages(); });
+		var old = playSteps;
+		playSteps = [-1, -1];
+		defer(function () { renderStep(old[0]); renderStep(old[1]); renderPages(); });
 		defer(function () { syncToSongTime(Number(songTimeApi.get("current_song_time"))); refillWindow(); });
 	}
 	showStatus();
@@ -313,12 +315,11 @@ function tick(absStep) {
 	lastAbs = absStep;
 	if (!playing) playing = true; // tick can arrive before the is_playing notification
 	if (jumped) refillWindow(); else fillSlot(absStep + LOOKAHEAD);
-	var old = playStep, oldPage = playPage();
-	playStep = model.seqIndexFor(absStep);
-	if (!grabbed || old === playStep) return;
+	var old = playSteps, oldPage = playPage();
+	playSteps = [model.seqIndexFor(absStep, S.KICK), model.seqIndexFor(absStep, S.BASS)];
+	if (!grabbed || (old[0] === playSteps[0] && old[1] === playSteps[1])) return;
 	if (followPlayhead()) { renderAll(); showStatus(); return; }
-	renderStep(old);
-	renderStep(playStep);
+	for (var l = 0; l < 2; l++) { renderStep(old[l]); renderStep(playSteps[l]); }
 	if (playPage() !== oldPage) renderPages();
 }
 
@@ -347,7 +348,7 @@ function enable(v) { enabled = v ? 1 : 0; if (initialised) defer(updateGrab); }
 function autofocus(v) { followFocus = v ? 1 : 0; if (initialised) defer(updateGrab); }
 
 function dump() {
-	post("kbSequencer: loop pages " + (model.loopStart + 1) + "–" + (model.loopEnd + 1) + ", settings " + JSON.stringify(model.settings) + "\n");
+	post("kbSequencer: loop pages " + (model.loopStart + 1) + "–" + (model.loopEnd + 1) + ", length K " + model.lanes[0].length + " B " + model.lanes[1].length + ", settings " + JSON.stringify(model.settings) + "\n");
 	for (var l = 0; l < 2; l++) {
 		var out = [];
 		for (var i = 0; i < S.NUM_STEPS; i++) {
@@ -543,7 +544,12 @@ function handleInput(role, v) {
 	if (role === "deleteBtn") { onDelete(pressed); return; }
 	if (role === "selectBtn") { selectHeld = pressed; return; }
 	if (role === "shiftBtn") { shiftHeld = pressed; return; }
-	if (role === "duplicateBtn") { onDuplicate(pressed); return; }
+	if (role === "duplicateBtn") {
+		if (pressed && shiftHeld) { printEuclid(); dupPrinted = true; return; }
+		if (!pressed && dupPrinted) { dupPrinted = false; return; }
+		onDuplicate(pressed);
+		return;
+	}
 	if (role === "undoBtn") { if (pressed) { if (shiftHeld) redo(); else undo(); } return; }
 	if (role === "display") { if (pressed) onDisplayButton(v[1]); return; }
 	if (role === "matrix") { onPad(v[1], v[2], pressed); return; }
@@ -655,7 +661,9 @@ function markHeldEdited() {
 var BANKS = {
 	settings: [
 		{ name: "Settings", items: ["kickChannel", "bassChannel", "kickNote", "bendRange", "scaleFollow", "swing", null, null] },
-		{ name: "CC Setup", items: ["ccNum1", "ccNum2", "ccNum3", "ccNum4", "ccNum5", "ccNum6", "ccNum7", "ccNum8"] }
+		{ name: "CC Setup", items: ["ccNum1", "ccNum2", "ccNum3", "ccNum4", "ccNum5", "ccNum6", "ccNum7", "ccNum8"] },
+		{ name: "Kick Euclid", items: ["kLength", "kEuSteps", "kEuPulses", "kEuRotate", "kEuLayer", "kEuVel", "kEuFollow", null] },
+		{ name: "Bass Euclid", items: ["bLength", "bEuSteps", "bEuPulses", "bEuRotate", "bEuLayer", "bEuVel", "bEuFollow", "bEuNote"] }
 	],
 	step: [
 		{ name: "Step", items: ["note", "velocity", "length", "microtime", "probability", "accent", "slide", "tie"] },
@@ -669,6 +677,17 @@ var BANKS = {
 // Display buttons that pick banks (0-based): 3–8 (8 = Slide while a step is
 // held); 5–8 are free with nothing held.
 var BANK_BUTTONS = [2, 3, 4, 5, 6, 7];
+// Lane items of the Euclid banks: display key -> [lane, field] (field
+// "length" = the lane's Length, else an Euclid setting).
+var LANE_ITEMS = {};
+(function () {
+	var f = { Length: "length", EuSteps: "steps", EuPulses: "pulses", EuRotate: "rotate", EuLayer: "layer", EuVel: "velocity", EuNote: "note", EuFollow: "follow" };
+	for (var k in f) { LANE_ITEMS["k" + k] = [0, f[k]]; LANE_ITEMS["b" + k] = [1, f[k]]; }
+})();
+function laneItemValue(key) {
+	var li = LANE_ITEMS[key], lane = model.lanes[li[0]];
+	return li[1] === "length" ? lane.length : lane.euclid[li[1]];
+}
 // Display units -> stored units, for values shown in steps.
 var DISPLAY_SCALE = { retrigGlide: 4 };
 var bankSel = { settings: 0, step: 0 };
@@ -723,6 +742,7 @@ function lockTargets() {
 // Value of a display item, in the display parameter's own units.
 function itemValue(key) {
 	if (key.indexOf("ccNum") === 0) return model.lanes[editLane()].ccNums[Number(key.slice(5)) - 1];
+	if (LANE_ITEMS[key]) return laneItemValue(key);
 	if (key in model.settings) return model.settings[key];
 	var t = heldTarget();
 	if (key === "note") {
@@ -808,9 +828,16 @@ function onEncoder(v) {
 	var key = currentBank().items[idx];
 	if (!itemShown(key)) return;
 	encAcc[idx] += d;
-	var per = ticksPerStep(key), steps = (encAcc[idx] / per) | 0;
+	var d0 = DISPLAY_PARAMS[key], fine = shiftHeld && d0.kind !== "enum";
+	var per = ticksPerStep(key) * (fine ? FINE_FACTOR : 1), steps = (encAcc[idx] / per) | 0;
 	if (!steps) return;
 	encAcc[idx] -= steps * per;
+	// Shift + turn = fine: 4× the ticks per value, and one value per message
+	// at most (Push's encoder acceleration would otherwise still jump).
+	if (fine && Math.abs(steps) > 1) { steps = steps > 0 ? 1 : -1; encAcc[idx] = 0; }
+	// Short menus (Layer, On/Off…) move one item per message: Push's encoder
+	// acceleration could otherwise jump over the middle item of three.
+	if (d0.kind === "enum" && d0.items <= 4 && Math.abs(steps) > 1) { steps = steps > 0 ? 1 : -1; encAcc[idx] = 0; }
 	if (locking) editLock(key, steps); else editSetting(key, steps);
 }
 
@@ -879,6 +906,14 @@ function onTouch(v) {
 
 function editSetting(key, steps) {
 	encoderEdit = true;
+	if (LANE_ITEMS[key]) {
+		var li = LANE_ITEMS[key], v = laneItemValue(key) + steps;
+		if (li[1] === "length") model.setLaneLength(li[0], v); else model.setEuclid(li[0], li[1], v);
+		encoderEdit = false;
+		renderAll(); // hits, loop pages and playhead change
+		showStatus();
+		return;
+	}
 	if (key.indexOf("ccNum") === 0) {
 		var slot = Number(key.slice(5)) - 1, l = editLane();
 		model.setCcNumber(l, slot, model.lanes[l].ccNums[slot] + steps);
@@ -908,6 +943,18 @@ var dupHeld = false;
 var clip = null;     // { kind: "steps"|"page", lanes: [..], len, data: {lane: steps} }
 var dupAnchor = -1;  // local pad of the source step while still held (range copy)
 var dupAnchorStep = -1;
+
+// Shift + Duplicate: print the selected lanes' Euclid hits onto their manual
+// steps (one Undo). Existing steps keep their locks.
+var dupPrinted = false;
+function printEuclid() {
+	var lanes = selectedLanes(), n = 0;
+	for (var k = 0; k < lanes.length; k++) n += model.printEuclid(lanes[k]);
+	post("kbSequencer: printed " + n + " Euclid step" + (n === 1 ? "" : "s") + "\n");
+	commitHistory();
+	renderAll();
+	showStatus();
+}
 
 function onDuplicate(pressed) {
 	dupHeld = pressed;
@@ -1188,7 +1235,11 @@ function renderStep(i) {
 	if (local < 0 || local >= S.STEPS_PER_PAGE) return;
 	var k = selKick && model.step(S.KICK, i), b = selBass && model.step(S.BASS, i);
 	var c = COL.off;
-	if (i === playStep) c = COL.playhead;
+	if ((selKick && i === playSteps[0]) || (selBass && i === playSteps[1])) c = COL.playhead;
+	else if (!k && !b && (euShown(S.KICK, i) || euShown(S.BASS, i))) {
+		var ek = euShown(S.KICK, i), eb = euShown(S.BASS, i);
+		c = ek && eb ? COL.euBoth : ek ? COL.euKick : COL.euBass;
+	}
 	else if (k && b) {
 		var locked = model.hasLocks(S.KICK, i) || model.hasLocks(S.BASS, i);
 		c = (k.muted && b.muted) ? COL.bothMuted : locked ? COL.bothLocked : COL.both;
@@ -1197,7 +1248,14 @@ function renderStep(i) {
 	sendPad(local % 8, local >> 3, c);
 }
 
-function playPage() { return playStep >= 0 ? Math.floor(playStep / S.STEPS_PER_PAGE) : -1; }
+// A selected lane's Euclid hit that plays (Layer not Manual).
+function euShown(l, i) {
+	if (!(l === S.KICK ? selKick : selBass) || model.lanes[l].euclid.layer === 0) return false;
+	return model.euclidHit(l, i);
+}
+
+// Follow uses the first selected lane's playhead (lanes can differ in Length).
+function playPage() { var ps = playSteps[editLane()]; return ps >= 0 ? Math.floor(ps / S.STEPS_PER_PAGE) : -1; }
 
 function renderPages() {
 	if (!grabbed || !controls.matrix || paletteBase >= 0) return;
@@ -1207,7 +1265,8 @@ function renderPages() {
 		if (p === viewPage) c = COL.pageViewed;
 		else if (p === pp) c = COL.pagePlaying; // only differs from viewed when follow is off
 		else if (p < model.loopStart || p > model.loopEnd) c = COL.off;
-		else c = (model.pageHasTrigs(S.KICK, p) || model.pageHasTrigs(S.BASS, p)) ? COL.pageTrigs : COL.pageEmpty;
+		else c = (model.pageHasTrigs(S.KICK, p) || model.pageHasTrigs(S.BASS, p) ||
+			model.pageHasEuclid(S.KICK, p) || model.pageHasEuclid(S.BASS, p)) ? COL.pageTrigs : COL.pageEmpty;
 		sendPad(p % 8, 4 + (p >> 3), c);
 	}
 }
@@ -1271,7 +1330,7 @@ function showStatus() {
 	parts.push("page " + (viewPage + 1) + (follow ? " (follow)" : ""));
 	parts.push("oct " + octave);
 	if (clip) parts.push("clip: " + clipLabel());
-	parts.push((playing ? "playing" : "stopped") + " loop " + (model.loopStart + 1) + "-" + (model.loopEnd + 1));
+	parts.push((playing ? "playing" : "stopped") + " loop " + (model.loopStart + 1) + "-" + (model.loopEnd + 1) + " len " + model.lanes[0].length + "/" + model.lanes[1].length);
 	parts.push("trigs " + model.countTrigs(S.KICK) + "/" + model.countTrigs(S.BASS));
 	status(parts.join(" · "));
 }
