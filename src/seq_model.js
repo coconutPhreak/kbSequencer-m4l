@@ -270,6 +270,14 @@ Model.prototype.value = function (lane, i, pid) {
 	return this.lanes[lane].defaults[pid];
 };
 
+// Un-mutes every manual step on a page; returns how many changed.
+Model.prototype.unmutePage = function (lane, page) {
+	var steps = this.lanes[lane].steps, base = page * STEPS_PER_PAGE, n = 0;
+	for (var i = base; i < base + STEPS_PER_PAGE; i++) if (steps[i] && steps[i].muted) { steps[i].muted = false; n++; }
+	if (n) this.changed();
+	return n;
+};
+
 Model.prototype.pageHasTrigs = function (lane, page) {
 	var steps = this.lanes[lane].steps, base = page * STEPS_PER_PAGE;
 	for (var i = base; i < base + STEPS_PER_PAGE; i++) if (steps[i]) return true;

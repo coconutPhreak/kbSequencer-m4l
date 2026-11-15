@@ -50,6 +50,7 @@ var viewPage = 0;
 var deleteHeld = false, selectHeld = false;
 var heldPages = [];     // page pads currently held, in press order
 var shiftHeld = false;
+var muteHeld = false;   // Mute + page pad: un-mute every step on that page
 var follow = true;      // viewed page follows the playhead (display button 6)
 var octave = 1;         // note keyboard octave; octave 1 root C = MIDI 36
 var brushNote = 36;     // note new bass trigs get (tap a note pad)
@@ -90,7 +91,8 @@ var CONTROL_NAMES = {
 	octaveDown: "Octave_Down_Button",
 	undoBtn: "Undo_Button",
 	shiftBtn: "Shift_Button",
-	duplicateBtn: "Duplicate_Button"
+	duplicateBtn: "Duplicate_Button",
+	muteBtn: "Global_Mute_Button"
 };
 
 // ---------- deferred work queue ----------
@@ -494,7 +496,7 @@ function grab() {
 		c.api.property = "value";
 	}
 	grabbed = true;
-	deleteHeld = selectHeld = shiftHeld = false;
+	deleteHeld = selectHeld = shiftHeld = muteHeld = false;
 	dupHeld = false; clip = null; dupAnchor = -1; dupPageAnchor = -1; clearLatch = false;
 	heldPages = [];
 	heldSteps = [];
@@ -544,6 +546,7 @@ function handleInput(role, v) {
 	if (role === "deleteBtn") { onDelete(pressed); return; }
 	if (role === "selectBtn") { selectHeld = pressed; return; }
 	if (role === "shiftBtn") { shiftHeld = pressed; return; }
+	if (role === "muteBtn") { muteHeld = pressed; return; }
 	if (role === "duplicateBtn") {
 		if (pressed && shiftHeld) { printEuclid(); dupPrinted = true; return; }
 		if (!pressed && dupPrinted) { dupPrinted = false; return; }
@@ -968,6 +971,17 @@ function printEuclid() {
 	showStatus();
 }
 
+// Hold Mute + tap a page pad: un-mute every step on that page for the
+// selected lanes (locks untouched). One Undo.
+function unmutePage(page) {
+	var lanes = selectedLanes(), n = 0;
+	for (var k = 0; k < lanes.length; k++) n += model.unmutePage(lanes[k], page);
+	post("kbSequencer: un-muted " + n + " step" + (n === 1 ? "" : "s") + " on page " + (page + 1) + "\n");
+	commitHistory();
+	renderAll();
+	showStatus();
+}
+
 function onDuplicate(pressed) {
 	dupHeld = pressed;
 	if (!pressed) { clip = null; dupAnchor = -1; dupPageAnchor = -1; }
@@ -1076,6 +1090,7 @@ function viewPageAndStopFollow(page) {
 
 function onPagePad(page, pressed) {
 	if (dupHeld || page === dupPageAnchor) { onDupPage(page, pressed); return; }
+	if (muteHeld && pressed) { unmutePage(page); return; }
 	var at = heldPages.indexOf(page);
 	if (!pressed) {
 		if (at >= 0) heldPages.splice(at, 1);

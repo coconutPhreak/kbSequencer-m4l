@@ -425,6 +425,9 @@ function run(argv) {
 	eq("mask again: nothing new", mk.maskLane(K, B), 0);
 	eq("bass masks kick (bass plays on 2, 8)", [mk.maskLane(B, K), mk.hasTrig(K, 2), mk.step(K, 8).muted], [0, false, true]);
 
+	var um = new M.Model(); um.addTrig(K, 1); um.addTrig(K, 2); um.addTrig(K, 40); um.setMuted(K, 1, true); um.setMuted(K, 40, true); um.setLock(K, 1, P.cc1, 7);
+	eq("unmute page", [um.unmutePage(K, 0), um.step(K, 1).muted, um.step(K, 1).locks[P.cc1], um.step(K, 40).muted], [1, false, 7, true]);
+
 	// save v3
 	var sv = new M.Model(); sv.setLoop(2, 3); sv.setLaneLength(B, 23); sv.setEuclid(B, "pulses", 5); sv.setEuclid(K, "layer", 1);
 	var sv2 = new M.Model(); sv2.decode(sv.encode());

@@ -13,6 +13,7 @@ From the step 1 takeover test (Push 3 tethered to a Mac).
 | Upper display buttons | `Track_Select_Buttons` | singles: `Track_Select_Button0..7` |
 | Delete | `Delete_Button` | |
 | Select | `Select_Button` | needed for Select + page pad |
+| Mute | `Global_Mute_Button` | Mute + page pad: un-mute the page |
 | Octave | `Octave_Up_Button`, `Octave_Down_Button` | note keyboard octave |
 
 Grab/release via `grab_control id N` / `release_control id N` on the
