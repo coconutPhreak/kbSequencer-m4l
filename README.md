@@ -167,7 +167,8 @@ lanes, with notes, mutes and all p-locks.
 | …then tap a step (Duplicate still held) | Paste starting there. A range runs on into the next page if needed |
 | …tap a page pad (step copy) | View that page, to paste onto another page |
 | Hold Duplicate + tap a page pad | Copy the whole page |
-| …then tap other page pads | Paste the page over them |
+| Hold Duplicate + hold a page pad + press another page pad | Copy that range of pages |
+| …then tap other page pads | Paste the page(s) starting there. Pages past page 16 are dropped |
 
 A paste replaces the target exactly (empty steps in the copy clear the
 target). The Duplicate light is on while something is copied. Each paste is

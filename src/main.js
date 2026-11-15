@@ -494,7 +494,7 @@ function grab() {
 	}
 	grabbed = true;
 	deleteHeld = selectHeld = shiftHeld = false;
-	dupHeld = false; clip = null; dupAnchor = -1; clearLatch = false;
+	dupHeld = false; clip = null; dupAnchor = -1; dupPageAnchor = -1; clearLatch = false;
 	heldPages = [];
 	heldSteps = [];
 	pageHold = null;
@@ -911,18 +911,24 @@ var dupAnchorStep = -1;
 
 function onDuplicate(pressed) {
 	dupHeld = pressed;
-	if (!pressed) { clip = null; dupAnchor = -1; }
+	if (!pressed) { clip = null; dupAnchor = -1; dupPageAnchor = -1; }
 	renderDuplicateButton();
 	showStatus();
 }
 
 function copyRange(kind, from, len) {
 	var lanes = selectedLanes();
-	clip = { kind: kind, lanes: lanes, len: len, data: {} };
+	clip = { kind: kind, lanes: lanes, from: from, len: len, data: {} };
 	for (var k = 0; k < lanes.length; k++) clip.data[lanes[k]] = model.copySteps(lanes[k], from, len);
-	post("kbSequencer: copied " + (kind === "page" ? "page " + (from / S.STEPS_PER_PAGE + 1) : len + " step" + (len > 1 ? "s" : "")) + "\n");
+	post("kbSequencer: copied " + clipLabel() + "\n");
 	renderDuplicateButton();
 	showStatus();
+}
+
+function clipLabel() {
+	if (clip.kind !== "page") return clip.len + " step" + (clip.len > 1 ? "s" : "");
+	var P = S.STEPS_PER_PAGE, a = clip.from / P + 1, n = clip.len / P;
+	return n > 1 ? "pages " + a + "-" + (a + n - 1) : "page " + a;
 }
 
 function pasteAt(at) {
@@ -946,9 +952,20 @@ function onDupStep(pad, pressed) {
 	}
 }
 
-function onDupPage(page) {
-	if (!clip) copyRange("page", page * S.STEPS_PER_PAGE, S.STEPS_PER_PAGE);
-	else if (clip.kind === "page") pasteAt(page * S.STEPS_PER_PAGE);
+// Page pads with Duplicate held: tap = copy that page; hold the first page
+// and tap another = copy that range of pages; with a page clipboard, tap a
+// page = paste starting there (pages past the last are dropped).
+var dupPageAnchor = -1;
+function onDupPage(page, pressed) {
+	if (!pressed) { if (page === dupPageAnchor) dupPageAnchor = -1; return; }
+	var P = S.STEPS_PER_PAGE;
+	if (!clip) {
+		copyRange("page", page * P, P);
+		dupPageAnchor = page;
+	} else if (clip.kind === "page" && dupPageAnchor >= 0) {
+		var a = Math.min(dupPageAnchor, page), b = Math.max(dupPageAnchor, page);
+		copyRange("page", a * P, (b - a + 1) * P);
+	} else if (clip.kind === "page") pasteAt(page * P);
 	else viewPageAndStopFollow(page); // step clipboard: go to another page to paste
 }
 
@@ -999,7 +1016,7 @@ function viewPageAndStopFollow(page) {
 }
 
 function onPagePad(page, pressed) {
-	if (dupHeld && pressed) { onDupPage(page); return; }
+	if (dupHeld || page === dupPageAnchor) { onDupPage(page, pressed); return; }
 	var at = heldPages.indexOf(page);
 	if (!pressed) {
 		if (at >= 0) heldPages.splice(at, 1);
@@ -1253,7 +1270,7 @@ function showStatus() {
 	parts.push("lanes " + (selKick ? "K" : "") + (selBass ? "B" : ""));
 	parts.push("page " + (viewPage + 1) + (follow ? " (follow)" : ""));
 	parts.push("oct " + octave);
-	if (clip) parts.push("clip: " + (clip.kind === "page" ? "page" : clip.len + " step" + (clip.len > 1 ? "s" : "")));
+	if (clip) parts.push("clip: " + clipLabel());
 	parts.push((playing ? "playing" : "stopped") + " loop " + (model.loopStart + 1) + "-" + (model.loopEnd + 1));
 	parts.push("trigs " + model.countTrigs(S.KICK) + "/" + model.countTrigs(S.BASS));
 	status(parts.join(" · "));
