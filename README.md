@@ -86,7 +86,7 @@ Lanes reach other tracks through **kbLane** (Max `send kb_<group>_<lane>` /
 (a duplicated track keeps the same Group — change it). The sequencer's own
 track output still carries both lanes on channels 1 and 2.
 
-What plays: trigs on the kick lane (channel 1, note 36) and bass lane
+What plays: trigs on the kick lane (channel 1, note 60 = C3) and bass lane
 (channel 2, the step's note), skipping muted steps, applying probability,
 velocity and length (default: velocity 100, half a step). The pattern is
 locked to the song position and loops over the loop pages (page 1 by
@@ -191,7 +191,15 @@ kbSequencer (Device mode, device selected) to see the bank.
 | Nothing held | 3 **Settings**, 4 **Kick Euclid**, 5 **Bass Euclid** (6–8 free) | Edit them (one Undo per turn) |
 | Step or page held | 3 **Step**, 4 **Retrig**, 5 **Rt Chance**, 6 **More** (Fill, Cond: not played yet), 7 **Slide**, 8 **Macro Locks** | Show and lock the held step's values |
 
-- Settings: Kick Ch, Bass Ch, Kick Note, Bend, Scale (follow), Swing, Refresh (turn: the kbLanes report their macros again).
+- Settings: Kick Ch, Bass Ch, Kick Note, Bend, Scale (follow), Swing, Refresh (turn: the kbLanes report their macros again), **Takeover** (encoder 8).
+- **Takeover**: Off / Track selected (default: only while kbSequencer's track
+  is selected) / Always. A real device parameter, saved with the Set and
+  also in the device view (it replaces the two old takeover toggles). When
+  the device lets go of Push (Off, or its track not selected), Push shows
+  the device's **Settings** bank, so turning encoder 8 on Push (Device mode,
+  kbSequencer selected) turns takeover back on. Always: only use it with one
+  kbSequencer in the Set, or they fight over Push. While released, Push can
+  also turn the other Settings knobs, but those don't change anything.
 - Macro Locks: the held step's offset per macro slot (−100 … +100 %).
 - Step: Note, Velocity, Length (retrig's LEN list: 0.125 … 128 steps, INF), Micro (1/24 step), Prob, Accent, Slide, Tie.
   Note and Slide are hidden when bass isn't selected.

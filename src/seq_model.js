@@ -93,7 +93,7 @@ for (var _p = 0; _p < PARAMS.length; _p++) PARAM_ID[PARAMS[_p].key] = _p;
 var SETTINGS = [
 	{ key: "kickChannel", min: 1, max: 16,  def: 1 },
 	{ key: "bassChannel", min: 1, max: 16,  def: 2 },
-	{ key: "kickNote",    min: 0, max: 127, def: 36 },
+	{ key: "kickNote",    min: 0, max: 127, def: 60 }, // C3 (Live naming)
 	{ key: "bendRange",   min: 1, max: 96,  def: 24 }, // ± semitones each way; must match the instrument
 	{ key: "scaleFollow", min: 0, max: 1,   def: 1 },
 	{ key: "swing",       min: 50, max: 75, def: 50 },
@@ -109,13 +109,13 @@ var EUCLID = [
 	{ key: "rotate",   min: 0, max: 63,  def: 0 },   // shifts the hits later by n steps
 	{ key: "layer",    min: 0, max: 2,   def: 2 },   // 0 Manual, 1 Euclid, 2 Both (manual wins)
 	{ key: "velocity", min: 1, max: 127, def: 100 },
-	{ key: "note",     min: 0, max: 127, def: 36 },  // bass only
+	{ key: "note",     min: 0, max: 127, def: 60 },  // bass only, C3
 	{ key: "follow",   min: 0, max: 1,   def: 0 }    // 1: Steps = the lane's Length (Steps ignored)
 ];
 var LAYERS = ["Manual", "Euclid", "Both"];
 var MAX_LENGTH = NUM_STEPS;
 
-var DEFAULT_BASS_NOTE = 36;
+var DEFAULT_BASS_NOTE = 60; // C3
 
 // v2: step length is an index into RETRIG_LENS (v1: gate ticks, param 1).
 // v3: per-lane Length (steps) and Euclid settings, after the lanes.

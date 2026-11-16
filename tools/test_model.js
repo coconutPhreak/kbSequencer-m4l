@@ -31,7 +31,7 @@ function run(argv) {
 	m.addTrig(B, 5);
 	eq("kick note ignored", m.step(K, 0).note, -1);
 	eq("bass note", m.step(B, 4).note, 40);
-	eq("bass default note", m.step(B, 5).note, 36);
+	eq("bass default note", m.step(B, 5).note, 60);
 	eq("changes fired", changes, 4);
 
 	m.setMuted(K, 0, true);
@@ -113,7 +113,7 @@ function run(argv) {
 	function notes(evs) { return evs.filter(function (e) { return e.lane < 2; }); }
 	var ev = notes(pm.eventsAt(0, stepMs, 0));
 	eq("two events at 0", ev.length, 2);
-	eq("kick event", [ev[0].lane, ev[0].pitch, ev[0].velocity, ev[0].durMs, ev[0].channel], [K, 36, 100, 50, 1]);
+	eq("kick event", [ev[0].lane, ev[0].pitch, ev[0].velocity, ev[0].durMs, ev[0].channel], [K, 60, 100, 50, 1]);
 	eq("bass event", [ev[1].lane, ev[1].pitch, ev[1].durMs, ev[1].channel], [B, 41, 100, 2]);
 	eq("muted silent", pm.eventsAt(4, stepMs, 0).length, 0);
 	eq("empty silent", pm.eventsAt(1, stepMs, 0).length, 0);
@@ -326,7 +326,7 @@ function run(argv) {
 	cm2.addTrig(K, 0); cm2.setLock(K, 0, P.m1, 64); cm2.setLock(K, 0, P.m3, -20); cm2.setLock(K, 0, P.m5, 0);
 	cm2.addTrig(B, 2, 40); cm2.setLock(B, 2, P.m2, 99);
 	var c0 = cm2.eventsAt(0, 100, 0, 0);
-	eq("kick: reset, non-zero slots, then the note", c0.map(function (e) { return [e.lane, e.pitch, e.velocity, e.offMs]; }), [[3, 0, 0, 0], [3, 1, 64, 0], [3, 3, -20, 0], [0, 36, 100, 0]]);
+	eq("kick: reset, non-zero slots, then the note", c0.map(function (e) { return [e.lane, e.pitch, e.velocity, e.offMs]; }), [[3, 0, 0, 0], [3, 1, 64, 0], [3, 3, -20, 0], [0, 60, 100, 0]]);
 	eq("bass macros on lane 4", mac(cm2.eventsAt(2, 100, 0, 0), 4), [[0, 0], [2, 99]]);
 	cm2.addTrig(K, 1);
 	eq("unlocked step: reset only", mac(cm2.eventsAt(1, 100, 0, 0), 3), [[0, 0]]);

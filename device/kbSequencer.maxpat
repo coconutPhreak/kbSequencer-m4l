@@ -107,172 +107,6 @@
    },
    {
     "box": {
-     "id": "lm_en",
-     "maxclass": "newobj",
-     "patching_rect": [
-      320,
-      20,
-      65,
-      22
-     ],
-     "text": "loadmess 1",
-     "numinlets": 1,
-     "numoutlets": 1,
-     "outlettype": [
-      ""
-     ]
-    }
-   },
-   {
-    "box": {
-     "id": "tgl_en",
-     "maxclass": "toggle",
-     "patching_rect": [
-      320,
-      60,
-      24,
-      24
-     ],
-     "presentation": 1,
-     "presentation_rect": [
-      10,
-      24,
-      20,
-      20
-     ],
-     "numinlets": 1,
-     "numoutlets": 1,
-     "outlettype": [
-      "int"
-     ],
-     "parameter_enable": 0
-    }
-   },
-   {
-    "box": {
-     "id": "pre_en",
-     "maxclass": "newobj",
-     "patching_rect": [
-      320,
-      100,
-      105,
-      22
-     ],
-     "text": "prepend enable",
-     "numinlets": 1,
-     "numoutlets": 1,
-     "outlettype": [
-      ""
-     ]
-    }
-   },
-   {
-    "box": {
-     "id": "c_en",
-     "maxclass": "comment",
-     "patching_rect": [
-      350,
-      60,
-      140,
-      20
-     ],
-     "presentation": 1,
-     "presentation_rect": [
-      34,
-      24,
-      140,
-      20
-     ],
-     "text": "Takeover",
-     "numinlets": 1,
-     "numoutlets": 0
-    }
-   },
-   {
-    "box": {
-     "id": "lm_af",
-     "maxclass": "newobj",
-     "patching_rect": [
-      430,
-      20,
-      65,
-      22
-     ],
-     "text": "loadmess 1",
-     "numinlets": 1,
-     "numoutlets": 1,
-     "outlettype": [
-      ""
-     ]
-    }
-   },
-   {
-    "box": {
-     "id": "tgl_af",
-     "maxclass": "toggle",
-     "patching_rect": [
-      430,
-      60,
-      24,
-      24
-     ],
-     "presentation": 1,
-     "presentation_rect": [
-      10,
-      48,
-      20,
-      20
-     ],
-     "numinlets": 1,
-     "numoutlets": 1,
-     "outlettype": [
-      "int"
-     ],
-     "parameter_enable": 0
-    }
-   },
-   {
-    "box": {
-     "id": "pre_af",
-     "maxclass": "newobj",
-     "patching_rect": [
-      430,
-      100,
-      105,
-      22
-     ],
-     "text": "prepend autofocus",
-     "numinlets": 1,
-     "numoutlets": 1,
-     "outlettype": [
-      ""
-     ]
-    }
-   },
-   {
-    "box": {
-     "id": "c_af",
-     "maxclass": "comment",
-     "patching_rect": [
-      460,
-      60,
-      140,
-      20
-     ],
-     "presentation": 1,
-     "presentation_rect": [
-      34,
-      48,
-      140,
-      20
-     ],
-     "text": "Only when track selected",
-     "numinlets": 1,
-     "numoutlets": 0
-    }
-   },
-   {
-    "box": {
      "id": "pre_st",
      "maxclass": "newobj",
      "patching_rect": [
@@ -374,7 +208,7 @@
       400,
       20
      ],
-     "text": "kbSequencer   v0.17.0 \u00b7 1116.2315",
+     "text": "kbSequencer   v0.18.1 \u00b7 1116.2333",
      "numinlets": 1,
      "numoutlets": 0
     }
@@ -2098,11 +1932,56 @@
    },
    {
     "box": {
+     "id": "pv_takeover",
+     "maxclass": "live.menu",
+     "patching_rect": [
+      1000,
+      188,
+      80,
+      15
+     ],
+     "presentation": 1,
+     "presentation_rect": [
+      62,
+      48,
+      100,
+      15
+     ],
+     "numinlets": 1,
+     "numoutlets": 3,
+     "outlettype": [
+      "",
+      "",
+      "float"
+     ],
+     "parameter_enable": 1,
+     "varname": "pv_takeover",
+     "saved_attribute_attributes": {
+      "valueof": {
+       "parameter_longname": "Takeover",
+       "parameter_shortname": "Takeover",
+       "parameter_initial_enable": 1,
+       "parameter_initial": [
+        1
+       ],
+       "parameter_type": 2,
+       "parameter_enum": [
+        "Off",
+        "Track selected",
+        "Always"
+       ],
+       "parameter_mmax": 2
+      }
+     }
+    }
+   },
+   {
+    "box": {
      "id": "pv_note",
      "maxclass": "live.numbox",
      "patching_rect": [
       1000,
-      188,
+      212,
       80,
       15
      ],
@@ -2133,7 +2012,7 @@
      "maxclass": "live.numbox",
      "patching_rect": [
       1000,
-      212,
+      236,
       80,
       15
      ],
@@ -2164,7 +2043,7 @@
      "maxclass": "live.menu",
      "patching_rect": [
       1000,
-      236,
+      260,
       80,
       15
      ],
@@ -2324,7 +2203,7 @@
      "maxclass": "live.numbox",
      "patching_rect": [
       1000,
-      260,
+      284,
       80,
       15
      ],
@@ -2355,8 +2234,8 @@
      "id": "pv_probability",
      "maxclass": "live.numbox",
      "patching_rect": [
-      1000,
-      284,
+      1090,
+      20,
       80,
       15
      ],
@@ -2388,7 +2267,7 @@
      "maxclass": "live.menu",
      "patching_rect": [
       1090,
-      20,
+      44,
       80,
       15
      ],
@@ -2422,7 +2301,7 @@
      "maxclass": "live.menu",
      "patching_rect": [
       1090,
-      44,
+      68,
       80,
       15
      ],
@@ -2456,7 +2335,7 @@
      "maxclass": "live.menu",
      "patching_rect": [
       1090,
-      68,
+      92,
       80,
       15
      ],
@@ -2490,7 +2369,7 @@
      "maxclass": "live.menu",
      "patching_rect": [
       1090,
-      92,
+      116,
       80,
       15
      ],
@@ -2524,7 +2403,7 @@
      "maxclass": "live.menu",
      "patching_rect": [
       1090,
-      116,
+      140,
       80,
       15
      ],
@@ -2578,7 +2457,7 @@
      "maxclass": "live.numbox",
      "patching_rect": [
       1090,
-      140,
+      164,
       80,
       15
      ],
@@ -2610,7 +2489,7 @@
      "maxclass": "live.numbox",
      "patching_rect": [
       1090,
-      164,
+      188,
       80,
       15
      ],
@@ -2642,7 +2521,7 @@
      "maxclass": "live.numbox",
      "patching_rect": [
       1090,
-      188,
+      212,
       80,
       15
      ],
@@ -2674,7 +2553,7 @@
      "maxclass": "live.numbox",
      "patching_rect": [
       1090,
-      212,
+      236,
       80,
       15
      ],
@@ -2706,7 +2585,7 @@
      "maxclass": "live.numbox",
      "patching_rect": [
       1090,
-      236,
+      260,
       80,
       15
      ],
@@ -2738,7 +2617,7 @@
      "maxclass": "live.numbox",
      "patching_rect": [
       1090,
-      260,
+      284,
       80,
       15
      ],
@@ -2769,8 +2648,8 @@
      "id": "pv_m7",
      "maxclass": "live.numbox",
      "patching_rect": [
-      1090,
-      284,
+      1180,
+      20,
       80,
       15
      ],
@@ -2802,7 +2681,7 @@
      "maxclass": "live.numbox",
      "patching_rect": [
       1180,
-      20,
+      44,
       80,
       15
      ],
@@ -2834,7 +2713,7 @@
      "maxclass": "live.menu",
      "patching_rect": [
       1180,
-      44,
+      68,
       80,
       15
      ],
@@ -2868,7 +2747,7 @@
      "maxclass": "live.menu",
      "patching_rect": [
       1180,
-      68,
+      92,
       80,
       15
      ],
@@ -2917,7 +2796,7 @@
      "maxclass": "live.numbox",
      "patching_rect": [
       1180,
-      92,
+      116,
       80,
       15
      ],
@@ -2949,7 +2828,7 @@
      "maxclass": "live.numbox",
      "patching_rect": [
       1180,
-      116,
+      140,
       80,
       15
      ],
@@ -2981,7 +2860,7 @@
      "maxclass": "live.numbox",
      "patching_rect": [
       1180,
-      140,
+      164,
       80,
       15
      ],
@@ -3013,7 +2892,7 @@
      "maxclass": "live.menu",
      "patching_rect": [
       1180,
-      164,
+      188,
       80,
       15
      ],
@@ -3063,7 +2942,7 @@
      "maxclass": "live.numbox",
      "patching_rect": [
       1180,
-      188,
+      212,
       80,
       15
      ],
@@ -3095,7 +2974,7 @@
      "maxclass": "live.menu",
      "patching_rect": [
       1180,
-      212,
+      236,
       80,
       15
      ],
@@ -3129,7 +3008,7 @@
      "maxclass": "live.menu",
      "patching_rect": [
       1180,
-      236,
+      260,
       80,
       15
      ],
@@ -3164,7 +3043,7 @@
      "maxclass": "live.menu",
      "patching_rect": [
       1180,
-      260,
+      284,
       80,
       15
      ],
@@ -3203,8 +3082,8 @@
      "id": "pv_slideTime",
      "maxclass": "live.numbox",
      "patching_rect": [
-      1180,
-      284,
+      1270,
+      20,
       80,
       15
      ],
@@ -3236,7 +3115,7 @@
      "maxclass": "live.numbox",
      "patching_rect": [
       1270,
-      20,
+      44,
       80,
       15
      ],
@@ -3267,7 +3146,7 @@
      "maxclass": "live.numbox",
      "patching_rect": [
       1270,
-      44,
+      68,
       80,
       15
      ],
@@ -3298,7 +3177,7 @@
      "maxclass": "live.numbox",
      "patching_rect": [
       1270,
-      68,
+      92,
       80,
       15
      ],
@@ -3329,7 +3208,7 @@
      "maxclass": "live.numbox",
      "patching_rect": [
       1270,
-      92,
+      116,
       80,
       15
      ],
@@ -3360,7 +3239,7 @@
      "maxclass": "live.numbox",
      "patching_rect": [
       1270,
-      116,
+      140,
       80,
       15
      ],
@@ -3391,7 +3270,7 @@
      "maxclass": "live.menu",
      "patching_rect": [
       1270,
-      140,
+      164,
       80,
       15
      ],
@@ -3426,7 +3305,7 @@
      "maxclass": "live.numbox",
      "patching_rect": [
       1270,
-      164,
+      188,
       80,
       15
      ],
@@ -3457,7 +3336,7 @@
      "maxclass": "live.menu",
      "patching_rect": [
       1270,
-      188,
+      212,
       80,
       15
      ],
@@ -3491,7 +3370,7 @@
      "maxclass": "live.numbox",
      "patching_rect": [
       1270,
-      212,
+      236,
       80,
       15
      ],
@@ -3522,7 +3401,7 @@
      "maxclass": "live.numbox",
      "patching_rect": [
       1270,
-      236,
+      260,
       80,
       15
      ],
@@ -3553,7 +3432,7 @@
      "maxclass": "live.numbox",
      "patching_rect": [
       1270,
-      260,
+      284,
       80,
       15
      ],
@@ -3583,8 +3462,8 @@
      "id": "pv_bEuRotate",
      "maxclass": "live.numbox",
      "patching_rect": [
-      1270,
-      284,
+      1360,
+      20,
       80,
       15
      ],
@@ -3615,7 +3494,7 @@
      "maxclass": "live.menu",
      "patching_rect": [
       1360,
-      20,
+      44,
       80,
       15
      ],
@@ -3650,7 +3529,7 @@
      "maxclass": "live.numbox",
      "patching_rect": [
       1360,
-      44,
+      68,
       80,
       15
      ],
@@ -3681,7 +3560,7 @@
      "maxclass": "live.menu",
      "patching_rect": [
       1360,
-      68,
+      92,
       80,
       15
      ],
@@ -3715,7 +3594,7 @@
      "maxclass": "live.numbox",
      "patching_rect": [
       1360,
-      92,
+      116,
       80,
       15
      ],
@@ -3738,6 +3617,46 @@
        "parameter_unitstyle": 8
       }
      }
+    }
+   },
+   {
+    "box": {
+     "id": "c_takeover",
+     "maxclass": "comment",
+     "patching_rect": [
+      1000,
+      400,
+      60,
+      20
+     ],
+     "presentation": 1,
+     "presentation_rect": [
+      10,
+      46,
+      50,
+      18
+     ],
+     "text": "Takeover",
+     "numinlets": 1,
+     "numoutlets": 0
+    }
+   },
+   {
+    "box": {
+     "id": "pre_takeover",
+     "maxclass": "newobj",
+     "patching_rect": [
+      1000,
+      420,
+      100,
+      22
+     ],
+     "text": "prepend takeover",
+     "numinlets": 1,
+     "numoutlets": 1,
+     "outlettype": [
+      ""
+     ]
     }
    },
    {
@@ -3787,78 +3706,6 @@
      ],
      "destination": [
       "midiout",
-      0
-     ]
-    }
-   },
-   {
-    "patchline": {
-     "source": [
-      "lm_en",
-      0
-     ],
-     "destination": [
-      "tgl_en",
-      0
-     ]
-    }
-   },
-   {
-    "patchline": {
-     "source": [
-      "tgl_en",
-      0
-     ],
-     "destination": [
-      "pre_en",
-      0
-     ]
-    }
-   },
-   {
-    "patchline": {
-     "source": [
-      "pre_en",
-      0
-     ],
-     "destination": [
-      "js",
-      0
-     ]
-    }
-   },
-   {
-    "patchline": {
-     "source": [
-      "lm_af",
-      0
-     ],
-     "destination": [
-      "tgl_af",
-      0
-     ]
-    }
-   },
-   {
-    "patchline": {
-     "source": [
-      "tgl_af",
-      0
-     ],
-     "destination": [
-      "pre_af",
-      0
-     ]
-    }
-   },
-   {
-    "patchline": {
-     "source": [
-      "pre_af",
-      0
-     ],
-     "destination": [
-      "js",
       0
      ]
     }
@@ -5174,6 +5021,30 @@
    {
     "patchline": {
      "source": [
+      "pv_takeover",
+      0
+     ],
+     "destination": [
+      "pre_takeover",
+      0
+     ]
+    }
+   },
+   {
+    "patchline": {
+     "source": [
+      "pre_takeover",
+      0
+     ],
+     "destination": [
+      "js",
+      0
+     ]
+    }
+   },
+   {
+    "patchline": {
+     "source": [
       "banks",
       0
      ],
@@ -5249,6 +5120,11 @@
    "pv_macroRefresh": [
     "MacroRefresh",
     "Refresh",
+    0
+   ],
+   "pv_takeover": [
+    "Takeover",
+    "Takeover",
     0
    ],
    "pv_note": [

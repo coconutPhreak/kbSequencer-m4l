@@ -63,8 +63,8 @@ var heldPages = [];     // page pads currently held, in press order
 var shiftHeld = false;
 var muteHeld = false;   // Mute + page pad: un-mute every step on that page
 var follow = true;      // viewed page follows the playhead (display button 6)
-var octave = 1;         // note keyboard octave; octave 1 root C = MIDI 36
-var brushNote = 36;     // note new bass trigs get (tap a note pad)
+var octave = 3;         // note keyboard octave; octave 1 root C = MIDI 36, 3 = C3 (60)
+var brushNote = 60;     // note new bass trigs get (tap a note pad); C3
 var paletteBase = -1; // >= 0 while showing the palette test
 
 // ---------- takeover state ----------
@@ -371,6 +371,27 @@ function bang() { init(); } // [live.thisdevice]
 function rescan() { release(); init(); }
 function enable(v) { enabled = v ? 1 : 0; if (initialised) defer(updateGrab); }
 function autofocus(v) { followFocus = v ? 1 : 0; if (initialised) defer(updateGrab); }
+// Takeover parameter (device view, Settings bank encoder 8; saved with the
+// Set): 0 Off, 1 only while this track is selected, 2 always. Arrives from
+// the parameter's output: an encoder edit, a click, or Push turning it
+// natively while the device has let go (Off / track not selected).
+var takeoverMode = 1;
+var TAKEOVER_NAMES = ["off", "track selected", "always"];
+function takeover(v) {
+	v = Math.max(0, Math.min(2, Number(v) | 0));
+	takeoverMode = v;
+	enabled = v > 0 ? 1 : 0;
+	followFocus = v === 1 ? 1 : 0;
+	post("kbSequencer: takeover " + TAKEOVER_NAMES[v] + "\n");
+	if (initialised) defer(updateGrab);
+	updateDisplay();
+}
+function readTakeover() { // the stored value, at init (the parameter may not output on load)
+	var o = this.patcher ? this.patcher.getnamed("pv_takeover") : null;
+	if (!o) return;
+	var v = Number(o.getvalueof());
+	if (!isNaN(v)) { takeoverMode = Math.max(0, Math.min(2, v | 0)); enabled = takeoverMode > 0 ? 1 : 0; followFocus = takeoverMode === 1 ? 1 : 0; }
+}
 
 function dump() {
 	post("kbSequencer: loop pages " + (model.loopStart + 1) + "–" + (model.loopEnd + 1) + ", length K " + model.lanes[0].length + " B " + model.lanes[1].length + ", settings " + JSON.stringify(model.settings) + "\n");
@@ -396,7 +417,7 @@ function testfill() {
 	model.clear();
 	for (var i = 0; i < 64; i += 4) model.addTrig(S.KICK, i);
 	model.setMuted(S.KICK, 12, true);
-	var notes = [36, 36, 43, 41];
+	var notes = [60, 60, 67, 65];
 	for (var j = 2; j < 64; j += 4) {
 		model.addTrig(S.BASS, j, notes[(j >> 2) % 4]);
 		if (j % 8 === 2) model.setLock(S.BASS, j, S.PARAM_ID.slide, 1);
@@ -404,7 +425,7 @@ function testfill() {
 	model.setLock(S.KICK, 0, S.PARAM_ID.velocity, 127);
 	model.setLock(S.BASS, 6, S.PARAM_ID.m1, 50);
 	model.setLoop(0, 1);
-	model.setSetting("kickNote", 36);
+	model.setSetting("kickNote", 60);
 	if (grabbed) defer(renderAll);
 	dump();
 }
@@ -449,6 +470,7 @@ function init() {
 	setupTransport(); // playback works with or without Push
 	setupScale();
 	refresh(); // ask the kbLanes for their macros
+	readTakeover();
 	findPush();
 	if (!surface) { status("No Push found — is Push set as a control surface?"); return; }
 	resolveControls();
@@ -551,6 +573,12 @@ function release() {
 		try { surface.call("release_control", "id", c.id); } catch (e) {}
 	}
 	grabbed = false;
+	// Push now shows this device's bank: make it Settings, so Push can turn
+	// Takeover (encoder 8) back on.
+	heldSteps = []; pageHold = null;
+	bankSel.settings = 0;
+	lastBankSig = "";
+	updateDisplay();
 	showStatus();
 }
 
@@ -721,7 +749,7 @@ function markHeldEdited() {
 // slots without a visible macro on that lane's Rack show "-".
 var BANKS = {
 	settings: [
-		{ name: "Settings", items: ["kickChannel", "bassChannel", "kickNote", "bendRange", "scaleFollow", "swing", "macroRefresh", null] },
+		{ name: "Settings", items: ["kickChannel", "bassChannel", "kickNote", "bendRange", "scaleFollow", "swing", "macroRefresh", "takeover"] },
 		{ name: "Kick Euclid", items: ["kLength", "kEuSteps", "kEuPulses", "kEuRotate", "kEuLayer", "kEuVel", "kEuFollow", null] },
 		{ name: "Bass Euclid", items: ["bLength", "bEuSteps", "bEuPulses", "bEuRotate", "bEuLayer", "bEuVel", "bEuFollow", "bEuNote"] }
 	],
@@ -805,6 +833,7 @@ function lockTargets() {
 // Value of a display item, in the display parameter's own units.
 function itemValue(key) {
 	if (key === "macroRefresh") return refreshShown ? 1 : 0;
+	if (key === "takeover") return takeoverMode;
 	if (LANE_ITEMS[key]) return laneItemValue(key);
 	if (key in model.settings) return model.settings[key];
 	var t = heldTarget();
@@ -977,6 +1006,14 @@ function editSetting(key, steps) {
 	if (key === "macroRefresh") {
 		encoderEdit = false;
 		refresh();
+		return;
+	}
+	if (key === "takeover") { // through the parameter, so it's saved; its output calls takeover()
+		encoderEdit = false;
+		var to = this.patcher ? this.patcher.getnamed("pv_takeover") : null, nv = Math.max(0, Math.min(2, takeoverMode + steps));
+		if (nv === takeoverMode) return;
+		pvSent.takeover = nv;
+		if (to) to.message("int", nv); else takeover(nv);
 		return;
 	}
 	model.setSetting(key, model.settings[key] + steps);
@@ -1578,7 +1615,7 @@ function renderSlots() {
 function showStatus() {
 	if (!surface) { status("No Push found"); return; }
 	var parts = [grabbed ? "GRABBED" : "released"];
-	if (!enabled) parts.push("(takeover off)");
+	if (!enabled) parts.push("(takeover off: turn it on in the device or Push's Settings bank)");
 	else if (followFocus && !focused) parts.push("(track not selected)");
 	if (perfMode) parts.push("PERF");
 	if (model.activeSlot >= 0) parts.push("preset " + (model.activeSlot + 1) + (model.isDirty() ? " (unsaved)" : ""));

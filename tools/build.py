@@ -22,7 +22,7 @@ AMXD_MIDI = int.from_bytes(b"mmmm", "big")  # 1835887981
 
 # Shown on every device and printed to the Max Console at load, so it's easy
 # to tell which build is running. VERSION: bump the minor per spec build step.
-VERSION = "0.17.0"
+VERSION = "0.18.1"
 BUILD = datetime.datetime.now().strftime("%m%d.%H%M")  # build time, MMDD.HHMM
 STAMP = f"v{VERSION} · {BUILD}"
 
@@ -69,7 +69,10 @@ DISPLAY_PARAMS = (
      ("scaleFollow", "ScaleFollow", "Scale", "enum", 0, 1, OFF_ON),
      ("swing", "Swing", "Swing", "int", 50, 75, "%d %%"),
      # Settings > Refresh: turn to ask the kbLanes for their macros again
-     ("macroRefresh", "MacroRefresh", "Refresh", "enum", 0, 1, ["Turn", "Sent"])]
+     ("macroRefresh", "MacroRefresh", "Refresh", "enum", 0, 1, ["Turn", "Sent"]),
+     # A real setting (saved with the Set, shown in the device view): when the
+     # device lets go of Push, Push itself can turn it back on (Settings bank).
+     ("takeover", "Takeover", "Takeover", "enum", 0, 2, ["Off", "Track selected", "Always"])]
     + [("note", "Note", "Note", "note", 0, 127, None),
        ("velocity", "Velocity", "Velocity", "int", 0, 127, None),
        ("length", "Length", "Length", "enum", 0, 127, RETRIG_LEN_LABELS),  # gate + retrig LEN
@@ -190,13 +193,16 @@ class Patch:
                      "parameter_unitstyle": 0}})
         self.params[id_] = [name, name, 0]
 
-    def display_param(self, key, longname, shortname, kind, lo, hi, extra, rect):
-        """One Push display parameter (see DISPLAY_PARAMS). Not in the presentation."""
+    def display_param(self, key, longname, shortname, kind, lo, hi, extra, rect, pres=None, initial=None):
+        """One Push display parameter (see DISPLAY_PARAMS). Not in the presentation
+        unless `pres` is given; `initial` gives it a default value."""
         v = {"parameter_longname": longname, "parameter_shortname": shortname,
-             "parameter_initial_enable": 0}
+             "parameter_initial_enable": 0 if initial is None else 1}
+        if initial is not None:
+            v["parameter_initial"] = [initial]
         if kind == "enum":
             v.update(parameter_type=2, parameter_enum=extra, parameter_mmax=len(extra) - 1)
-            self.box("pv_" + key, "live.menu", rect, numinlets=1, numoutlets=3,
+            self.box("pv_" + key, "live.menu", rect, pres, numinlets=1, numoutlets=3,
                      outlettype=["", "", "float"], parameter_enable=1, varname="pv_" + key,
                      saved_attribute_attributes={"valueof": v})
         else:
@@ -260,7 +266,7 @@ def amxd_bytes(patch_json):
             + b"ptch" + struct.pack("<I", len(body)) + body)
 
 
-def common(p, js_text, js_outs, wire_init=True):
+def common(p, js_text, js_outs, wire_init=True, toggles=True):
     """MIDI thru, live.thisdevice, js, takeover toggles, status + event readouts."""
     p.obj("midiin", "midiin", [30, 20, 45, 22], 1, 1, ["int"])
     p.obj("midiout", "midiout", [30, 60, 55, 22], 1, 0)
@@ -271,8 +277,8 @@ def common(p, js_text, js_outs, wire_init=True):
     if wire_init:
         p.wire("thisdevice", 0, "js", 0)
 
-    for key, msg, label, x, y in (("en", "enable", "Takeover", 320, 24),
-                                  ("af", "autofocus", "Only when track selected", 430, 48)):
+    for key, msg, label, x, y in ((("en", "enable", "Takeover", 320, 24),
+                                   ("af", "autofocus", "Only when track selected", 430, 48)) if toggles else ()):
         p.obj(f"lm_{key}", "loadmess 1", [x, 20, 65, 22], 1, 1)
         p.toggle(f"tgl_{key}", [x, 60, 24, 24], [10, y, 20, 20])
         p.obj(f"pre_{key}", f"prepend {msg}", [x, 100, 105, 22], 1, 1)
@@ -323,7 +329,7 @@ t.write("kbTakeover")
 # ---- main device ----
 bundle("kbSequencer.js", "main.js", modules=[("S", "seq_model.js")])
 s = Patch("kbSequencer", size=(640, 169))
-common(s, "js kbSequencer.js", 5, wire_init=False)
+common(s, "js kbSequencer.js", 5, wire_init=False, toggles=False)
 s.blob_pattr("pattr", "kbData", [200, 400, 100, 22])
 # On device init: first bang pattr so the stored sequence reaches the script
 # (right outlet fires first), then init the script.
@@ -513,7 +519,14 @@ buttons(s, ["rescan", "dump", "testfill", "clearall", "palette 0", "palette -1",
 # ---- step 6: Push display parameters + the one Push bank ----
 for n, dp in enumerate(DISPLAY_PARAMS):
     col, row = divmod(n, 12)
-    s.display_param(*dp, rect=[1000 + col * 90, 20 + row * 24, 80, 15])
+    if dp[0] == "takeover":  # shown in the device view, default Track selected
+        s.display_param(*dp, rect=[1000 + col * 90, 20 + row * 24, 80, 15], pres=[62, 48, 100, 15], initial=1)
+    else:
+        s.display_param(*dp, rect=[1000 + col * 90, 20 + row * 24, 80, 15])
+s.comment("c_takeover", "Takeover", [1000, 400, 60, 20], [10, 46, 50, 18])
+s.obj("pre_takeover", "prepend takeover", [1000, 420, 100, 22], 1, 1)
+s.wire("pv_takeover", 0, "pre_takeover", 0)  # also when Push turns it while released
+s.wire("pre_takeover", 0, "js", 0)
 s.obj("banks", "live.banks", [1000, 330, 70, 22], 1, 1, varname="banks")
 s.obj("pre_banks", "prepend banks", [1000, 360, 90, 22], 1, 1)
 s.wire("banks", 0, "pre_banks", 0)
