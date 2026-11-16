@@ -201,6 +201,7 @@ kbSequencer (Device mode, device selected) to see the bank.
   than one value per encoder message (works for step locks and settings;
   menus are unaffected). Short menus (up to 4 items, e.g. Layer) always move
   one item at a time.
+- **Jog wheel**: turn to step to the next / previous bank in the current context (one bank per click, no wrap-around); nudging it left / right does the same. Picking a bank while holding a step doesn't mute it on release.
 - The last bank picked in each context is remembered. The selected bank's
   button is bright, the other available ones dim.
 - The first 6 encoder messages are printed to the Max Console

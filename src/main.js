@@ -93,7 +93,10 @@ var CONTROL_NAMES = {
 	undoBtn: "Undo_Button",
 	shiftBtn: "Shift_Button",
 	duplicateBtn: "Duplicate_Button",
-	muteBtn: "Global_Mute_Button"
+	muteBtn: "Global_Mute_Button",
+	jog: "Jogwheel",                 // turn: next / previous bank
+	jogLeft: "Jogwheel_Left_nudge",  // nudge: previous bank
+	jogRight: "Jogwheel_Right_nudge" // nudge: next bank
 };
 
 // ---------- deferred work queue ----------
@@ -563,6 +566,34 @@ function handleInput(role, v) {
 	if (role === "octaveDown") { if (pressed) shiftOctave(-1); return; }
 	if (role === "encoders") { onEncoder(v); return; }
 	if (role === "touches") { onTouch(v); return; }
+	if (role === "jog") { onJog(v); return; }
+	if (role === "jogLeft") { if (pressed) stepBank(-1); return; }
+	if (role === "jogRight") { if (pressed) stepBank(1); return; }
+}
+
+// Jog wheel: each turn message steps one bank in the current context (no
+// wrap-around); the direction comes from the relative value, like the
+// encoders. The first few raw messages go to the Max Console (format check).
+var jogLogLeft = 6;
+function onJog(v) {
+	if (jogLogLeft > 0) { jogLogLeft--; post("kbSequencer: jog raw " + v.join(" ") + "\n"); }
+	var d = encoderDelta(v[0]);
+	if (d) stepBank(d > 0 ? 1 : -1);
+}
+function stepBank(d) {
+	var c = context(), bi = bankSel[c] + d;
+	if (bi < 0 || bi >= BANKS[c].length) return;
+	selectBank(c, bi);
+}
+function selectBank(c, bi) {
+	// Picking a bank while a step / page pad is held counts as using it: the
+	// pad won't mute (or view / loop) on release.
+	if (heldSteps.length) markHeldEdited();
+	if (pageHold) pageHold.edited = true;
+	bankSel[c] = bi;
+	encAcc = [0, 0, 0, 0, 0, 0, 0, 0];
+	renderAll();
+	showStatus();
 }
 
 // Display buttons: 1 kick, 2 bass, 3–8 banks (see BANK_BUTTONS).
@@ -574,8 +605,8 @@ function onDisplayButton(x) {
 	else if (BANK_BUTTONS.indexOf(x) >= 0) {
 		var c = context(), bi = BANK_BUTTONS.indexOf(x);
 		if (bi >= BANKS[c].length) return;
-		bankSel[c] = bi;
-		encAcc = [0, 0, 0, 0, 0, 0, 0, 0];
+		selectBank(c, bi);
+		return;
 	}
 	else return;
 	renderAll();
