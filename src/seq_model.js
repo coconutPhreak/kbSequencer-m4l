@@ -7,7 +7,7 @@ var PAGES = 16;
 var NUM_STEPS = STEPS_PER_PAGE * PAGES; // 512 per lane
 var KICK = 0, BASS = 1;
 var LANE_NAMES = ["kick", "bass"];
-var CC_SLOTS = 8;
+var MACRO_SLOTS = 8; // macro lock slots per lane: slot N = macro N of the Rack after kbLane
 
 // Units: 24 ticks per step (one 1/16). Length and microtime use ticks.
 var TICKS_PER_STEP = 24;
@@ -46,7 +46,7 @@ var RETRIG_LOOKBACK = 256; // steps searched back for bursts still running
 
 // Lockable step parameters. The id (array index) is the save format:
 // APPEND ONLY, never reorder or remove.
-// def: lane default used when a step has no lock. -1 on a CC = send nothing.
+// def: lane default used when a step has no lock.
 // lanes: which lanes the parameter applies to.
 var PARAMS = [
 	{ key: "velocity",    min: 0,   max: 127, def: 100, lanes: [1, 1] },
@@ -64,10 +64,12 @@ var PARAMS = [
 	{ key: "retrigFade",  min: -100, max: 100, def: 0,  lanes: [1, 1] },  // VFAD %
 	{ key: "fill",        min: 0,   max: 1,   def: 0,   lanes: [1, 1] }
 ];
-for (var _c = 0; _c < CC_SLOTS; _c++)
-	PARAMS.push({ key: "cc" + (_c + 1), min: 0, max: 127, def: -1, lanes: [1, 1], cc: _c });
+// Macro lock slots (v4; these ids held the CC lock slots up to v3): an offset
+// in % of the macro's range, added to its knob by kbLane. 0 = no offset.
+for (var _c = 0; _c < MACRO_SLOTS; _c++)
+	PARAMS.push({ key: "m" + (_c + 1), min: -100, max: 100, def: 0, lanes: [1, 1], macro: _c });
 
-// Retrig, appended after the CC slots (ids are the save format).
+// Retrig, appended after the macro slots (ids are the save format).
 PARAMS.push(
 	// Length (index into RETRIG_LENS): a plain note's gate and a retrig burst's
 	// length, one value (merged). Default 1/32 (half a step), as before.
@@ -113,12 +115,13 @@ var EUCLID = [
 var LAYERS = ["Manual", "Euclid", "Both"];
 var MAX_LENGTH = NUM_STEPS;
 
-var DEFAULT_CC = [[20, 21, 22, 23, 24, 25, 26, 27], [70, 71, 72, 73, 74, 75, 76, 77]];
 var DEFAULT_BASS_NOTE = 36;
 
 // v2: step length is an index into RETRIG_LENS (v1: gate ticks, param 1).
 // v3: per-lane Length (steps) and Euclid settings, after the lanes.
-var MAGIC = 7101, VERSION = 3;
+// v4: macro lock slots replace the CC lock slots (same param ids); the CC
+//     numbers are gone (nCc written as 0). Older CC locks are dropped on load.
+var MAGIC = 7101, VERSION = 4;
 
 // Nearest LEN entry (by ratio) to a length in steps.
 function nearestLen(steps) {
@@ -148,7 +151,7 @@ Model.prototype.clear = function () {
 		for (var s = 0; s < NUM_STEPS; s++) steps.push(null);
 		var eu = {};
 		for (var e = 0; e < EUCLID.length; e++) eu[EUCLID[e].key] = EUCLID[e].def;
-		this.lanes.push({ steps: steps, defaults: defs, ccNums: DEFAULT_CC[l].slice(), length: STEPS_PER_PAGE, euclid: eu });
+		this.lanes.push({ steps: steps, defaults: defs, length: STEPS_PER_PAGE, euclid: eu });
 	}
 	this.changed();
 };
@@ -384,10 +387,6 @@ Model.prototype.printEuclid = function (l) {
 	return n;
 };
 
-Model.prototype.setCcNumber = function (lane, slot, cc) {
-	this.lanes[lane].ccNums[clamp(slot, 0, CC_SLOTS - 1)] = clamp(cc, 0, 127);
-	this.changed();
-};
 
 Model.prototype.countTrigs = function (lane) {
 	var n = 0, steps = this.lanes[lane].steps;
@@ -611,8 +610,8 @@ function bendValue(off, range) {
 
 // Events to play during absStep: [{offMs, lane, pitch, velocity, durMs, channel}],
 // offMs = time after the step's start. lane 2 = a bass pitch bend (pitch =
-// 14-bit value); lane 3 / 4 = a kick / bass CC (pitch = controller number,
-// velocity = value), sent with the step's note. Includes retrig hits and held / sliding notes that started
+// 14-bit value); lane 3 / 4 = a kick / bass macro offset (pitch = slot 1–8,
+// velocity = offset in %; slot 0 = reset all to 0), just before every new note. Includes retrig hits and held / sliding notes that started
 // on earlier steps (back to startAbs, the play start: nothing ran before
 // it). Voices: each new note may keep at most VOICES−1 notes or bursts
 // running (its own VOICES; Mono = 1): the oldest are cut at its start, so
@@ -655,12 +654,16 @@ Model.prototype.eventsAt = function (absStep, stepMs, seed, startAbs) {
 			var cut = item.end < item.natural; // stopped by a later note
 			var endOrNext = item.end === Infinity ? this.nextNoteAbs(l, f.abs, stepMs, seed) : item.end;
 			if (inStep(st0)) {
-				// CC locks go out with the note, just before it (lane 3 / 4 = kick / bass
-				// CC: pitch = controller, velocity = value). Slid-into steps send none.
-				var lane = this.lanes[l], st0s = this.playStepAt(l, this.seqIndexFor(f.abs, l));
-				for (var cc = 0; cc < CC_SLOTS; cc++) {
-					var cv = this.stepValue(l, st0s, PARAM_ID["cc" + (cc + 1)]);
-					if (cv >= 0) out.push({ offMs: ms(st0), lane: 3 + l, pitch: lane.ccNums[cc], velocity: cv, durMs: 0, channel: ch });
+				// Macro offsets go out with the note, just before it (lane 3 / 4 =
+				// kick / bass): first slot 0 = "all offsets back to 0", then each
+				// slot 1–8 with a non-zero offset (pitch = slot, velocity = offset %).
+				// So an unlocked step returns every macro to its knob. Once per
+				// note: retrig hits and slid-into steps send none.
+				var st0s = this.playStepAt(l, this.seqIndexFor(f.abs, l));
+				out.push({ offMs: ms(st0), lane: 3 + l, pitch: 0, velocity: 0, durMs: 0, channel: ch });
+				for (var mi = 0; mi < MACRO_SLOTS; mi++) {
+					var mv = this.stepValue(l, st0s, PARAM_ID["m" + (mi + 1)]);
+					if (mv) out.push({ offMs: ms(st0), lane: 3 + l, pitch: mi + 1, velocity: mv, durMs: 0, channel: ch });
 				}
 				if (l === BASS) // centre the bend before every new bass note
 					out.push({ offMs: ms(st0), lane: 2, pitch: 8192, velocity: 0, durMs: 0, channel: ch });
@@ -735,7 +738,7 @@ function keyboardNotes(root, intervals, octave) {
 // Flat int list (safe to store in a [pattr] blob, no quoting issues). Sparse:
 // only steps with a trig are written.
 // [MAGIC, VERSION, nSettings, settings…, loopStart, loopEnd, nLanes,
-//   per lane: nCc, ccNums…, nParams, defaults…, nSteps,
+//   per lane: nCc (0 since v4; CC numbers before), ccNums…, nParams, defaults…, nSteps,
 //     per step: index, flags(bit0 muted), note, nLocks, (pid, value)…]
 Model.prototype.encode = function () {
 	var out = [MAGIC, VERSION, SETTINGS.length], i, l;
@@ -743,8 +746,7 @@ Model.prototype.encode = function () {
 	out.push(this.loopStart, this.loopEnd, this.lanes.length);
 	for (l = 0; l < this.lanes.length; l++) {
 		var lane = this.lanes[l];
-		out.push(CC_SLOTS);
-		for (i = 0; i < CC_SLOTS; i++) out.push(lane.ccNums[i]);
+		out.push(0); // nCc: no CC numbers since v4
 		out.push(PARAMS.length);
 		for (i = 0; i < PARAMS.length; i++) out.push(lane.defaults[i]);
 		var countAt = out.length, n = 0;
@@ -796,11 +798,11 @@ Model.prototype.decode = function (list) {
 		for (var l = 0; l < nl; l++) {
 			var lane = l < 2 ? this.lanes[l] : null;
 			var nc = next();
-			for (i = 0; i < nc; i++) { var cc = next(); if (lane && i < CC_SLOTS) lane.ccNums[i] = clamp(cc, 0, 127); }
+			for (i = 0; i < nc; i++) next(); // v1–v3 CC numbers: no longer used
 			var np = next();
 			for (i = 0; i < np; i++) {
 				var d = next();
-				if (lane && i < PARAMS.length) lane.defaults[i] = d === -1 && PARAMS[i].def === -1 ? -1 : clamp(d, PARAMS[i].min, PARAMS[i].max);
+				if (lane && i < PARAMS.length) lane.defaults[i] = ver < 4 && PARAMS[i].macro !== undefined ? PARAMS[i].def : clamp(d, PARAMS[i].min, PARAMS[i].max);
 			}
 			if (lane && ver < 2) lane.defaults[PARAM_ID.length] = nearestLen(lane.defaults[1] / TICKS_PER_STEP);
 			var nsteps = next();
@@ -809,7 +811,9 @@ Model.prototype.decode = function (list) {
 				var st = { muted: !!(flags & 1), note: l === BASS ? clamp(note, 0, 127) : -1, locks: {} };
 				for (var j = 0; j < nlocks; j++) {
 					var pid = next(), val = next();
-					if (pid >= 0 && pid < PARAMS.length && PARAMS[pid].lanes[l]) st.locks[pid] = clamp(val, PARAMS[pid].min, PARAMS[pid].max);
+					if (pid < 0 || pid >= PARAMS.length || !PARAMS[pid].lanes[l]) continue;
+					if (ver < 4 && PARAMS[pid].macro !== undefined) continue; // a v1–v3 CC lock: dropped
+					st.locks[pid] = clamp(val, PARAMS[pid].min, PARAMS[pid].max);
 				}
 				if (ver < 2 && (1 in st.locks)) { // v1 gate ticks -> length index
 					st.locks[PARAM_ID.length] = nearestLen(st.locks[1] / TICKS_PER_STEP);
@@ -846,7 +850,7 @@ var api = {
 	CONDITIONS: CONDITIONS, RETRIG_RATES: RETRIG_RATES, RETRIG_LENS: RETRIG_LENS,
 	RETRIG_LEN_LABELS: RETRIG_LEN_LABELS, RETRIG_PMODES: RETRIG_PMODES, RETRIG_VOICES: RETRIG_VOICES,
 	STEPS_PER_PAGE: STEPS_PER_PAGE, PAGES: PAGES, NUM_STEPS: NUM_STEPS,
-	TICKS_PER_STEP: TICKS_PER_STEP, CC_SLOTS: CC_SLOTS,
+	TICKS_PER_STEP: TICKS_PER_STEP, MACRO_SLOTS: MACRO_SLOTS,
 	KICK: KICK, BASS: BASS, LANE_NAMES: LANE_NAMES,
 	keyboardNotes: keyboardNotes, CHROMATIC: CHROMATIC,
 	MIN_OCTAVE: MIN_OCTAVE, MAX_OCTAVE: MAX_OCTAVE

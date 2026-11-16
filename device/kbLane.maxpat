@@ -18,7 +18,7 @@
   "openrect": [
    0,
    0,
-   120,
+   240,
    169
   ],
   "openinpresentation": 1,
@@ -182,6 +182,25 @@
      "numinlets": 1,
      "numoutlets": 1,
      "outlettype": [
+      ""
+     ]
+    }
+   },
+   {
+    "box": {
+     "id": "recv_m",
+     "maxclass": "newobj",
+     "patching_rect": [
+      30,
+      120,
+      55,
+      22
+     ],
+     "text": "route m",
+     "numinlets": 2,
+     "numoutlets": 2,
+     "outlettype": [
+      "",
       ""
      ]
     }
@@ -391,7 +410,7 @@
       112,
       18
      ],
-     "text": "v0.14.0 \u00b7 1115.1923",
+     "text": "v0.15.1 \u00b7 1116.2040",
      "numinlets": 1,
      "numoutlets": 0
     }
@@ -483,6 +502,589 @@
      "numinlets": 1,
      "numoutlets": 0
     }
+   },
+   {
+    "box": {
+     "id": "m_t",
+     "maxclass": "newobj",
+     "patching_rect": [
+      500,
+      140,
+      40,
+      22
+     ],
+     "text": "t l l",
+     "numinlets": 1,
+     "numoutlets": 2,
+     "outlettype": [
+      "",
+      ""
+     ]
+    }
+   },
+   {
+    "box": {
+     "id": "m_match",
+     "maxclass": "newobj",
+     "patching_rect": [
+      580,
+      180,
+      200,
+      22
+     ],
+     "text": "expr ($i3 == $i5) && ($i4 == $i6)",
+     "numinlets": 6,
+     "numoutlets": 1,
+     "outlettype": [
+      ""
+     ]
+    }
+   },
+   {
+    "box": {
+     "id": "m_slice",
+     "maxclass": "newobj",
+     "patching_rect": [
+      500,
+      220,
+      65,
+      22
+     ],
+     "text": "zl slice 2",
+     "numinlets": 2,
+     "numoutlets": 2,
+     "outlettype": [
+      "",
+      ""
+     ]
+    }
+   },
+   {
+    "box": {
+     "id": "m_gate",
+     "maxclass": "newobj",
+     "patching_rect": [
+      500,
+      260,
+      50,
+      22
+     ],
+     "text": "gate 1 0",
+     "numinlets": 2,
+     "numoutlets": 1,
+     "outlettype": [
+      ""
+     ]
+    }
+   },
+   {
+    "box": {
+     "id": "m_route",
+     "maxclass": "newobj",
+     "patching_rect": [
+      500,
+      300,
+      160,
+      22
+     ],
+     "text": "route 0 1 2 3 4 5 6 7 8",
+     "numinlets": 1,
+     "numoutlets": 10,
+     "outlettype": [
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      ""
+     ]
+    }
+   },
+   {
+    "box": {
+     "id": "m_reset",
+     "maxclass": "newobj",
+     "patching_rect": [
+      500,
+      340,
+      30,
+      22
+     ],
+     "text": "t b",
+     "numinlets": 1,
+     "numoutlets": 1,
+     "outlettype": [
+      "bang"
+     ]
+    }
+   },
+   {
+    "box": {
+     "id": "m_zero",
+     "maxclass": "message",
+     "patching_rect": [
+      500,
+      370,
+      30,
+      22
+     ],
+     "text": "0.",
+     "numinlets": 2,
+     "numoutlets": 1,
+     "outlettype": [
+      ""
+     ]
+    }
+   },
+   {
+    "box": {
+     "id": "js",
+     "maxclass": "newobj",
+     "patching_rect": [
+      800,
+      100,
+      90,
+      22
+     ],
+     "text": "js kbLane.js",
+     "numinlets": 1,
+     "numoutlets": 4,
+     "outlettype": [
+      "",
+      "",
+      "",
+      ""
+     ]
+    }
+   },
+   {
+    "box": {
+     "id": "js_ids",
+     "maxclass": "newobj",
+     "patching_rect": [
+      800,
+      140,
+      150,
+      22
+     ],
+     "text": "route 1 2 3 4 5 6 7 8",
+     "numinlets": 1,
+     "numoutlets": 9,
+     "outlettype": [
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      ""
+     ]
+    }
+   },
+   {
+    "box": {
+     "id": "js_info",
+     "maxclass": "newobj",
+     "patching_rect": [
+      960,
+      140,
+      95,
+      22
+     ],
+     "text": "send kbLaneInfo",
+     "numinlets": 1,
+     "numoutlets": 0,
+     "outlettype": []
+    }
+   },
+   {
+    "box": {
+     "id": "cmd_recv",
+     "maxclass": "newobj",
+     "patching_rect": [
+      800,
+      40,
+      110,
+      22
+     ],
+     "text": "receive kbLaneCmd",
+     "numinlets": 1,
+     "numoutlets": 1,
+     "outlettype": [
+      ""
+     ]
+    }
+   },
+   {
+    "box": {
+     "id": "g_pre",
+     "maxclass": "newobj",
+     "patching_rect": [
+      900,
+      60,
+      85,
+      22
+     ],
+     "text": "prepend group",
+     "numinlets": 1,
+     "numoutlets": 1,
+     "outlettype": [
+      ""
+     ]
+    }
+   },
+   {
+    "box": {
+     "id": "l_pre",
+     "maxclass": "newobj",
+     "patching_rect": [
+      1000,
+      60,
+      80,
+      22
+     ],
+     "text": "prepend lane",
+     "numinlets": 1,
+     "numoutlets": 1,
+     "outlettype": [
+      ""
+     ]
+    }
+   },
+   {
+    "box": {
+     "id": "m_div0",
+     "maxclass": "newobj",
+     "patching_rect": [
+      500,
+      420,
+      45,
+      22
+     ],
+     "text": "/ 100.",
+     "numinlets": 2,
+     "numoutlets": 1,
+     "outlettype": [
+      "float"
+     ]
+    }
+   },
+   {
+    "box": {
+     "id": "m_mod0",
+     "maxclass": "newobj",
+     "patching_rect": [
+      500,
+      460,
+      160,
+      22
+     ],
+     "text": "live.modulate~ @smoothing 0",
+     "numinlets": 2,
+     "numoutlets": 1,
+     "outlettype": [
+      ""
+     ]
+    }
+   },
+   {
+    "box": {
+     "id": "m_div1",
+     "maxclass": "newobj",
+     "patching_rect": [
+      570,
+      420,
+      45,
+      22
+     ],
+     "text": "/ 100.",
+     "numinlets": 2,
+     "numoutlets": 1,
+     "outlettype": [
+      "float"
+     ]
+    }
+   },
+   {
+    "box": {
+     "id": "m_mod1",
+     "maxclass": "newobj",
+     "patching_rect": [
+      570,
+      460,
+      160,
+      22
+     ],
+     "text": "live.modulate~ @smoothing 0",
+     "numinlets": 2,
+     "numoutlets": 1,
+     "outlettype": [
+      ""
+     ]
+    }
+   },
+   {
+    "box": {
+     "id": "m_div2",
+     "maxclass": "newobj",
+     "patching_rect": [
+      640,
+      420,
+      45,
+      22
+     ],
+     "text": "/ 100.",
+     "numinlets": 2,
+     "numoutlets": 1,
+     "outlettype": [
+      "float"
+     ]
+    }
+   },
+   {
+    "box": {
+     "id": "m_mod2",
+     "maxclass": "newobj",
+     "patching_rect": [
+      640,
+      460,
+      160,
+      22
+     ],
+     "text": "live.modulate~ @smoothing 0",
+     "numinlets": 2,
+     "numoutlets": 1,
+     "outlettype": [
+      ""
+     ]
+    }
+   },
+   {
+    "box": {
+     "id": "m_div3",
+     "maxclass": "newobj",
+     "patching_rect": [
+      710,
+      420,
+      45,
+      22
+     ],
+     "text": "/ 100.",
+     "numinlets": 2,
+     "numoutlets": 1,
+     "outlettype": [
+      "float"
+     ]
+    }
+   },
+   {
+    "box": {
+     "id": "m_mod3",
+     "maxclass": "newobj",
+     "patching_rect": [
+      710,
+      460,
+      160,
+      22
+     ],
+     "text": "live.modulate~ @smoothing 0",
+     "numinlets": 2,
+     "numoutlets": 1,
+     "outlettype": [
+      ""
+     ]
+    }
+   },
+   {
+    "box": {
+     "id": "m_div4",
+     "maxclass": "newobj",
+     "patching_rect": [
+      780,
+      420,
+      45,
+      22
+     ],
+     "text": "/ 100.",
+     "numinlets": 2,
+     "numoutlets": 1,
+     "outlettype": [
+      "float"
+     ]
+    }
+   },
+   {
+    "box": {
+     "id": "m_mod4",
+     "maxclass": "newobj",
+     "patching_rect": [
+      780,
+      460,
+      160,
+      22
+     ],
+     "text": "live.modulate~ @smoothing 0",
+     "numinlets": 2,
+     "numoutlets": 1,
+     "outlettype": [
+      ""
+     ]
+    }
+   },
+   {
+    "box": {
+     "id": "m_div5",
+     "maxclass": "newobj",
+     "patching_rect": [
+      850,
+      420,
+      45,
+      22
+     ],
+     "text": "/ 100.",
+     "numinlets": 2,
+     "numoutlets": 1,
+     "outlettype": [
+      "float"
+     ]
+    }
+   },
+   {
+    "box": {
+     "id": "m_mod5",
+     "maxclass": "newobj",
+     "patching_rect": [
+      850,
+      460,
+      160,
+      22
+     ],
+     "text": "live.modulate~ @smoothing 0",
+     "numinlets": 2,
+     "numoutlets": 1,
+     "outlettype": [
+      ""
+     ]
+    }
+   },
+   {
+    "box": {
+     "id": "m_div6",
+     "maxclass": "newobj",
+     "patching_rect": [
+      920,
+      420,
+      45,
+      22
+     ],
+     "text": "/ 100.",
+     "numinlets": 2,
+     "numoutlets": 1,
+     "outlettype": [
+      "float"
+     ]
+    }
+   },
+   {
+    "box": {
+     "id": "m_mod6",
+     "maxclass": "newobj",
+     "patching_rect": [
+      920,
+      460,
+      160,
+      22
+     ],
+     "text": "live.modulate~ @smoothing 0",
+     "numinlets": 2,
+     "numoutlets": 1,
+     "outlettype": [
+      ""
+     ]
+    }
+   },
+   {
+    "box": {
+     "id": "m_div7",
+     "maxclass": "newobj",
+     "patching_rect": [
+      990,
+      420,
+      45,
+      22
+     ],
+     "text": "/ 100.",
+     "numinlets": 2,
+     "numoutlets": 1,
+     "outlettype": [
+      "float"
+     ]
+    }
+   },
+   {
+    "box": {
+     "id": "m_mod7",
+     "maxclass": "newobj",
+     "patching_rect": [
+      990,
+      460,
+      160,
+      22
+     ],
+     "text": "live.modulate~ @smoothing 0",
+     "numinlets": 2,
+     "numoutlets": 1,
+     "outlettype": [
+      ""
+     ]
+    }
+   },
+   {
+    "box": {
+     "id": "st_pre",
+     "maxclass": "newobj",
+     "patching_rect": [
+      800,
+      180,
+      75,
+      22
+     ],
+     "text": "prepend set",
+     "numinlets": 1,
+     "numoutlets": 1,
+     "outlettype": [
+      ""
+     ]
+    }
+   },
+   {
+    "box": {
+     "id": "st_msg",
+     "maxclass": "comment",
+     "patching_rect": [
+      800,
+      210,
+      200,
+      20
+     ],
+     "presentation": 1,
+     "presentation_rect": [
+      122,
+      24,
+      112,
+      120
+     ],
+     "text": "",
+     "numinlets": 1,
+     "numoutlets": 0,
+     "varname": "st_msg"
+    }
    }
   ],
   "lines": [
@@ -527,6 +1129,18 @@
      "source": [
       "recv",
       0
+     ],
+     "destination": [
+      "recv_m",
+      0
+     ]
+    }
+   },
+   {
+    "patchline": {
+     "source": [
+      "recv_m",
+      1
      ],
      "destination": [
       "t",
@@ -665,9 +1279,652 @@
       0
      ]
     }
+   },
+   {
+    "patchline": {
+     "source": [
+      "recv_m",
+      0
+     ],
+     "destination": [
+      "m_t",
+      0
+     ]
+    }
+   },
+   {
+    "patchline": {
+     "source": [
+      "m_t",
+      1
+     ],
+     "destination": [
+      "m_match",
+      0
+     ]
+    }
+   },
+   {
+    "patchline": {
+     "source": [
+      "group",
+      0
+     ],
+     "destination": [
+      "m_match",
+      4
+     ]
+    }
+   },
+   {
+    "patchline": {
+     "source": [
+      "lane",
+      0
+     ],
+     "destination": [
+      "m_match",
+      5
+     ]
+    }
+   },
+   {
+    "patchline": {
+     "source": [
+      "m_match",
+      0
+     ],
+     "destination": [
+      "m_gate",
+      0
+     ]
+    }
+   },
+   {
+    "patchline": {
+     "source": [
+      "m_t",
+      0
+     ],
+     "destination": [
+      "m_slice",
+      0
+     ]
+    }
+   },
+   {
+    "patchline": {
+     "source": [
+      "m_slice",
+      0
+     ],
+     "destination": [
+      "m_gate",
+      1
+     ]
+    }
+   },
+   {
+    "patchline": {
+     "source": [
+      "m_gate",
+      0
+     ],
+     "destination": [
+      "m_route",
+      0
+     ]
+    }
+   },
+   {
+    "patchline": {
+     "source": [
+      "m_route",
+      0
+     ],
+     "destination": [
+      "m_reset",
+      0
+     ]
+    }
+   },
+   {
+    "patchline": {
+     "source": [
+      "m_reset",
+      0
+     ],
+     "destination": [
+      "m_zero",
+      0
+     ]
+    }
+   },
+   {
+    "patchline": {
+     "source": [
+      "thisdevice",
+      0
+     ],
+     "destination": [
+      "js",
+      0
+     ]
+    }
+   },
+   {
+    "patchline": {
+     "source": [
+      "cmd_recv",
+      0
+     ],
+     "destination": [
+      "js",
+      0
+     ]
+    }
+   },
+   {
+    "patchline": {
+     "source": [
+      "group",
+      0
+     ],
+     "destination": [
+      "g_pre",
+      0
+     ]
+    }
+   },
+   {
+    "patchline": {
+     "source": [
+      "lane",
+      0
+     ],
+     "destination": [
+      "l_pre",
+      0
+     ]
+    }
+   },
+   {
+    "patchline": {
+     "source": [
+      "g_pre",
+      0
+     ],
+     "destination": [
+      "js",
+      0
+     ]
+    }
+   },
+   {
+    "patchline": {
+     "source": [
+      "l_pre",
+      0
+     ],
+     "destination": [
+      "js",
+      0
+     ]
+    }
+   },
+   {
+    "patchline": {
+     "source": [
+      "js",
+      1
+     ],
+     "destination": [
+      "js_ids",
+      0
+     ]
+    }
+   },
+   {
+    "patchline": {
+     "source": [
+      "js",
+      2
+     ],
+     "destination": [
+      "m_reset",
+      0
+     ]
+    }
+   },
+   {
+    "patchline": {
+     "source": [
+      "js",
+      3
+     ],
+     "destination": [
+      "js_info",
+      0
+     ]
+    }
+   },
+   {
+    "patchline": {
+     "source": [
+      "m_route",
+      1
+     ],
+     "destination": [
+      "m_div0",
+      0
+     ]
+    }
+   },
+   {
+    "patchline": {
+     "source": [
+      "m_div0",
+      0
+     ],
+     "destination": [
+      "m_mod0",
+      0
+     ]
+    }
+   },
+   {
+    "patchline": {
+     "source": [
+      "m_zero",
+      0
+     ],
+     "destination": [
+      "m_mod0",
+      0
+     ]
+    }
+   },
+   {
+    "patchline": {
+     "source": [
+      "js_ids",
+      0
+     ],
+     "destination": [
+      "m_mod0",
+      1
+     ]
+    }
+   },
+   {
+    "patchline": {
+     "source": [
+      "m_route",
+      2
+     ],
+     "destination": [
+      "m_div1",
+      0
+     ]
+    }
+   },
+   {
+    "patchline": {
+     "source": [
+      "m_div1",
+      0
+     ],
+     "destination": [
+      "m_mod1",
+      0
+     ]
+    }
+   },
+   {
+    "patchline": {
+     "source": [
+      "m_zero",
+      0
+     ],
+     "destination": [
+      "m_mod1",
+      0
+     ]
+    }
+   },
+   {
+    "patchline": {
+     "source": [
+      "js_ids",
+      1
+     ],
+     "destination": [
+      "m_mod1",
+      1
+     ]
+    }
+   },
+   {
+    "patchline": {
+     "source": [
+      "m_route",
+      3
+     ],
+     "destination": [
+      "m_div2",
+      0
+     ]
+    }
+   },
+   {
+    "patchline": {
+     "source": [
+      "m_div2",
+      0
+     ],
+     "destination": [
+      "m_mod2",
+      0
+     ]
+    }
+   },
+   {
+    "patchline": {
+     "source": [
+      "m_zero",
+      0
+     ],
+     "destination": [
+      "m_mod2",
+      0
+     ]
+    }
+   },
+   {
+    "patchline": {
+     "source": [
+      "js_ids",
+      2
+     ],
+     "destination": [
+      "m_mod2",
+      1
+     ]
+    }
+   },
+   {
+    "patchline": {
+     "source": [
+      "m_route",
+      4
+     ],
+     "destination": [
+      "m_div3",
+      0
+     ]
+    }
+   },
+   {
+    "patchline": {
+     "source": [
+      "m_div3",
+      0
+     ],
+     "destination": [
+      "m_mod3",
+      0
+     ]
+    }
+   },
+   {
+    "patchline": {
+     "source": [
+      "m_zero",
+      0
+     ],
+     "destination": [
+      "m_mod3",
+      0
+     ]
+    }
+   },
+   {
+    "patchline": {
+     "source": [
+      "js_ids",
+      3
+     ],
+     "destination": [
+      "m_mod3",
+      1
+     ]
+    }
+   },
+   {
+    "patchline": {
+     "source": [
+      "m_route",
+      5
+     ],
+     "destination": [
+      "m_div4",
+      0
+     ]
+    }
+   },
+   {
+    "patchline": {
+     "source": [
+      "m_div4",
+      0
+     ],
+     "destination": [
+      "m_mod4",
+      0
+     ]
+    }
+   },
+   {
+    "patchline": {
+     "source": [
+      "m_zero",
+      0
+     ],
+     "destination": [
+      "m_mod4",
+      0
+     ]
+    }
+   },
+   {
+    "patchline": {
+     "source": [
+      "js_ids",
+      4
+     ],
+     "destination": [
+      "m_mod4",
+      1
+     ]
+    }
+   },
+   {
+    "patchline": {
+     "source": [
+      "m_route",
+      6
+     ],
+     "destination": [
+      "m_div5",
+      0
+     ]
+    }
+   },
+   {
+    "patchline": {
+     "source": [
+      "m_div5",
+      0
+     ],
+     "destination": [
+      "m_mod5",
+      0
+     ]
+    }
+   },
+   {
+    "patchline": {
+     "source": [
+      "m_zero",
+      0
+     ],
+     "destination": [
+      "m_mod5",
+      0
+     ]
+    }
+   },
+   {
+    "patchline": {
+     "source": [
+      "js_ids",
+      5
+     ],
+     "destination": [
+      "m_mod5",
+      1
+     ]
+    }
+   },
+   {
+    "patchline": {
+     "source": [
+      "m_route",
+      7
+     ],
+     "destination": [
+      "m_div6",
+      0
+     ]
+    }
+   },
+   {
+    "patchline": {
+     "source": [
+      "m_div6",
+      0
+     ],
+     "destination": [
+      "m_mod6",
+      0
+     ]
+    }
+   },
+   {
+    "patchline": {
+     "source": [
+      "m_zero",
+      0
+     ],
+     "destination": [
+      "m_mod6",
+      0
+     ]
+    }
+   },
+   {
+    "patchline": {
+     "source": [
+      "js_ids",
+      6
+     ],
+     "destination": [
+      "m_mod6",
+      1
+     ]
+    }
+   },
+   {
+    "patchline": {
+     "source": [
+      "m_route",
+      8
+     ],
+     "destination": [
+      "m_div7",
+      0
+     ]
+    }
+   },
+   {
+    "patchline": {
+     "source": [
+      "m_div7",
+      0
+     ],
+     "destination": [
+      "m_mod7",
+      0
+     ]
+    }
+   },
+   {
+    "patchline": {
+     "source": [
+      "m_zero",
+      0
+     ],
+     "destination": [
+      "m_mod7",
+      0
+     ]
+    }
+   },
+   {
+    "patchline": {
+     "source": [
+      "js_ids",
+      7
+     ],
+     "destination": [
+      "m_mod7",
+      1
+     ]
+    }
+   },
+   {
+    "patchline": {
+     "source": [
+      "js",
+      0
+     ],
+     "destination": [
+      "st_pre",
+      0
+     ]
+    }
+   },
+   {
+    "patchline": {
+     "source": [
+      "st_pre",
+      0
+     ],
+     "destination": [
+      "st_msg",
+      0
+     ]
+    }
    }
   ],
-  "dependency_cache": [],
+  "dependency_cache": [
+   {
+    "name": "kbLane.js",
+    "bootpath": ".",
+    "type": "TEXT",
+    "implicit": 1
+   }
+  ],
   "autosave": 0,
   "parameters": {
    "group": [
@@ -698,7 +1955,12 @@
    "autolocalize": 0,
    "contents": {
     "patchers": {},
-    "code": {}
+    "code": {
+     "kbLane.js": {
+      "kind": "javascript",
+      "local": 1
+     }
+    }
    },
    "layout": {},
    "searchpath": {},

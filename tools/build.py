@@ -22,7 +22,7 @@ AMXD_MIDI = int.from_bytes(b"mmmm", "big")  # 1835887981
 
 # Shown on every device and printed to the Max Console at load, so it's easy
 # to tell which build is running. VERSION: bump the minor per spec build step.
-VERSION = "0.14.0"
+VERSION = "0.15.1"
 BUILD = datetime.datetime.now().strftime("%m%d.%H%M")  # build time, MMDD.HHMM
 STAMP = f"v{VERSION} · {BUILD}"
 
@@ -67,8 +67,9 @@ DISPLAY_PARAMS = (
      ("kickNote", "KickNote", "Kick Note", "note", 0, 127, None),
      ("bendRange", "BendRange", "Bend", "int", 1, 96, "%d st"),  # each way
      ("scaleFollow", "ScaleFollow", "Scale", "enum", 0, 1, OFF_ON),
-     ("swing", "Swing", "Swing", "int", 50, 75, "%d %%")]
-    + [(f"ccNum{n}", f"CCNum{n}", f"CC# {n}", "int", 0, 127, None) for n in range(1, 9)]
+     ("swing", "Swing", "Swing", "int", 50, 75, "%d %%"),
+     # Settings > Refresh: turn to ask the kbLanes for their macros again
+     ("macroRefresh", "MacroRefresh", "Refresh", "enum", 0, 1, ["Turn", "Sent"])]
     + [("note", "Note", "Note", "note", 0, 127, None),
        ("velocity", "Velocity", "Velocity", "int", 0, 127, None),
        ("length", "Length", "Length", "enum", 0, 127, RETRIG_LEN_LABELS),  # gate + retrig LEN
@@ -79,7 +80,9 @@ DISPLAY_PARAMS = (
        ("tie", "Tie", "Tie", "enum", 0, 1, OFF_ON),
        ("fill", "Fill", "Fill", "enum", 0, 1, OFF_ON),
        ("condition", "Cond", "Cond", "enum", 0, len(CONDITIONS) - 1, CONDITIONS)]
-    + [(f"cc{n}", f"CCLock{n}", f"CC {n}", "int", -1, 127, None) for n in range(1, 9)]
+    # Macro Locks bank: offset added to macro N of the lane's Rack (by kbLane).
+    # Push can't show the real macro names (parameter names are fixed).
+    + [(f"m{n}", f"Macro{n}", f"Macro {n}", "int", -100, 100, "%d %%") for n in range(1, 9)]
     # Retrig (as retrig-m4l): banks Retrig and Rt Chance
     + [("retrig", "Retrig", "RTRG", "enum", 0, 1, OFF_ON),
        ("retrigRate", "RtRate", "RATE", "enum", 0, 16, RETRIG_RATES),
@@ -316,7 +319,7 @@ t.write("kbTakeover")
 
 # ---- main device ----
 bundle("kbSequencer.js", "main.js", modules=[("S", "seq_model.js")])
-s = Patch("kbSequencer · CC locks", size=(420, 169))
+s = Patch("kbSequencer", size=(640, 169))
 common(s, "js kbSequencer.js", 5, wire_init=False)
 s.blob_pattr("pattr", "kbData", [200, 400, 100, 22])
 # On device init: first bang pattr so the stored sequence reaches the script
@@ -369,7 +372,7 @@ s.wire("clk_reset", 0, "clk_once", 0)
 # right outlet first: play this step's MIDI, then tell the script (low priority)
 s.obj("clk_mod", f"% {SLOTS}", [120, 700, 40, 22], 2, 1, ["int"])
 s.obj("ev_coll", "coll", [120, 730, 50, 22], 1, 4, ["", "", "", "bang"])
-s.obj("ev_iter", "zl iter 6", [120, 760, 60, 22], 2, 2)
+s.obj("ev_iter", "zl iter 6 @zlmaxsize 4096", [120, 760, 60, 22], 2, 2)
 # Each event: offMs lane pitch vel durMs ch. [pipe] holds it offMs after its
 # step's tick (retrig hits inside the step; high priority, so timing is exact).
 s.obj("ev_t", "t l l", [120, 775, 40, 22], 1, 2, ["", ""])
@@ -473,29 +476,34 @@ s.wire("pb_bytes", 0, "pb_iter", 0)
 s.wire("pb_iter", 0, "midiout", 0)
 s.wire("pb_iter", 0, "lane_pack1", 0)
 
-# CC locks: event "3|4 controller value 0 channel" (kick / bass) -> raw bytes
-# B0+ch, controller, value, to the track output and that lane's kbLane.
+# Macro locks: event "3|4 slot offset 0 channel" (kick / bass) -> "m slot
+# offset group lane" on [send kbLanes], just before the note (same pipe tick,
+# same send, so it arrives first). Slot 0 = every offset back to 0. kbLane
+# applies it with live.modulate~ (patch objects only: high priority).
 for lane in (0, 1):
-    p, x = f"cc{lane}_", 820 + lane * 200
-    # unpack fires right to left: channel (stored), value, then controller,
-    # which bangs the status byte last into the hot inlet of the byte list.
-    s.obj(p + "unpack", "unpack 0 0 0 0", [x, 830, 90, 22], 1, 4, ["int"] * 4)
-    s.obj(p + "ch", "i 1", [x + 100, 860, 30, 22], 2, 1, ["int"])
-    s.obj(p + "t", "t b i", [x, 860, 40, 22], 1, 2, ["bang", "int"])
-    s.obj(p + "st", "expr 175 + $i1", [x, 890, 85, 22], 2, 1)
-    s.obj(p + "bytes", "pack 0 0 0", [x, 920, 70, 22], 3, 1)
-    s.obj(p + "iter", "iter", [x, 950, 35, 22], 1, 1)
-    s.wire("ev_route", 3 + lane, p + "unpack", 0)
-    s.wire(p + "unpack", 3, p + "ch", 1)       # channel
-    s.wire(p + "unpack", 1, p + "bytes", 2)    # value
-    s.wire(p + "unpack", 0, p + "t", 0)        # controller
-    s.wire(p + "t", 1, p + "bytes", 1)
-    s.wire(p + "t", 0, p + "ch", 0)
-    s.wire(p + "ch", 0, p + "st", 0)
-    s.wire(p + "st", 0, p + "bytes", 0)
-    s.wire(p + "bytes", 0, p + "iter", 0)
-    s.wire(p + "iter", 0, "midiout", 0)
-    s.wire(p + "iter", 0, f"lane_pack{lane}", 0)
+    p, x = f"mac{lane}_", 820 + lane * 200
+    s.obj(p + "slice", "zl slice 2", [x, 830, 65, 22], 2, 2)
+    s.obj(p + "pack", f"pack 0 0 1 {lane}", [x, 860, 90, 22], 4, 1)
+    s.obj(p + "pre", "prepend m", [x, 890, 70, 22], 1, 1)
+    s.wire("ev_route", 3 + lane, p + "slice", 0)
+    s.wire("group", 0, p + "pack", 2)
+    s.wire(p + "slice", 0, p + "pack", 0)  # "slot offset" fills inlets 0-1 and outputs
+    s.wire(p + "pack", 0, p + "pre", 0)
+    s.wire(p + "pre", 0, "lane_send", 0)
+
+# kbLane reports its Rack's macros on [send kbLaneInfo]; the script asks for
+# reports with "refresh" on [send kbLaneCmd] (non-time-critical).
+s.obj("info_recv", "receive kbLaneInfo", [1240, 830, 110, 22], 1, 1)
+s.obj("info_pre", "prepend laneinfo", [1240, 860, 100, 22], 1, 1)
+s.wire("info_recv", 0, "info_pre", 0)
+s.wire("info_pre", 0, "js", 0)
+s.obj("lane_cmd", "send kbLaneCmd", [1240, 890, 95, 22], 1, 0, varname="lane_cmd")
+s.obj("group_pre", "prepend group", [1240, 800, 85, 22], 1, 1)
+s.wire("group", 0, "group_pre", 0)
+s.wire("group_pre", 0, "js", 0)
+for n, (vn, y) in enumerate((("mv_kick", 24), ("mv_bass", 94))):
+    s.box(vn, "comment", [1240, 930 + n * 30, 200, 20], [424, y, 210, 68], text="",
+          numinlets=1, numoutlets=0, varname=vn)
 
 buttons(s, ["rescan", "dump", "testfill", "clearall", "palette 0", "palette -1", "undo", "redo"])
 
@@ -515,7 +523,7 @@ s.write("kbSequencer")
 # whose group+lane match this device's settings go out as MIDI on this track,
 # so no MIDI From routing is needed. Patch objects only: high priority.
 # [t l l] fires right first: the gate is set before the byte arrives.
-f = Patch("kbLane", size=(120, 169))
+f = Patch("kbLane", size=(240, 169))
 f.obj("midiin", "midiin", [30, 20, 45, 22], 1, 1, ["int"])
 f.obj("midiout", "midiout", [30, 330, 55, 22], 1, 0)
 f.wire("midiin", 0, "midiout", 0)  # this track's own input still passes
@@ -531,11 +539,13 @@ f.params["lane"] = ["Lane", "Lane", 0]
 f.wire("thisdevice", 0, "group", 0)  # report values at init, not only on change
 f.wire("thisdevice", 0, "lane", 0)
 f.obj("recv", "receive kbLanes", [30, 100, 95, 22], 1, 1)
+f.obj("recv_m", "route m", [30, 120, 55, 22], 2, 2)
 f.obj("t", "t l l", [30, 140, 40, 22], 1, 2, ["", ""])
 f.obj("match", "expr ($i2 == $i4) && ($i3 == $i5)", [120, 180, 200, 22], 5, 1)
 f.obj("first", "zl slice 1", [30, 220, 65, 22], 2, 2)
 f.obj("gate", "gate 1 0", [30, 280, 50, 22], 2, 1)
-f.wire("recv", 0, "t", 0)
+f.wire("recv", 0, "recv_m", 0)
+f.wire("recv_m", 1, "t", 0)
 f.wire("t", 1, "match", 0)
 f.wire("group", 0, "match", 3)
 f.wire("lane", 0, "match", 4)
@@ -560,11 +570,63 @@ f.comment("c_group", "Group", [300, 60, 40, 20], [6, 22, 44, 18])
 f.comment("c_lane", "Lane", [300, 80, 40, 20], [6, 42, 44, 18])
 f.comment("c_heard", "Heard", [300, 100, 40, 20], [6, 64, 44, 18])
 f.comment("c_heard2", "group · lane (0 kick, 1 bass)", [300, 120, 160, 20], [6, 84, 112, 30])
+
+# Macro locks: "m slot offset group lane" -> live.modulate~ N (high priority,
+# so the offset is set before the note bytes that follow it). The offset is
+# added to the macro's knob (bipolar additive, checked with kbMacroProbe) and
+# applied at the next audio buffer (smoothing 0). Slot 0 = all back to 0.
+bundle("kbLane.js", "kbLane.js")
+f.obj("m_t", "t l l", [500, 140, 40, 22], 1, 2, ["", ""])
+f.obj("m_match", "expr ($i3 == $i5) && ($i4 == $i6)", [580, 180, 200, 22], 6, 1)
+f.obj("m_slice", "zl slice 2", [500, 220, 65, 22], 2, 2)
+f.obj("m_gate", "gate 1 0", [500, 260, 50, 22], 2, 1)
+f.obj("m_route", "route 0 1 2 3 4 5 6 7 8", [500, 300, 160, 22], 1, 10)
+f.wire("recv_m", 0, "m_t", 0)
+f.wire("m_t", 1, "m_match", 0)
+f.wire("group", 0, "m_match", 4)
+f.wire("lane", 0, "m_match", 5)
+f.wire("m_match", 0, "m_gate", 0)
+f.wire("m_t", 0, "m_slice", 0)
+f.wire("m_slice", 0, "m_gate", 1)
+f.wire("m_gate", 0, "m_route", 0)
+f.obj("m_reset", "t b", [500, 340, 30, 22], 1, 1, ["bang"])
+f.message("m_zero", "0.", [500, 370, 30, 22])
+f.wire("m_route", 0, "m_reset", 0)
+f.wire("m_reset", 0, "m_zero", 0)
+f.obj("js", "js kbLane.js", [800, 100, 90, 22], 1, 4)
+f.obj("js_ids", "route 1 2 3 4 5 6 7 8", [800, 140, 150, 22], 1, 9)
+f.obj("js_info", "send kbLaneInfo", [960, 140, 95, 22], 1, 0)
+f.obj("cmd_recv", "receive kbLaneCmd", [800, 40, 110, 22], 1, 1)
+f.obj("g_pre", "prepend group", [900, 60, 85, 22], 1, 1)
+f.obj("l_pre", "prepend lane", [1000, 60, 80, 22], 1, 1)
+f.wire("thisdevice", 0, "js", 0)
+f.wire("cmd_recv", 0, "js", 0)
+f.wire("group", 0, "g_pre", 0)
+f.wire("lane", 0, "l_pre", 0)
+f.wire("g_pre", 0, "js", 0)
+f.wire("l_pre", 0, "js", 0)
+f.wire("js", 1, "js_ids", 0)
+f.wire("js", 2, "m_reset", 0)  # transport stopped
+f.wire("js", 3, "js_info", 0)
+for n in range(8):
+    dv, mod = f"m_div{n}", f"m_mod{n}"
+    f.obj(dv, "/ 100.", [500 + n * 70, 420, 45, 22], 2, 1, ["float"])
+    f.obj(mod, "live.modulate~ @smoothing 0", [500 + n * 70, 460, 160, 22], 2, 1)
+    f.wire("m_route", n + 1, dv, 0)
+    f.wire(dv, 0, mod, 0)
+    f.wire("m_zero", 0, mod, 0)
+    f.wire("js_ids", n, mod, 1)
+f.obj("st_pre", "prepend set", [800, 180, 75, 22], 1, 1)
+f.box("st_msg", "comment", [800, 210, 200, 20], [122, 24, 112, 120], text="", numinlets=1,
+      numoutlets=0, varname="st_msg")
+f.wire("js", 0, "st_pre", 0)
+f.wire("st_pre", 0, "st_msg", 0)
+f.deps = ["kbLane.js"]
 f.write("kbLane")
 
 if args.install:
     dest = Path(args.install).expanduser()
     for name in ("kbTakeover.amxd", "kbTakeover.js", "kbSequencer.amxd", "kbSequencer.js",
-                 "kbLane.amxd"):
+                 "kbLane.amxd", "kbLane.js"):
         shutil.copy2(OUT / name, dest / name)
         print("installed", dest / name)

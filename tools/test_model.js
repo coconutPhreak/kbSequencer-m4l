@@ -39,14 +39,15 @@ function run(argv) {
 	m.setLock(K, 0, P.slide, 1);                // slide not on kick: ignored
 	m.setLock(B, 4, P.slide, 1);
 	m.setLock(B, 4, P.microtime, -99);          // clamps
-	m.setLock(B, 4, P.cc3, 64);
+	m.setLock(B, 4, P.m3, 64);
+	m.setLock(B, 4, P.m4, -150);                // clamps
 	m.setLock(K, 100, P.velocity, 10);          // no trig: ignored
 	eq("vel clamp", m.value(K, 0, P.velocity), 127);
 	eq("kick slide ignored", m.isLocked(K, 0, P.slide), false);
 	eq("micro clamp", m.value(B, 4, P.microtime), -12);
 	eq("default used", m.value(B, 5, P.velocity), 100);
-	eq("cc default none", m.value(B, 5, P.cc3), -1);
-	eq("cc lock", m.value(B, 4, P.cc3), 64);
+	eq("macro default 0", m.value(B, 5, P.m3), 0);
+	eq("macro lock", [m.value(B, 4, P.m3), m.value(B, 4, P.m4)], [64, -100]);
 	eq("no trig no lock", m.hasTrig(K, 100), false);
 	eq("hasLocks", m.hasLocks(B, 4), true);
 
@@ -57,7 +58,6 @@ function run(argv) {
 	m.setSetting("kickNote", 38);
 	m.setSetting("swing", 99);
 	m.setLoop(5, 2);
-	m.setCcNumber(B, 2, 74);
 	eq("swing clamp", m.settings.swing, 75);
 	eq("loop ordered", [m.loopStart, m.loopEnd], [2, 5]);
 	eq("pageHasTrigs p0", m.pageHasTrigs(K, 0), true);
@@ -75,7 +75,7 @@ function run(argv) {
 	eq("muted kept", r.step(K, 0).muted, true);
 	eq("last step kept", r.hasTrig(K, 511), true);
 	eq("kick note setting", r.settings.kickNote, 38);
-	eq("cc number", r.lanes[B].ccNums[2], 74);
+	eq("macro locks kept", [r.value(B, 4, P.m3), r.value(B, 4, P.m4)], [64, -100]);
 	eq("trig counts", [r.countTrigs(K), r.countTrigs(B)], [2, 2]);
 
 	// wipe
@@ -298,7 +298,7 @@ function run(argv) {
 	eq("2 voices: no cut", mc.eventsAt(0, sms, 0, 0).filter(function (e) { return e.lane === B; })[0].durMs, 800);
 	// kick tie holds
 	var kt = new M.Model(); kt.setLoop(0, 1); kt.addTrig(K, 0); kt.setLock(K, 0, P.tie, 1); kt.setLock(K, 0, P.length, M.RETRIG_LENS.indexOf(4)); kt.addTrig(K, 3);
-	eq("kick tie: held, no retrigger", [kt.eventsAt(0, sms, 0, 0)[0].durMs, kt.eventsAt(3, sms, 0, 0).length], [400, 0]);
+	eq("kick tie: held, no retrigger", [kt.eventsAt(0, sms, 0, 0).filter(function (e) { return e.lane === K; })[0].durMs, kt.eventsAt(3, sms, 0, 0).length], [400, 0]);
 
 	// shortest Length on a slide: note ends before the glide, no bends after it
 	var cl = new M.Model(); cl.setLoop(0, 1);
@@ -320,26 +320,51 @@ function run(argv) {
 	far.wipe(B, 5); far.addTrig(B, 3, 47);
 	eq("near target: slides", [far.eventsAt(3, 100, 0, 0).filter(function (e) { return e.lane === B; }).length, far.eventsAt(1, 100, 0, 0).length > 0], [0, true]);
 
-	// ---- CC locks ----
+	// ---- macro locks ----
 	var cm2 = new M.Model(); cm2.setLoop(0, 1);
-	cm2.addTrig(K, 0); cm2.setLock(K, 0, P.cc1, 64); cm2.setLock(K, 0, P.cc3, 0);
-	cm2.addTrig(B, 2, 40); cm2.setLock(B, 2, P.cc2, 99); cm2.setCcNumber(B, 1, 74);
+	var mac = function (evs, lane) { return evs.filter(function (e) { return e.lane === lane; }).map(function (e) { return [e.pitch, e.velocity]; }); };
+	cm2.addTrig(K, 0); cm2.setLock(K, 0, P.m1, 64); cm2.setLock(K, 0, P.m3, -20); cm2.setLock(K, 0, P.m5, 0);
+	cm2.addTrig(B, 2, 40); cm2.setLock(B, 2, P.m2, 99);
 	var c0 = cm2.eventsAt(0, 100, 0, 0);
-	eq("kick CCs before the note", c0.map(function (e) { return [e.lane, e.pitch, e.velocity, e.channel]; }), [[3, 20, 64, 1], [3, 22, 0, 1], [0, 36, 100, 1]]);
-	var c2 = cm2.eventsAt(2, 100, 0, 0);
-	eq("bass CC uses CC number + bass channel", c2.filter(function (e) { return e.lane === 4; }).map(function (e) { return [e.pitch, e.velocity, e.channel]; }), [[74, 99, 2]]);
-	eq("unlocked step sends no CC", cm2.eventsAt(1, 100, 0, 0).length, 0);
+	eq("kick: reset, non-zero slots, then the note", c0.map(function (e) { return [e.lane, e.pitch, e.velocity, e.offMs]; }), [[3, 0, 0, 0], [3, 1, 64, 0], [3, 3, -20, 0], [0, 36, 100, 0]]);
+	eq("bass macros on lane 4", mac(cm2.eventsAt(2, 100, 0, 0), 4), [[0, 0], [2, 99]]);
+	cm2.addTrig(K, 1);
+	eq("unlocked step: reset only", mac(cm2.eventsAt(1, 100, 0, 0), 3), [[0, 0]]);
+	eq("empty step: nothing", cm2.eventsAt(3, 100, 0, 0).length, 0);
 	cm2.setMuted(K, 0, true);
-	eq("muted: no CC", cm2.eventsAt(0, 100, 0, 0).length, 0);
+	eq("muted: no macros", mac(cm2.eventsAt(0, 100, 0, 0), 3), []);
 	cm2.setMuted(K, 0, false); cm2.setLock(K, 0, P.probability, 0);
-	eq("prob fail: no CC", cm2.eventsAt(0, 100, 0, 0).length, 0);
+	eq("prob fail: no macros", mac(cm2.eventsAt(0, 100, 0, 0), 3), []);
 	cm2.clearLock(K, 0, P.probability);
-	// slid-into step's CC lock doesn't apply
-	cm2.setLock(B, 2, P.slide, 1); cm2.setLock(B, 2, P.length, M.RETRIG_LENS.indexOf(4)); cm2.addTrig(B, 3, 42); cm2.setLock(B, 3, P.cc4, 10);
-	eq("slid-into: no CC", cm2.eventsAt(3, 100, 0, 0).filter(function (e) { return e.lane === 4; }).length, 0);
-	// retrig: CCs once, with the first hit
+	// microtime: the macros move with the note
+	cm2.setLock(K, 0, P.microtime, 6);
+	eq("macros at the note's time", cm2.eventsAt(0, 100, 0, 0).map(function (e) { return e.offMs; }), [25, 25, 25, 25]);
+	cm2.clearLock(K, 0, P.microtime);
+	// slid-into step's macro lock doesn't apply
+	cm2.setLock(B, 2, P.slide, 1); cm2.setLock(B, 2, P.length, M.RETRIG_LENS.indexOf(4)); cm2.addTrig(B, 3, 42); cm2.setLock(B, 3, P.m4, 10);
+	eq("slid-into: no macros", mac(cm2.eventsAt(3, 100, 0, 0), 4), []);
+	// retrig: macros once, with the first hit
 	cm2.setLock(K, 0, P.retrig, 1); cm2.setLock(K, 0, P.length, M.RETRIG_LENS.indexOf(2)); cm2.setLock(K, 0, P.retrigRate, M.RETRIG_RATES.indexOf("1/32"));
-	eq("retrig: CC once", [cm2.eventsAt(0, 100, 0, 0).filter(function (e) { return e.lane === 3; }).length, cm2.eventsAt(1, 100, 0, 0).filter(function (e) { return e.lane === 3; }).length], [2, 0]);
+	cm2.wipe(K, 1);
+	eq("retrig: macros once", [mac(cm2.eventsAt(0, 100, 0, 0), 3).length, mac(cm2.eventsAt(1, 100, 0, 0), 3).length], [3, 0]);
+	// Euclid hits: no locks, reset only
+	var ce = new M.Model(); ce.setEuclid(K, "pulses", 4); ce.setEuclid(K, "layer", 1);
+	eq("euclid hit: reset only", mac(ce.eventsAt(0, 100, 0, 0), 3), [[0, 0]]);
+
+	// ---- save v3 (CC locks) loads into v4 ----
+	var v3 = new M.Model(); v3.addTrig(B, 4, 40); v3.setLock(B, 4, P.m2, 77); v3.setLock(B, 4, P.velocity, 90);
+	var e3 = v3.encode(); e3[1] = 3;
+	// a v3 lane carried 8 CC numbers: put them back where v4 writes nCc = 0
+	var at = 3 + M.SETTINGS.length + 3, lane0 = at;
+	eq("v4 writes nCc 0", e3[lane0], 0);
+	e3.splice(lane0, 1, 8, 20, 21, 22, 23, 24, 25, 26, 27);
+	var nPar = e3[lane0 + 9]; e3[lane0 + 10 + P.m1] = -1; // v3 CC default "none"
+	var lane1 = lane0 + 10 + nPar; lane1 += 1; // nSteps (kick: 0 steps)
+	e3.splice(lane1, 1, 8, 70, 71, 72, 73, 74, 75, 76, 77);
+	var o3 = new M.Model();
+	eq("v3 decodes", o3.decode(e3), true);
+	eq("v3: CC lock dropped, others kept", [o3.isLocked(B, 4, P.m2), o3.value(B, 4, P.velocity), o3.lanes[K].defaults[P.m1]], [false, 90, 0]);
+	eq("v3: saves as v4", o3.encode()[1], 4);
 
 	// ---- microtime ----
 	var mt = new M.Model(); mt.setLoop(0, 1);
@@ -405,19 +430,19 @@ function run(argv) {
 	lm.setEuclid(B, "steps", 2); lm.setEuclid(B, "pulses", 1); lm.setEuclid(B, "note", 43);
 	eq("bass euclid note", lm.eventsAt(0, 100, 0, 0).filter(function (e) { return e.lane === B; }).map(function (e) { return e.pitch; }), [43]);
 	// print
-	lm.setEuclid(K, "layer", 2); lm.addTrig(B, 2, 40); lm.setLock(B, 2, P.cc1, 9); lm.setMuted(B, 2, true);
+	lm.setEuclid(K, "layer", 2); lm.addTrig(B, 2, 40); lm.setLock(B, 2, P.m1, 9); lm.setMuted(B, 2, true);
 	eq("print count", [lm.printEuclid(K), lm.printEuclid(B)], [8, 16]);
-	eq("print keeps locks, un-mutes, replaces note", [lm.step(B, 2).note, lm.step(B, 2).locks[P.cc1], lm.step(B, 2).muted], [43, 9, false]);
+	eq("print keeps locks, un-mutes, replaces note", [lm.step(B, 2).note, lm.step(B, 2).locks[P.m1], lm.step(B, 2).muted], [43, 9, false]);
 	eq("print new step: euclid velocity lock", [lm.value(K, 8, P.velocity), lm.value(K, 4, P.velocity), lm.step(K, 4).muted], [77, 50, false]);
 	eq("print leaves non-hits", [lm.hasTrig(K, 1), lm.hasTrig(K, 2)], [false, true]);
 	// negative mask, printed (any overlap over the combined cycle)
 	var mk = new M.Model(); mk.setLoop(0, 0);
 	mk.addTrig(K, 0); mk.addTrig(K, 4); mk.addTrig(K, 8); mk.setMuted(K, 8, true);
-	mk.addTrig(B, 0, 40); mk.setLock(B, 0, P.cc2, 33); mk.addTrig(B, 2, 41); mk.addTrig(B, 8, 42);
+	mk.addTrig(B, 0, 40); mk.setLock(B, 0, P.m2, 33); mk.addTrig(B, 2, 41); mk.addTrig(B, 8, 42);
 	mk.setEuclid(B, "steps", 4); mk.setEuclid(B, "pulses", 1); // bass hits on 0, 4, 8…
 	mk.setEuclid(K, "steps", 16); mk.setEuclid(K, "pulses", 1); mk.setEuclid(K, "rotate", 12); // kick hit on 12, 28
 	eq("kick masks bass (same length)", mk.maskLane(K, B), 4);
-	eq("manual muted, locks kept, others untouched", [mk.step(B, 0).muted, mk.step(B, 0).locks[P.cc2], mk.step(B, 2).muted, mk.step(B, 8).muted], [true, 33, false, false]);
+	eq("manual muted, locks kept, others untouched", [mk.step(B, 0).muted, mk.step(B, 0).locks[P.m2], mk.step(B, 2).muted, mk.step(B, 8).muted], [true, 33, false, false]);
 	eq("euclid hit gets muted manual step", [mk.step(B, 4).muted, mk.step(B, 12).muted, mk.step(B, 28).muted], [true, true, true]);
 	eq("masked hits silent", [0, 4, 12].map(function (a) { return mk.eventsAt(a, 100, 0, 0).filter(function (e) { return e.lane === B; }).length; }), [0, 0, 0]);
 	eq("unmasked still play", [2, 8].map(function (a) { return mk.eventsAt(a, 100, 0, 0).filter(function (e) { return e.lane === B; }).length > 0; }), [true, true]);
@@ -442,8 +467,8 @@ function run(argv) {
 	lv.setSetting("maskBass", 1);
 	eq("bass masks kick", lv.eventsAt(3, 100, 0, 0).filter(function (e) { return e.lane === K; }).length, 0);
 	var lv2 = new M.Model(); lv2.decode(lv.encode()); eq("mask saved", [lv2.settings.maskKick, lv2.settings.maskBass], [0, 1]);
-	var um = new M.Model(); um.addTrig(K, 1); um.addTrig(K, 2); um.addTrig(K, 40); um.setMuted(K, 1, true); um.setMuted(K, 40, true); um.setLock(K, 1, P.cc1, 7);
-	eq("unmute page", [um.unmutePage(K, 0), um.step(K, 1).muted, um.step(K, 1).locks[P.cc1], um.step(K, 40).muted], [1, false, 7, true]);
+	var um = new M.Model(); um.addTrig(K, 1); um.addTrig(K, 2); um.addTrig(K, 40); um.setMuted(K, 1, true); um.setMuted(K, 40, true); um.setLock(K, 1, P.m1, 7);
+	eq("unmute page", [um.unmutePage(K, 0), um.step(K, 1).muted, um.step(K, 1).locks[P.m1], um.step(K, 40).muted], [1, false, 7, true]);
 
 	// save v3
 	var sv = new M.Model(); sv.setLoop(2, 3); sv.setLaneLength(B, 23); sv.setEuclid(B, "pulses", 5); sv.setEuclid(K, "layer", 1);

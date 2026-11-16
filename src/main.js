@@ -380,7 +380,7 @@ function testfill() {
 		if (j % 8 === 2) model.setLock(S.BASS, j, S.PARAM_ID.slide, 1);
 	}
 	model.setLock(S.KICK, 0, S.PARAM_ID.velocity, 127);
-	model.setLock(S.BASS, 6, S.PARAM_ID.cc1, 90);
+	model.setLock(S.BASS, 6, S.PARAM_ID.m1, 50);
 	model.setLoop(0, 1);
 	model.setSetting("kickNote", 36);
 	if (grabbed) defer(renderAll);
@@ -413,6 +413,7 @@ function notifydeleted() {
 	grabTask.cancel();
 	repaintTask.cancel();
 	pageShowTask.cancel();
+	refreshTask.cancel();
 	teardownTransport();
 	teardownScale();
 	release();
@@ -425,6 +426,7 @@ function init() {
 	post("kbSequencer " + BUILD_STAMP + "\n");
 	setupTransport(); // playback works with or without Push
 	setupScale();
+	refresh(); // ask the kbLanes for their macros
 	findPush();
 	if (!surface) { status("No Push found — is Push set as a control surface?"); return; }
 	resolveControls();
@@ -660,14 +662,14 @@ function markHeldEdited() {
 // parameters (DISPLAY_PARAMS, made by tools/build.py) the context needs, and
 // the script sets their values ("set", no output) for Push to show.
 // The encoders stay grabbed and edit the sequence directly.
-//   Nothing held:  display buttons 3 / 4 = Settings / CC setup.
-//   Step held:     display buttons 3 / 4 / 5 = Step / More / CC locks,
-//                  showing the held step (step 7 makes turning write locks).
-// CC setup and CC locks are for the first selected lane (kick if both).
+//   Nothing held:  display buttons 3 / 4 / 5 = Settings / Kick Euclid / Bass Euclid.
+//   Step held:     display buttons 3–8 = Step / Retrig / Rt Chance / More /
+//                  Slide / Macro Locks, showing the held step.
+// Macro Locks shows the lane of the held trig (else the first selected lane);
+// slots without a visible macro on that lane's Rack show "-".
 var BANKS = {
 	settings: [
-		{ name: "Settings", items: ["kickChannel", "bassChannel", "kickNote", "bendRange", "scaleFollow", "swing", null, null] },
-		{ name: "CC Setup", items: ["ccNum1", "ccNum2", "ccNum3", "ccNum4", "ccNum5", "ccNum6", "ccNum7", "ccNum8"] },
+		{ name: "Settings", items: ["kickChannel", "bassChannel", "kickNote", "bendRange", "scaleFollow", "swing", "macroRefresh", null] },
 		{ name: "Kick Euclid", items: ["kLength", "kEuSteps", "kEuPulses", "kEuRotate", "kEuLayer", "kEuVel", "kEuFollow", null] },
 		{ name: "Bass Euclid", items: ["bLength", "bEuSteps", "bEuPulses", "bEuRotate", "bEuLayer", "bEuVel", "bEuFollow", "bEuNote"] }
 	],
@@ -676,12 +678,12 @@ var BANKS = {
 		{ name: "Retrig", items: ["retrig", "retrigRate", "length", "retrigFade", "retrigCurve", "retrigProb", "retrigTRate", "retrigGlide"] }, // Length = the Step bank's Length
 		{ name: "Rt Chance", items: ["retrigProb", "retrigLock", "retrigPMode", "retrigVoices", null, null, null, null] },
 		{ name: "More", items: ["fill", "condition", null, null, null, null, null, null] },
-		{ name: "CC Locks", items: ["cc1", "cc2", "cc3", "cc4", "cc5", "cc6", "cc7", "cc8"] },
-		{ name: "Slide", items: ["slide", "tie", "slideTime", "slideCurve", null, null, null, null] }
+		{ name: "Slide", items: ["slide", "tie", "slideTime", "slideCurve", null, null, null, null] },
+		{ name: "Macro Locks", items: ["m1", "m2", "m3", "m4", "m5", "m6", "m7", "m8"] }
 	]
 };
-// Display buttons that pick banks (0-based): 3–8 (8 = Slide while a step is
-// held); 5–8 are free with nothing held.
+// Display buttons that pick banks (0-based): 3–8 (8 = Macro Locks while a
+// step is held); 6–8 are free with nothing held.
 var BANK_BUTTONS = [2, 3, 4, 5, 6, 7];
 // Lane items of the Euclid banks: display key -> [lane, field] (field
 // "length" = the lane's Length, else an Euclid setting).
@@ -705,12 +707,15 @@ function context() { return heldSteps.length || (pageHold && pageHold.shown) ? "
 function currentBank() { var c = context(); return BANKS[c][bankSel[c]]; }
 function editLane() { return selKick ? S.KICK : S.BASS; }
 
-// Items hidden in the current state (Note and Slide need bass).
+// Items hidden in the current state (Note and Slide need bass; a macro slot
+// needs a visible macro on its lane's Rack).
 function itemShown(key) {
 	if (!key) return false;
 	if ((key === "note" || key === "slide" || key === "slideTime" || key === "slideCurve") && !selBass) return false;
+	if (MACRO_KEY.test(key)) return Number(key.slice(1)) <= macroCount(macroLane());
 	return true;
 }
+var MACRO_KEY = /^m[1-8]$/;
 
 // The held step and the lane its values are read from: the first selected
 // lane with a trig there.
@@ -747,7 +752,7 @@ function lockTargets() {
 
 // Value of a display item, in the display parameter's own units.
 function itemValue(key) {
-	if (key.indexOf("ccNum") === 0) return model.lanes[editLane()].ccNums[Number(key.slice(5)) - 1];
+	if (key === "macroRefresh") return refreshShown ? 1 : 0;
 	if (LANE_ITEMS[key]) return laneItemValue(key);
 	if (key in model.settings) return model.settings[key];
 	var t = heldTarget();
@@ -757,7 +762,6 @@ function itemValue(key) {
 	}
 	var pid = S.PARAM_ID[key];
 	var v = t ? model.value(t.lane, t.i, pid) : model.lanes[editLane()].defaults[pid];
-	if (key.indexOf("cc") === 0 && !(t && model.isLocked(t.lane, t.i, pid))) return -1; // no lock: sends nothing
 	if (DISPLAY_SCALE[key]) return v / DISPLAY_SCALE[key];
 	return v;
 }
@@ -849,7 +853,7 @@ function onEncoder(v) {
 
 // Hold step(s) / page + turn: every target gets the shown value moved by
 // `steps`. On a page the first turn makes every trig jump to the first
-// trig's value; then they move together. Turning a CC lock below 0 clears it.
+// trig's value; then they move together.
 function editLock(key, steps) {
 	var targets = lockTargets();
 	if (!targets.length) return;
@@ -861,10 +865,7 @@ function editLock(key, steps) {
 		var pid = S.PARAM_ID[key];
 		if (DISPLAY_SCALE[key]) base = Math.round(base * DISPLAY_SCALE[key]);
 		var v = base + steps;
-		for (k = 0; k < targets.length; k++) {
-			if (key.indexOf("cc") === 0 && v < 0) model.clearLock(targets[k].lane, targets[k].i, pid);
-			else model.setLock(targets[k].lane, targets[k].i, pid, v);
-		}
+		for (k = 0; k < targets.length; k++) model.setLock(targets[k].lane, targets[k].i, pid, v);
 	}
 	encoderEdit = false;
 	// Only the touched steps (locked colour) and the values on Push.
@@ -920,12 +921,12 @@ function editSetting(key, steps) {
 		showStatus();
 		return;
 	}
-	if (key.indexOf("ccNum") === 0) {
-		var slot = Number(key.slice(5)) - 1, l = editLane();
-		model.setCcNumber(l, slot, model.lanes[l].ccNums[slot] + steps);
-	} else {
-		model.setSetting(key, model.settings[key] + steps);
+	if (key === "macroRefresh") {
+		encoderEdit = false;
+		refresh();
+		return;
 	}
+	model.setSetting(key, model.settings[key] + steps);
 	encoderEdit = false;
 	if (key === "scaleFollow") renderNotes();
 	updateDisplay();
@@ -1377,6 +1378,61 @@ function showStatus() {
 	status(parts.join(" · "));
 }
 function status(s) { outlet(0, s); }
+
+// ---------- macro lock slots: what each lane's kbLane found ----------
+// Each kbLane finds the first Rack after itself on its track and reports
+// "laneinfo group lane count name1 … name8" on [receive kbLaneInfo]
+// (count = visible macros, -1 = no Rack, -2 = kbLane removed or moved to
+// another group / lane). Only reports for this device's Group count. The
+// sequencer asks for reports with "refresh" on [send kbLaneCmd]: at init,
+// when Group changes and from Settings > Refresh. Non-time-critical.
+var laneGroup = 1;
+var macroInfo = [null, null]; // per lane: { count, names } or null = no kbLane heard
+var refreshShown = false;
+var refreshTask = new Task(function () { refreshShown = false; updateDisplay(); }, this);
+function group(g) {
+	g = g | 0;
+	if (g === laneGroup) return;
+	laneGroup = g;
+	macroInfo = [null, null];
+	refresh();
+}
+function refresh() {
+	var o = this.patcher ? this.patcher.getnamed("lane_cmd") : null;
+	if (o) o.message("refresh");
+	refreshShown = true;
+	refreshTask.schedule(1000);
+	renderMacroView();
+	updateDisplay();
+}
+function laneinfo() {
+	var a = arrayfromargs(arguments), g = Number(a[0]), l = Number(a[1]), n = Number(a[2]);
+	if (g !== laneGroup || (l !== S.KICK && l !== S.BASS)) return;
+	macroInfo[l] = n === -2 ? null : { count: Math.max(-1, Math.min(S.MACRO_SLOTS, n)), names: a.slice(3, 3 + S.MACRO_SLOTS).map(String) };
+	post("kbSequencer: " + S.LANE_NAMES[l] + " macros: " + macroText(l) + "\n");
+	renderMacroView();
+	lastBankSig = ""; // slot names / availability may have changed
+	updateDisplay();
+}
+function macroLane() { var t = heldTarget(); return t ? t.lane : editLane(); }
+function macroCount(l) { var mi = macroInfo[l]; return mi ? Math.max(0, mi.count) : 0; }
+function macroText(l) {
+	var mi = macroInfo[l];
+	if (!mi) return "no kbLane";
+	if (mi.count < 0) return "no rack";
+	if (!mi.count) return "no visible macros";
+	var out = [];
+	for (var k = 0; k < mi.count; k++) out.push((k + 1) + " " + (mi.names[k] || "?"));
+	return out.join(" · ");
+}
+// Device view: the macro names on the slots, per lane.
+function renderMacroView() {
+	if (!this.patcher) return;
+	for (var l = 0; l < 2; l++) {
+		var o = this.patcher.getnamed(l === S.KICK ? "mv_kick" : "mv_bass");
+		if (o) o.message("set", (l === S.KICK ? "Kick macros: " : "Bass macros: ") + macroText(l));
+	}
+}
 
 // ---------- helpers ----------
 function flatten(x) {

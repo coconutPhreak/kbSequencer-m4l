@@ -18,7 +18,7 @@
   "openrect": [
    0,
    0,
-   420,
+   640,
    169
   ],
   "openinpresentation": 1,
@@ -374,7 +374,7 @@
       400,
       20
      ],
-     "text": "kbSequencer \u00b7 CC locks   v0.14.0 \u00b7 1115.1923",
+     "text": "kbSequencer   v0.15.1 \u00b7 1116.2040",
      "numinlets": 1,
      "numoutlets": 0
     }
@@ -739,7 +739,7 @@
       60,
       22
      ],
-     "text": "zl iter 6",
+     "text": "zl iter 6 @zlmaxsize 4096",
      "numinlets": 2,
      "numoutlets": 2,
      "outlettype": [
@@ -1446,109 +1446,52 @@
    },
    {
     "box": {
-     "id": "cc0_unpack",
+     "id": "mac0_slice",
      "maxclass": "newobj",
      "patching_rect": [
       820,
       830,
-      90,
+      65,
       22
      ],
-     "text": "unpack 0 0 0 0",
-     "numinlets": 1,
-     "numoutlets": 4,
-     "outlettype": [
-      "int",
-      "int",
-      "int",
-      "int"
-     ]
-    }
-   },
-   {
-    "box": {
-     "id": "cc0_ch",
-     "maxclass": "newobj",
-     "patching_rect": [
-      920,
-      860,
-      30,
-      22
-     ],
-     "text": "i 1",
+     "text": "zl slice 2",
      "numinlets": 2,
-     "numoutlets": 1,
+     "numoutlets": 2,
      "outlettype": [
-      "int"
+      "",
+      ""
      ]
     }
    },
    {
     "box": {
-     "id": "cc0_t",
+     "id": "mac0_pack",
      "maxclass": "newobj",
      "patching_rect": [
       820,
       860,
-      40,
+      90,
       22
      ],
-     "text": "t b i",
-     "numinlets": 1,
-     "numoutlets": 2,
+     "text": "pack 0 0 1 0",
+     "numinlets": 4,
+     "numoutlets": 1,
      "outlettype": [
-      "bang",
-      "int"
+      ""
      ]
     }
    },
    {
     "box": {
-     "id": "cc0_st",
+     "id": "mac0_pre",
      "maxclass": "newobj",
      "patching_rect": [
       820,
       890,
-      85,
-      22
-     ],
-     "text": "expr 175 + $i1",
-     "numinlets": 2,
-     "numoutlets": 1,
-     "outlettype": [
-      ""
-     ]
-    }
-   },
-   {
-    "box": {
-     "id": "cc0_bytes",
-     "maxclass": "newobj",
-     "patching_rect": [
-      820,
-      920,
       70,
       22
      ],
-     "text": "pack 0 0 0",
-     "numinlets": 3,
-     "numoutlets": 1,
-     "outlettype": [
-      ""
-     ]
-    }
-   },
-   {
-    "box": {
-     "id": "cc0_iter",
-     "maxclass": "newobj",
-     "patching_rect": [
-      820,
-      950,
-      35,
-      22
-     ],
-     "text": "iter",
+     "text": "prepend m",
      "numinlets": 1,
      "numoutlets": 1,
      "outlettype": [
@@ -1558,114 +1501,174 @@
    },
    {
     "box": {
-     "id": "cc1_unpack",
+     "id": "mac1_slice",
      "maxclass": "newobj",
      "patching_rect": [
       1020,
       830,
-      90,
+      65,
       22
      ],
-     "text": "unpack 0 0 0 0",
-     "numinlets": 1,
-     "numoutlets": 4,
-     "outlettype": [
-      "int",
-      "int",
-      "int",
-      "int"
-     ]
-    }
-   },
-   {
-    "box": {
-     "id": "cc1_ch",
-     "maxclass": "newobj",
-     "patching_rect": [
-      1120,
-      860,
-      30,
-      22
-     ],
-     "text": "i 1",
+     "text": "zl slice 2",
      "numinlets": 2,
-     "numoutlets": 1,
+     "numoutlets": 2,
      "outlettype": [
-      "int"
+      "",
+      ""
      ]
     }
    },
    {
     "box": {
-     "id": "cc1_t",
+     "id": "mac1_pack",
      "maxclass": "newobj",
      "patching_rect": [
       1020,
       860,
-      40,
+      90,
       22
      ],
-     "text": "t b i",
-     "numinlets": 1,
-     "numoutlets": 2,
+     "text": "pack 0 0 1 1",
+     "numinlets": 4,
+     "numoutlets": 1,
      "outlettype": [
-      "bang",
-      "int"
+      ""
      ]
     }
    },
    {
     "box": {
-     "id": "cc1_st",
+     "id": "mac1_pre",
      "maxclass": "newobj",
      "patching_rect": [
       1020,
       890,
-      85,
-      22
-     ],
-     "text": "expr 175 + $i1",
-     "numinlets": 2,
-     "numoutlets": 1,
-     "outlettype": [
-      ""
-     ]
-    }
-   },
-   {
-    "box": {
-     "id": "cc1_bytes",
-     "maxclass": "newobj",
-     "patching_rect": [
-      1020,
-      920,
       70,
       22
      ],
-     "text": "pack 0 0 0",
-     "numinlets": 3,
-     "numoutlets": 1,
-     "outlettype": [
-      ""
-     ]
-    }
-   },
-   {
-    "box": {
-     "id": "cc1_iter",
-     "maxclass": "newobj",
-     "patching_rect": [
-      1020,
-      950,
-      35,
-      22
-     ],
-     "text": "iter",
+     "text": "prepend m",
      "numinlets": 1,
      "numoutlets": 1,
      "outlettype": [
       ""
      ]
+    }
+   },
+   {
+    "box": {
+     "id": "info_recv",
+     "maxclass": "newobj",
+     "patching_rect": [
+      1240,
+      830,
+      110,
+      22
+     ],
+     "text": "receive kbLaneInfo",
+     "numinlets": 1,
+     "numoutlets": 1,
+     "outlettype": [
+      ""
+     ]
+    }
+   },
+   {
+    "box": {
+     "id": "info_pre",
+     "maxclass": "newobj",
+     "patching_rect": [
+      1240,
+      860,
+      100,
+      22
+     ],
+     "text": "prepend laneinfo",
+     "numinlets": 1,
+     "numoutlets": 1,
+     "outlettype": [
+      ""
+     ]
+    }
+   },
+   {
+    "box": {
+     "id": "lane_cmd",
+     "maxclass": "newobj",
+     "patching_rect": [
+      1240,
+      890,
+      95,
+      22
+     ],
+     "text": "send kbLaneCmd",
+     "numinlets": 1,
+     "numoutlets": 0,
+     "outlettype": [],
+     "varname": "lane_cmd"
+    }
+   },
+   {
+    "box": {
+     "id": "group_pre",
+     "maxclass": "newobj",
+     "patching_rect": [
+      1240,
+      800,
+      85,
+      22
+     ],
+     "text": "prepend group",
+     "numinlets": 1,
+     "numoutlets": 1,
+     "outlettype": [
+      ""
+     ]
+    }
+   },
+   {
+    "box": {
+     "id": "mv_kick",
+     "maxclass": "comment",
+     "patching_rect": [
+      1240,
+      930,
+      200,
+      20
+     ],
+     "presentation": 1,
+     "presentation_rect": [
+      424,
+      24,
+      210,
+      68
+     ],
+     "text": "",
+     "numinlets": 1,
+     "numoutlets": 0,
+     "varname": "mv_kick"
+    }
+   },
+   {
+    "box": {
+     "id": "mv_bass",
+     "maxclass": "comment",
+     "patching_rect": [
+      1240,
+      960,
+      200,
+      20
+     ],
+     "presentation": 1,
+     "presentation_rect": [
+      424,
+      94,
+      210,
+      68
+     ],
+     "text": "",
+     "numinlets": 1,
+     "numoutlets": 0,
+     "varname": "mv_bass"
     }
    },
    {
@@ -2061,8 +2064,8 @@
    },
    {
     "box": {
-     "id": "pv_ccNum1",
-     "maxclass": "live.numbox",
+     "id": "pv_macroRefresh",
+     "maxclass": "live.menu",
      "patching_rect": [
       1000,
       164,
@@ -2070,239 +2073,25 @@
       15
      ],
      "numinlets": 1,
-     "numoutlets": 2,
+     "numoutlets": 3,
      "outlettype": [
+      "",
       "",
       "float"
      ],
      "parameter_enable": 1,
-     "varname": "pv_ccNum1",
+     "varname": "pv_macroRefresh",
      "saved_attribute_attributes": {
       "valueof": {
-       "parameter_longname": "CCNum1",
-       "parameter_shortname": "CC# 1",
+       "parameter_longname": "MacroRefresh",
+       "parameter_shortname": "Refresh",
        "parameter_initial_enable": 0,
-       "parameter_type": 1,
-       "parameter_mmin": 0,
-       "parameter_mmax": 127,
-       "parameter_unitstyle": 0
-      }
-     }
-    }
-   },
-   {
-    "box": {
-     "id": "pv_ccNum2",
-     "maxclass": "live.numbox",
-     "patching_rect": [
-      1000,
-      188,
-      80,
-      15
-     ],
-     "numinlets": 1,
-     "numoutlets": 2,
-     "outlettype": [
-      "",
-      "float"
-     ],
-     "parameter_enable": 1,
-     "varname": "pv_ccNum2",
-     "saved_attribute_attributes": {
-      "valueof": {
-       "parameter_longname": "CCNum2",
-       "parameter_shortname": "CC# 2",
-       "parameter_initial_enable": 0,
-       "parameter_type": 1,
-       "parameter_mmin": 0,
-       "parameter_mmax": 127,
-       "parameter_unitstyle": 0
-      }
-     }
-    }
-   },
-   {
-    "box": {
-     "id": "pv_ccNum3",
-     "maxclass": "live.numbox",
-     "patching_rect": [
-      1000,
-      212,
-      80,
-      15
-     ],
-     "numinlets": 1,
-     "numoutlets": 2,
-     "outlettype": [
-      "",
-      "float"
-     ],
-     "parameter_enable": 1,
-     "varname": "pv_ccNum3",
-     "saved_attribute_attributes": {
-      "valueof": {
-       "parameter_longname": "CCNum3",
-       "parameter_shortname": "CC# 3",
-       "parameter_initial_enable": 0,
-       "parameter_type": 1,
-       "parameter_mmin": 0,
-       "parameter_mmax": 127,
-       "parameter_unitstyle": 0
-      }
-     }
-    }
-   },
-   {
-    "box": {
-     "id": "pv_ccNum4",
-     "maxclass": "live.numbox",
-     "patching_rect": [
-      1000,
-      236,
-      80,
-      15
-     ],
-     "numinlets": 1,
-     "numoutlets": 2,
-     "outlettype": [
-      "",
-      "float"
-     ],
-     "parameter_enable": 1,
-     "varname": "pv_ccNum4",
-     "saved_attribute_attributes": {
-      "valueof": {
-       "parameter_longname": "CCNum4",
-       "parameter_shortname": "CC# 4",
-       "parameter_initial_enable": 0,
-       "parameter_type": 1,
-       "parameter_mmin": 0,
-       "parameter_mmax": 127,
-       "parameter_unitstyle": 0
-      }
-     }
-    }
-   },
-   {
-    "box": {
-     "id": "pv_ccNum5",
-     "maxclass": "live.numbox",
-     "patching_rect": [
-      1000,
-      260,
-      80,
-      15
-     ],
-     "numinlets": 1,
-     "numoutlets": 2,
-     "outlettype": [
-      "",
-      "float"
-     ],
-     "parameter_enable": 1,
-     "varname": "pv_ccNum5",
-     "saved_attribute_attributes": {
-      "valueof": {
-       "parameter_longname": "CCNum5",
-       "parameter_shortname": "CC# 5",
-       "parameter_initial_enable": 0,
-       "parameter_type": 1,
-       "parameter_mmin": 0,
-       "parameter_mmax": 127,
-       "parameter_unitstyle": 0
-      }
-     }
-    }
-   },
-   {
-    "box": {
-     "id": "pv_ccNum6",
-     "maxclass": "live.numbox",
-     "patching_rect": [
-      1000,
-      284,
-      80,
-      15
-     ],
-     "numinlets": 1,
-     "numoutlets": 2,
-     "outlettype": [
-      "",
-      "float"
-     ],
-     "parameter_enable": 1,
-     "varname": "pv_ccNum6",
-     "saved_attribute_attributes": {
-      "valueof": {
-       "parameter_longname": "CCNum6",
-       "parameter_shortname": "CC# 6",
-       "parameter_initial_enable": 0,
-       "parameter_type": 1,
-       "parameter_mmin": 0,
-       "parameter_mmax": 127,
-       "parameter_unitstyle": 0
-      }
-     }
-    }
-   },
-   {
-    "box": {
-     "id": "pv_ccNum7",
-     "maxclass": "live.numbox",
-     "patching_rect": [
-      1090,
-      20,
-      80,
-      15
-     ],
-     "numinlets": 1,
-     "numoutlets": 2,
-     "outlettype": [
-      "",
-      "float"
-     ],
-     "parameter_enable": 1,
-     "varname": "pv_ccNum7",
-     "saved_attribute_attributes": {
-      "valueof": {
-       "parameter_longname": "CCNum7",
-       "parameter_shortname": "CC# 7",
-       "parameter_initial_enable": 0,
-       "parameter_type": 1,
-       "parameter_mmin": 0,
-       "parameter_mmax": 127,
-       "parameter_unitstyle": 0
-      }
-     }
-    }
-   },
-   {
-    "box": {
-     "id": "pv_ccNum8",
-     "maxclass": "live.numbox",
-     "patching_rect": [
-      1090,
-      44,
-      80,
-      15
-     ],
-     "numinlets": 1,
-     "numoutlets": 2,
-     "outlettype": [
-      "",
-      "float"
-     ],
-     "parameter_enable": 1,
-     "varname": "pv_ccNum8",
-     "saved_attribute_attributes": {
-      "valueof": {
-       "parameter_longname": "CCNum8",
-       "parameter_shortname": "CC# 8",
-       "parameter_initial_enable": 0,
-       "parameter_type": 1,
-       "parameter_mmin": 0,
-       "parameter_mmax": 127,
-       "parameter_unitstyle": 0
+       "parameter_type": 2,
+       "parameter_enum": [
+        "Turn",
+        "Sent"
+       ],
+       "parameter_mmax": 1
       }
      }
     }
@@ -2312,8 +2101,8 @@
      "id": "pv_note",
      "maxclass": "live.numbox",
      "patching_rect": [
-      1090,
-      68,
+      1000,
+      188,
       80,
       15
      ],
@@ -2343,8 +2132,8 @@
      "id": "pv_velocity",
      "maxclass": "live.numbox",
      "patching_rect": [
-      1090,
-      92,
+      1000,
+      212,
       80,
       15
      ],
@@ -2374,8 +2163,8 @@
      "id": "pv_length",
      "maxclass": "live.menu",
      "patching_rect": [
-      1090,
-      116,
+      1000,
+      236,
       80,
       15
      ],
@@ -2534,8 +2323,8 @@
      "id": "pv_microtime",
      "maxclass": "live.numbox",
      "patching_rect": [
-      1090,
-      140,
+      1000,
+      260,
       80,
       15
      ],
@@ -2566,8 +2355,8 @@
      "id": "pv_probability",
      "maxclass": "live.numbox",
      "patching_rect": [
-      1090,
-      164,
+      1000,
+      284,
       80,
       15
      ],
@@ -2599,7 +2388,7 @@
      "maxclass": "live.menu",
      "patching_rect": [
       1090,
-      188,
+      20,
       80,
       15
      ],
@@ -2633,7 +2422,7 @@
      "maxclass": "live.menu",
      "patching_rect": [
       1090,
-      212,
+      44,
       80,
       15
      ],
@@ -2667,7 +2456,7 @@
      "maxclass": "live.menu",
      "patching_rect": [
       1090,
-      236,
+      68,
       80,
       15
      ],
@@ -2701,7 +2490,7 @@
      "maxclass": "live.menu",
      "patching_rect": [
       1090,
-      260,
+      92,
       80,
       15
      ],
@@ -2735,7 +2524,7 @@
      "maxclass": "live.menu",
      "patching_rect": [
       1090,
-      284,
+      116,
       80,
       15
      ],
@@ -2785,7 +2574,231 @@
    },
    {
     "box": {
-     "id": "pv_cc1",
+     "id": "pv_m1",
+     "maxclass": "live.numbox",
+     "patching_rect": [
+      1090,
+      140,
+      80,
+      15
+     ],
+     "numinlets": 1,
+     "numoutlets": 2,
+     "outlettype": [
+      "",
+      "float"
+     ],
+     "parameter_enable": 1,
+     "varname": "pv_m1",
+     "saved_attribute_attributes": {
+      "valueof": {
+       "parameter_longname": "Macro1",
+       "parameter_shortname": "Macro 1",
+       "parameter_initial_enable": 0,
+       "parameter_type": 1,
+       "parameter_mmin": -100,
+       "parameter_mmax": 100,
+       "parameter_unitstyle": 9,
+       "parameter_units": "%d %%"
+      }
+     }
+    }
+   },
+   {
+    "box": {
+     "id": "pv_m2",
+     "maxclass": "live.numbox",
+     "patching_rect": [
+      1090,
+      164,
+      80,
+      15
+     ],
+     "numinlets": 1,
+     "numoutlets": 2,
+     "outlettype": [
+      "",
+      "float"
+     ],
+     "parameter_enable": 1,
+     "varname": "pv_m2",
+     "saved_attribute_attributes": {
+      "valueof": {
+       "parameter_longname": "Macro2",
+       "parameter_shortname": "Macro 2",
+       "parameter_initial_enable": 0,
+       "parameter_type": 1,
+       "parameter_mmin": -100,
+       "parameter_mmax": 100,
+       "parameter_unitstyle": 9,
+       "parameter_units": "%d %%"
+      }
+     }
+    }
+   },
+   {
+    "box": {
+     "id": "pv_m3",
+     "maxclass": "live.numbox",
+     "patching_rect": [
+      1090,
+      188,
+      80,
+      15
+     ],
+     "numinlets": 1,
+     "numoutlets": 2,
+     "outlettype": [
+      "",
+      "float"
+     ],
+     "parameter_enable": 1,
+     "varname": "pv_m3",
+     "saved_attribute_attributes": {
+      "valueof": {
+       "parameter_longname": "Macro3",
+       "parameter_shortname": "Macro 3",
+       "parameter_initial_enable": 0,
+       "parameter_type": 1,
+       "parameter_mmin": -100,
+       "parameter_mmax": 100,
+       "parameter_unitstyle": 9,
+       "parameter_units": "%d %%"
+      }
+     }
+    }
+   },
+   {
+    "box": {
+     "id": "pv_m4",
+     "maxclass": "live.numbox",
+     "patching_rect": [
+      1090,
+      212,
+      80,
+      15
+     ],
+     "numinlets": 1,
+     "numoutlets": 2,
+     "outlettype": [
+      "",
+      "float"
+     ],
+     "parameter_enable": 1,
+     "varname": "pv_m4",
+     "saved_attribute_attributes": {
+      "valueof": {
+       "parameter_longname": "Macro4",
+       "parameter_shortname": "Macro 4",
+       "parameter_initial_enable": 0,
+       "parameter_type": 1,
+       "parameter_mmin": -100,
+       "parameter_mmax": 100,
+       "parameter_unitstyle": 9,
+       "parameter_units": "%d %%"
+      }
+     }
+    }
+   },
+   {
+    "box": {
+     "id": "pv_m5",
+     "maxclass": "live.numbox",
+     "patching_rect": [
+      1090,
+      236,
+      80,
+      15
+     ],
+     "numinlets": 1,
+     "numoutlets": 2,
+     "outlettype": [
+      "",
+      "float"
+     ],
+     "parameter_enable": 1,
+     "varname": "pv_m5",
+     "saved_attribute_attributes": {
+      "valueof": {
+       "parameter_longname": "Macro5",
+       "parameter_shortname": "Macro 5",
+       "parameter_initial_enable": 0,
+       "parameter_type": 1,
+       "parameter_mmin": -100,
+       "parameter_mmax": 100,
+       "parameter_unitstyle": 9,
+       "parameter_units": "%d %%"
+      }
+     }
+    }
+   },
+   {
+    "box": {
+     "id": "pv_m6",
+     "maxclass": "live.numbox",
+     "patching_rect": [
+      1090,
+      260,
+      80,
+      15
+     ],
+     "numinlets": 1,
+     "numoutlets": 2,
+     "outlettype": [
+      "",
+      "float"
+     ],
+     "parameter_enable": 1,
+     "varname": "pv_m6",
+     "saved_attribute_attributes": {
+      "valueof": {
+       "parameter_longname": "Macro6",
+       "parameter_shortname": "Macro 6",
+       "parameter_initial_enable": 0,
+       "parameter_type": 1,
+       "parameter_mmin": -100,
+       "parameter_mmax": 100,
+       "parameter_unitstyle": 9,
+       "parameter_units": "%d %%"
+      }
+     }
+    }
+   },
+   {
+    "box": {
+     "id": "pv_m7",
+     "maxclass": "live.numbox",
+     "patching_rect": [
+      1090,
+      284,
+      80,
+      15
+     ],
+     "numinlets": 1,
+     "numoutlets": 2,
+     "outlettype": [
+      "",
+      "float"
+     ],
+     "parameter_enable": 1,
+     "varname": "pv_m7",
+     "saved_attribute_attributes": {
+      "valueof": {
+       "parameter_longname": "Macro7",
+       "parameter_shortname": "Macro 7",
+       "parameter_initial_enable": 0,
+       "parameter_type": 1,
+       "parameter_mmin": -100,
+       "parameter_mmax": 100,
+       "parameter_unitstyle": 9,
+       "parameter_units": "%d %%"
+      }
+     }
+    }
+   },
+   {
+    "box": {
+     "id": "pv_m8",
      "maxclass": "live.numbox",
      "patching_rect": [
       1180,
@@ -2800,233 +2813,17 @@
       "float"
      ],
      "parameter_enable": 1,
-     "varname": "pv_cc1",
+     "varname": "pv_m8",
      "saved_attribute_attributes": {
       "valueof": {
-       "parameter_longname": "CCLock1",
-       "parameter_shortname": "CC 1",
+       "parameter_longname": "Macro8",
+       "parameter_shortname": "Macro 8",
        "parameter_initial_enable": 0,
        "parameter_type": 1,
-       "parameter_mmin": -1,
-       "parameter_mmax": 127,
-       "parameter_unitstyle": 0
-      }
-     }
-    }
-   },
-   {
-    "box": {
-     "id": "pv_cc2",
-     "maxclass": "live.numbox",
-     "patching_rect": [
-      1180,
-      44,
-      80,
-      15
-     ],
-     "numinlets": 1,
-     "numoutlets": 2,
-     "outlettype": [
-      "",
-      "float"
-     ],
-     "parameter_enable": 1,
-     "varname": "pv_cc2",
-     "saved_attribute_attributes": {
-      "valueof": {
-       "parameter_longname": "CCLock2",
-       "parameter_shortname": "CC 2",
-       "parameter_initial_enable": 0,
-       "parameter_type": 1,
-       "parameter_mmin": -1,
-       "parameter_mmax": 127,
-       "parameter_unitstyle": 0
-      }
-     }
-    }
-   },
-   {
-    "box": {
-     "id": "pv_cc3",
-     "maxclass": "live.numbox",
-     "patching_rect": [
-      1180,
-      68,
-      80,
-      15
-     ],
-     "numinlets": 1,
-     "numoutlets": 2,
-     "outlettype": [
-      "",
-      "float"
-     ],
-     "parameter_enable": 1,
-     "varname": "pv_cc3",
-     "saved_attribute_attributes": {
-      "valueof": {
-       "parameter_longname": "CCLock3",
-       "parameter_shortname": "CC 3",
-       "parameter_initial_enable": 0,
-       "parameter_type": 1,
-       "parameter_mmin": -1,
-       "parameter_mmax": 127,
-       "parameter_unitstyle": 0
-      }
-     }
-    }
-   },
-   {
-    "box": {
-     "id": "pv_cc4",
-     "maxclass": "live.numbox",
-     "patching_rect": [
-      1180,
-      92,
-      80,
-      15
-     ],
-     "numinlets": 1,
-     "numoutlets": 2,
-     "outlettype": [
-      "",
-      "float"
-     ],
-     "parameter_enable": 1,
-     "varname": "pv_cc4",
-     "saved_attribute_attributes": {
-      "valueof": {
-       "parameter_longname": "CCLock4",
-       "parameter_shortname": "CC 4",
-       "parameter_initial_enable": 0,
-       "parameter_type": 1,
-       "parameter_mmin": -1,
-       "parameter_mmax": 127,
-       "parameter_unitstyle": 0
-      }
-     }
-    }
-   },
-   {
-    "box": {
-     "id": "pv_cc5",
-     "maxclass": "live.numbox",
-     "patching_rect": [
-      1180,
-      116,
-      80,
-      15
-     ],
-     "numinlets": 1,
-     "numoutlets": 2,
-     "outlettype": [
-      "",
-      "float"
-     ],
-     "parameter_enable": 1,
-     "varname": "pv_cc5",
-     "saved_attribute_attributes": {
-      "valueof": {
-       "parameter_longname": "CCLock5",
-       "parameter_shortname": "CC 5",
-       "parameter_initial_enable": 0,
-       "parameter_type": 1,
-       "parameter_mmin": -1,
-       "parameter_mmax": 127,
-       "parameter_unitstyle": 0
-      }
-     }
-    }
-   },
-   {
-    "box": {
-     "id": "pv_cc6",
-     "maxclass": "live.numbox",
-     "patching_rect": [
-      1180,
-      140,
-      80,
-      15
-     ],
-     "numinlets": 1,
-     "numoutlets": 2,
-     "outlettype": [
-      "",
-      "float"
-     ],
-     "parameter_enable": 1,
-     "varname": "pv_cc6",
-     "saved_attribute_attributes": {
-      "valueof": {
-       "parameter_longname": "CCLock6",
-       "parameter_shortname": "CC 6",
-       "parameter_initial_enable": 0,
-       "parameter_type": 1,
-       "parameter_mmin": -1,
-       "parameter_mmax": 127,
-       "parameter_unitstyle": 0
-      }
-     }
-    }
-   },
-   {
-    "box": {
-     "id": "pv_cc7",
-     "maxclass": "live.numbox",
-     "patching_rect": [
-      1180,
-      164,
-      80,
-      15
-     ],
-     "numinlets": 1,
-     "numoutlets": 2,
-     "outlettype": [
-      "",
-      "float"
-     ],
-     "parameter_enable": 1,
-     "varname": "pv_cc7",
-     "saved_attribute_attributes": {
-      "valueof": {
-       "parameter_longname": "CCLock7",
-       "parameter_shortname": "CC 7",
-       "parameter_initial_enable": 0,
-       "parameter_type": 1,
-       "parameter_mmin": -1,
-       "parameter_mmax": 127,
-       "parameter_unitstyle": 0
-      }
-     }
-    }
-   },
-   {
-    "box": {
-     "id": "pv_cc8",
-     "maxclass": "live.numbox",
-     "patching_rect": [
-      1180,
-      188,
-      80,
-      15
-     ],
-     "numinlets": 1,
-     "numoutlets": 2,
-     "outlettype": [
-      "",
-      "float"
-     ],
-     "parameter_enable": 1,
-     "varname": "pv_cc8",
-     "saved_attribute_attributes": {
-      "valueof": {
-       "parameter_longname": "CCLock8",
-       "parameter_shortname": "CC 8",
-       "parameter_initial_enable": 0,
-       "parameter_type": 1,
-       "parameter_mmin": -1,
-       "parameter_mmax": 127,
-       "parameter_unitstyle": 0
+       "parameter_mmin": -100,
+       "parameter_mmax": 100,
+       "parameter_unitstyle": 9,
+       "parameter_units": "%d %%"
       }
      }
     }
@@ -3037,7 +2834,7 @@
      "maxclass": "live.menu",
      "patching_rect": [
       1180,
-      212,
+      44,
       80,
       15
      ],
@@ -3071,7 +2868,7 @@
      "maxclass": "live.menu",
      "patching_rect": [
       1180,
-      236,
+      68,
       80,
       15
      ],
@@ -3120,7 +2917,7 @@
      "maxclass": "live.numbox",
      "patching_rect": [
       1180,
-      260,
+      92,
       80,
       15
      ],
@@ -3152,7 +2949,7 @@
      "maxclass": "live.numbox",
      "patching_rect": [
       1180,
-      284,
+      116,
       80,
       15
      ],
@@ -3183,8 +2980,8 @@
      "id": "pv_retrigProb",
      "maxclass": "live.numbox",
      "patching_rect": [
-      1270,
-      20,
+      1180,
+      140,
       80,
       15
      ],
@@ -3215,8 +3012,8 @@
      "id": "pv_retrigTRate",
      "maxclass": "live.menu",
      "patching_rect": [
-      1270,
-      44,
+      1180,
+      164,
       80,
       15
      ],
@@ -3265,8 +3062,8 @@
      "id": "pv_retrigGlide",
      "maxclass": "live.numbox",
      "patching_rect": [
-      1270,
-      68,
+      1180,
+      188,
       80,
       15
      ],
@@ -3297,8 +3094,8 @@
      "id": "pv_retrigLock",
      "maxclass": "live.menu",
      "patching_rect": [
-      1270,
-      92,
+      1180,
+      212,
       80,
       15
      ],
@@ -3331,8 +3128,8 @@
      "id": "pv_retrigPMode",
      "maxclass": "live.menu",
      "patching_rect": [
-      1270,
-      116,
+      1180,
+      236,
       80,
       15
      ],
@@ -3366,8 +3163,8 @@
      "id": "pv_retrigVoices",
      "maxclass": "live.menu",
      "patching_rect": [
-      1270,
-      140,
+      1180,
+      260,
       80,
       15
      ],
@@ -3406,8 +3203,8 @@
      "id": "pv_slideTime",
      "maxclass": "live.numbox",
      "patching_rect": [
-      1270,
-      164,
+      1180,
+      284,
       80,
       15
      ],
@@ -3439,7 +3236,7 @@
      "maxclass": "live.numbox",
      "patching_rect": [
       1270,
-      188,
+      20,
       80,
       15
      ],
@@ -3470,7 +3267,7 @@
      "maxclass": "live.numbox",
      "patching_rect": [
       1270,
-      212,
+      44,
       80,
       15
      ],
@@ -3501,7 +3298,7 @@
      "maxclass": "live.numbox",
      "patching_rect": [
       1270,
-      236,
+      68,
       80,
       15
      ],
@@ -3532,7 +3329,7 @@
      "maxclass": "live.numbox",
      "patching_rect": [
       1270,
-      260,
+      92,
       80,
       15
      ],
@@ -3563,7 +3360,7 @@
      "maxclass": "live.numbox",
      "patching_rect": [
       1270,
-      284,
+      116,
       80,
       15
      ],
@@ -3593,8 +3390,8 @@
      "id": "pv_kEuLayer",
      "maxclass": "live.menu",
      "patching_rect": [
-      1360,
-      20,
+      1270,
+      140,
       80,
       15
      ],
@@ -3628,8 +3425,8 @@
      "id": "pv_kEuVel",
      "maxclass": "live.numbox",
      "patching_rect": [
-      1360,
-      44,
+      1270,
+      164,
       80,
       15
      ],
@@ -3659,8 +3456,8 @@
      "id": "pv_kEuFollow",
      "maxclass": "live.menu",
      "patching_rect": [
-      1360,
-      68,
+      1270,
+      188,
       80,
       15
      ],
@@ -3693,8 +3490,8 @@
      "id": "pv_bLength",
      "maxclass": "live.numbox",
      "patching_rect": [
-      1360,
-      92,
+      1270,
+      212,
       80,
       15
      ],
@@ -3724,8 +3521,8 @@
      "id": "pv_bEuSteps",
      "maxclass": "live.numbox",
      "patching_rect": [
-      1360,
-      116,
+      1270,
+      236,
       80,
       15
      ],
@@ -3755,8 +3552,8 @@
      "id": "pv_bEuPulses",
      "maxclass": "live.numbox",
      "patching_rect": [
-      1360,
-      140,
+      1270,
+      260,
       80,
       15
      ],
@@ -3786,8 +3583,8 @@
      "id": "pv_bEuRotate",
      "maxclass": "live.numbox",
      "patching_rect": [
-      1360,
-      164,
+      1270,
+      284,
       80,
       15
      ],
@@ -3818,7 +3615,7 @@
      "maxclass": "live.menu",
      "patching_rect": [
       1360,
-      188,
+      20,
       80,
       15
      ],
@@ -3853,7 +3650,7 @@
      "maxclass": "live.numbox",
      "patching_rect": [
       1360,
-      212,
+      44,
       80,
       15
      ],
@@ -3884,7 +3681,7 @@
      "maxclass": "live.menu",
      "patching_rect": [
       1360,
-      236,
+      68,
       80,
       15
      ],
@@ -3918,7 +3715,7 @@
      "maxclass": "live.numbox",
      "patching_rect": [
       1360,
-      260,
+      92,
       80,
       15
      ],
@@ -5117,7 +4914,7 @@
       3
      ],
      "destination": [
-      "cc0_unpack",
+      "mac0_slice",
       0
      ]
     }
@@ -5125,23 +4922,11 @@
    {
     "patchline": {
      "source": [
-      "cc0_unpack",
-      3
+      "group",
+      0
      ],
      "destination": [
-      "cc0_ch",
-      1
-     ]
-    }
-   },
-   {
-    "patchline": {
-     "source": [
-      "cc0_unpack",
-      1
-     ],
-     "destination": [
-      "cc0_bytes",
+      "mac0_pack",
       2
      ]
     }
@@ -5149,11 +4934,11 @@
    {
     "patchline": {
      "source": [
-      "cc0_unpack",
+      "mac0_slice",
       0
      ],
      "destination": [
-      "cc0_t",
+      "mac0_pack",
       0
      ]
     }
@@ -5161,23 +4946,11 @@
    {
     "patchline": {
      "source": [
-      "cc0_t",
-      1
-     ],
-     "destination": [
-      "cc0_bytes",
-      1
-     ]
-    }
-   },
-   {
-    "patchline": {
-     "source": [
-      "cc0_t",
+      "mac0_pack",
       0
      ],
      "destination": [
-      "cc0_ch",
+      "mac0_pre",
       0
      ]
     }
@@ -5185,59 +4958,11 @@
    {
     "patchline": {
      "source": [
-      "cc0_ch",
+      "mac0_pre",
       0
      ],
      "destination": [
-      "cc0_st",
-      0
-     ]
-    }
-   },
-   {
-    "patchline": {
-     "source": [
-      "cc0_st",
-      0
-     ],
-     "destination": [
-      "cc0_bytes",
-      0
-     ]
-    }
-   },
-   {
-    "patchline": {
-     "source": [
-      "cc0_bytes",
-      0
-     ],
-     "destination": [
-      "cc0_iter",
-      0
-     ]
-    }
-   },
-   {
-    "patchline": {
-     "source": [
-      "cc0_iter",
-      0
-     ],
-     "destination": [
-      "midiout",
-      0
-     ]
-    }
-   },
-   {
-    "patchline": {
-     "source": [
-      "cc0_iter",
-      0
-     ],
-     "destination": [
-      "lane_pack0",
+      "lane_send",
       0
      ]
     }
@@ -5249,7 +4974,7 @@
       4
      ],
      "destination": [
-      "cc1_unpack",
+      "mac1_slice",
       0
      ]
     }
@@ -5257,23 +4982,11 @@
    {
     "patchline": {
      "source": [
-      "cc1_unpack",
-      3
+      "group",
+      0
      ],
      "destination": [
-      "cc1_ch",
-      1
-     ]
-    }
-   },
-   {
-    "patchline": {
-     "source": [
-      "cc1_unpack",
-      1
-     ],
-     "destination": [
-      "cc1_bytes",
+      "mac1_pack",
       2
      ]
     }
@@ -5281,11 +4994,11 @@
    {
     "patchline": {
      "source": [
-      "cc1_unpack",
+      "mac1_slice",
       0
      ],
      "destination": [
-      "cc1_t",
+      "mac1_pack",
       0
      ]
     }
@@ -5293,23 +5006,11 @@
    {
     "patchline": {
      "source": [
-      "cc1_t",
-      1
-     ],
-     "destination": [
-      "cc1_bytes",
-      1
-     ]
-    }
-   },
-   {
-    "patchline": {
-     "source": [
-      "cc1_t",
+      "mac1_pack",
       0
      ],
      "destination": [
-      "cc1_ch",
+      "mac1_pre",
       0
      ]
     }
@@ -5317,11 +5018,11 @@
    {
     "patchline": {
      "source": [
-      "cc1_ch",
+      "mac1_pre",
       0
      ],
      "destination": [
-      "cc1_st",
+      "lane_send",
       0
      ]
     }
@@ -5329,11 +5030,11 @@
    {
     "patchline": {
      "source": [
-      "cc1_st",
+      "info_recv",
       0
      ],
      "destination": [
-      "cc1_bytes",
+      "info_pre",
       0
      ]
     }
@@ -5341,11 +5042,11 @@
    {
     "patchline": {
      "source": [
-      "cc1_bytes",
+      "info_pre",
       0
      ],
      "destination": [
-      "cc1_iter",
+      "js",
       0
      ]
     }
@@ -5353,11 +5054,11 @@
    {
     "patchline": {
      "source": [
-      "cc1_iter",
+      "group",
       0
      ],
      "destination": [
-      "midiout",
+      "group_pre",
       0
      ]
     }
@@ -5365,11 +5066,11 @@
    {
     "patchline": {
      "source": [
-      "cc1_iter",
+      "group_pre",
       0
      ],
      "destination": [
-      "lane_pack1",
+      "js",
       0
      ]
     }
@@ -5545,44 +5246,9 @@
     "Swing",
     0
    ],
-   "pv_ccNum1": [
-    "CCNum1",
-    "CC# 1",
-    0
-   ],
-   "pv_ccNum2": [
-    "CCNum2",
-    "CC# 2",
-    0
-   ],
-   "pv_ccNum3": [
-    "CCNum3",
-    "CC# 3",
-    0
-   ],
-   "pv_ccNum4": [
-    "CCNum4",
-    "CC# 4",
-    0
-   ],
-   "pv_ccNum5": [
-    "CCNum5",
-    "CC# 5",
-    0
-   ],
-   "pv_ccNum6": [
-    "CCNum6",
-    "CC# 6",
-    0
-   ],
-   "pv_ccNum7": [
-    "CCNum7",
-    "CC# 7",
-    0
-   ],
-   "pv_ccNum8": [
-    "CCNum8",
-    "CC# 8",
+   "pv_macroRefresh": [
+    "MacroRefresh",
+    "Refresh",
     0
    ],
    "pv_note": [
@@ -5635,44 +5301,44 @@
     "Cond",
     0
    ],
-   "pv_cc1": [
-    "CCLock1",
-    "CC 1",
+   "pv_m1": [
+    "Macro1",
+    "Macro 1",
     0
    ],
-   "pv_cc2": [
-    "CCLock2",
-    "CC 2",
+   "pv_m2": [
+    "Macro2",
+    "Macro 2",
     0
    ],
-   "pv_cc3": [
-    "CCLock3",
-    "CC 3",
+   "pv_m3": [
+    "Macro3",
+    "Macro 3",
     0
    ],
-   "pv_cc4": [
-    "CCLock4",
-    "CC 4",
+   "pv_m4": [
+    "Macro4",
+    "Macro 4",
     0
    ],
-   "pv_cc5": [
-    "CCLock5",
-    "CC 5",
+   "pv_m5": [
+    "Macro5",
+    "Macro 5",
     0
    ],
-   "pv_cc6": [
-    "CCLock6",
-    "CC 6",
+   "pv_m6": [
+    "Macro6",
+    "Macro 6",
     0
    ],
-   "pv_cc7": [
-    "CCLock7",
-    "CC 7",
+   "pv_m7": [
+    "Macro7",
+    "Macro 7",
     0
    ],
-   "pv_cc8": [
-    "CCLock8",
-    "CC 8",
+   "pv_m8": [
+    "Macro8",
+    "Macro 8",
     0
    ],
    "pv_retrig": [
