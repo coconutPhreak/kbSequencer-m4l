@@ -38,6 +38,12 @@ var COL = {
 	// Page pads, performance mode: lane colours (kick / bass / both above),
 	// bright = a lane's playhead is on that page, dim = the rest of its range
 	perfQueued: 126,  // green: a switch waiting for the next beat
+	// Preset display (note keyboard rows)
+	slotActive: 122,  // white: the slot last loaded / saved
+	slotDirty: 9,     // active slot with unsaved edits (placeholder)
+	slotQueued: 126,  // green: load waiting for the next bar
+	slotFull: 123,    // mid grey: has a pattern
+	slotEmpty: 124,   // dim grey: empty
 	noteRoot: 125,    // blue
 	noteScale: 123,   // dim white
 	noteBrush: 122,   // bright white
@@ -134,6 +140,7 @@ model.onChange = function () {
 	if (encoderEdit) refillTask.schedule(ENCODER_REFILL_MS); // one refill per pause, not per tick
 	else refillSoon();      // edits reach the next steps without waiting a tick
 	historyChanged();
+	if (presetView && grabbed) presetPaintTask.schedule(0); // unsaved mark
 };
 function saveNow() {
 	var enc = model.encode();
@@ -325,6 +332,8 @@ function tick(absStep) {
 	var jumped = absStep !== lastAbs + 1; // start, song loop, or locate
 	if (jumped) { playStartAbs = absStep; model.perfCollapse(); } // retrig bursts only from here on
 	lastAbs = absStep;
+	if (refillFloor > -Infinity && absStep >= refillFloor) refillFloor = -Infinity;
+	if (pendingLoad && (jumped || absStep + LOOKAHEAD >= pendingLoad.at)) applyLoad(jumped);
 	if (model.perf && !perfMode && model.perfPrune(absStep)) model.setPerf(false); // exit fully done
 	else if (model.perf) model.perfPrune(absStep);
 	if (!playing) playing = true; // tick can arrive before the is_playing notification
@@ -342,7 +351,7 @@ function tick(absStep) {
 function refillSoon() { refillTask.schedule(0); }
 
 function refillWindow() {
-	for (var k = 1; k <= LOOKAHEAD; k++) fillSlot(lastAbs + k);
+	for (var k = 1; k <= LOOKAHEAD; k++) if (lastAbs + k >= refillFloor) fillSlot(lastAbs + k);
 }
 
 function fillSlot(absStep) {
@@ -572,7 +581,7 @@ function handleInput(role, v) {
 	if (role === "undoBtn") { if (pressed) { if (shiftHeld) redo(); else undo(); } return; }
 	if (role === "display") { if (pressed) onDisplayButton(v[1]); return; }
 	if (role === "matrix") { onPad(v[1], v[2], pressed); return; }
-	if (role === "octaveUp") { if (pressed) shiftOctave(1); return; }
+	if (role === "octaveUp") { if (pressed) { if (shiftHeld) togglePresetView(); else shiftOctave(1); } return; }
 	if (role === "octaveDown") { if (pressed) shiftOctave(-1); return; }
 	if (role === "encoders") { onEncoder(v); return; }
 	if (role === "touches") { onTouch(v); return; }
@@ -632,7 +641,8 @@ function onPad(x, y, pressed) {
 	}
 	if (y <= 3) { onStepPad(y * 8 + x, pressed); return; }
 	if (y <= 5) { onPagePad((y - 4) * 8 + x, pressed); return; }
-	if (pressed) onNotePad(x, y);
+	if (!pressed) return;
+	if (presetView) onSlotPad((y === 6 ? 0 : 8) + x); else onNotePad(x, y);
 }
 
 // Step pads (build step 5). An empty step gets its trig on press, so it can
@@ -841,7 +851,7 @@ function updateDisplay() {
 	if (!banksReady) return;
 	var bank = currentBank(), names = [];
 	for (var k = 0; k < 8; k++) names.push(itemShown(bank.items[k]) ? DISPLAY_PARAMS[bank.items[k]].longname : "-");
-	var bname = (perfMode ? "PERF " : "") + bank.name;
+	var bname = (perfMode ? "PERF " : "") + (model.activeSlot >= 0 ? "P" + (model.activeSlot + 1) + (model.isDirty() ? "* " : " ") : "") + bank.name;
 	var sig = bname + "|" + names.join("|");
 	if (sig !== lastBankSig) {
 		var b = this.patcher.getnamed("banks");
@@ -1041,7 +1051,7 @@ function unmutePage(page) {
 
 function onDuplicate(pressed) {
 	dupHeld = pressed;
-	if (!pressed) { clip = null; dupAnchor = -1; dupPageAnchor = -1; }
+	if (!pressed) { clip = null; dupAnchor = -1; dupPageAnchor = -1; presetClip = -1; }
 	renderDuplicateButton();
 	showStatus();
 }
@@ -1391,6 +1401,7 @@ function renderPages() {
 
 function renderNotes() {
 	if (!grabbed || !controls.matrix || paletteBase >= 0) return;
+	if (presetView) { renderSlots(); return; }
 	var notes = keyboardNotes();
 	var lit = brushNote;
 	if (heldSteps.length) {
@@ -1491,6 +1502,78 @@ function onPerfPage(page, pressed) {
 function perfPendingAny() {
 	return !!(model.perf && (model.perfPending(S.KICK, lastAbs) || model.perfPending(S.BASS, lastAbs)));
 }
+// ---------- presets ----------
+// Shift + Octave Up swaps the note keyboard (bottom two rows) for 16 preset
+// slots: top row 1–8, bottom row 9–16. A slot is a stored copy of the
+// pattern; the working pattern is what plays and is edited.
+//   Tap a slot:           load it at the next bar (empty slot: an empty
+//                         pattern), keeping the song position. Stopped: now.
+//   Shift + tap:          save the working pattern into that slot.
+//   Duplicate + slot, then tap others: copy that slot to them.
+//   Delete + slot:        clear that slot.
+// Every load, save, paste and clear is one Undo step (Undo right after a
+// load brings back unsaved edits).
+var presetView = false;
+var presetClip = -1;     // slot copied while Duplicate is held
+var pendingLoad = null;  // { slot, at } load waiting for the bar
+var refillFloor = -Infinity; // refills skip steps before this (a load lands there)
+var BAR = 16;            // steps per bar (4/4)
+var presetPaintTask = new Task(function () { renderNotes(); updateDisplay(); }, this);
+function togglePresetView() {
+	presetView = !presetView;
+	presetClip = -1;
+	renderNotes();
+	showStatus();
+}
+function onSlotPad(n) {
+	if (dupHeld) {
+		if (presetClip < 0) { presetClip = n; post("kbSequencer: copied preset " + (n + 1) + "\n"); }
+		else model.copySlot(presetClip, n);
+	} else if (deleteHeld) {
+		model.clearSlot(n);
+	} else if (shiftHeld) {
+		model.saveSlot(n);
+		post("kbSequencer: saved preset " + (n + 1) + "\n");
+	} else {
+		requestLoad(n);
+		return;
+	}
+	renderNotes();
+	updateDisplay();
+	showStatus();
+}
+// Load at the next bar, at least one step ahead (the steps up to
+// LOOKAHEAD are already queued: those before the bar keep the old pattern).
+function requestLoad(n) {
+	if (!playing || lastAbs < 0) { pendingLoad = { slot: n, at: -Infinity }; applyLoad(true); return; }
+	pendingLoad = { slot: n, at: Math.ceil((lastAbs + 2) / BAR) * BAR };
+	if (lastAbs + LOOKAHEAD >= pendingLoad.at) applyLoad(false);
+	renderNotes();
+	showStatus();
+}
+function applyLoad(now) {
+	var pl = pendingLoad;
+	pendingLoad = null;
+	if (!pl) return;
+	if (!now) refillFloor = pl.at; // queued steps before the bar keep the old pattern
+	model.loadSlot(pl.slot);
+	post("kbSequencer: loaded preset " + (pl.slot + 1) + "\n");
+	refillWindow();
+	if (grabbed) defer(renderAll);
+	updateDisplay();
+	showStatus();
+}
+function renderSlots() {
+	var dirty = model.isDirty();
+	for (var n = 0; n < S.PRESET_SLOTS; n++) {
+		var c;
+		if (pendingLoad && pendingLoad.slot === n) c = COL.slotQueued;
+		else if (n === model.activeSlot) c = dirty ? COL.slotDirty : COL.slotActive;
+		else c = model.slotFull(n) ? COL.slotFull : COL.slotEmpty;
+		sendPad(n % 8, n < 8 ? 6 : 7, c);
+	}
+}
+
 // ---------- status ----------
 function showStatus() {
 	if (!surface) { status("No Push found"); return; }
@@ -1498,6 +1581,8 @@ function showStatus() {
 	if (!enabled) parts.push("(takeover off)");
 	else if (followFocus && !focused) parts.push("(track not selected)");
 	if (perfMode) parts.push("PERF");
+	if (model.activeSlot >= 0) parts.push("preset " + (model.activeSlot + 1) + (model.isDirty() ? " (unsaved)" : ""));
+	if (pendingLoad) parts.push("loading " + (pendingLoad.slot + 1) + " at the bar");
 	parts.push("lanes " + (selKick ? "K" : "") + (selBass ? "B" : ""));
 	parts.push("page " + (viewPage + 1) + (follow ? " (follow)" : ""));
 	parts.push("oct " + octave);

@@ -287,6 +287,34 @@ parameters).
 - Retrig steps don't slide. Kick has Tie (holds the note) but no Slide.
 - Lanes are **mono**: a new note cuts the previous one (unless Slide/Tie connects them, or a retrig VOICES setting above Mono lets them overlap).
 
+## Presets (v0.17)
+
+16 preset slots: stored copies (snapshots) of the pattern. You always edit
+and hear the **working pattern**; a slot only changes when you save, paste
+or clear it.
+
+| Push | Does |
+|---|---|
+| **Shift + Octave Up** | Note keyboard ⇄ preset display (bottom two rows: top row slots 1–8, bottom row 9–16) |
+| Tap a slot | Loads it at the **next bar**, keeping the song position (stopped: at once). An empty slot loads an empty pattern |
+| **Shift + tap a slot** | Saves the working pattern into that slot (overwrites) |
+| Duplicate + slot, then tap other slots | Copies that slot to them |
+| Delete + slot | Clears that slot |
+
+- A preset holds the pattern: steps, notes, mutes, all locks, loop pages,
+  Lengths, Euclid settings, lane defaults and the live masks. Channels, kick
+  note, bend range, scale follow, swing and Group stay global.
+- The **active** slot (last loaded or saved) is white; with unsaved edits
+  it shows colour 9 (placeholder) and Push's screen shows e.g. "P3* Settings".
+  Queued load = green, slots with a pattern = mid grey, empty = dim grey.
+- Loading replaces the working pattern. Every load, save, paste and clear is
+  one Undo step: Undo right after a load brings back unsaved edits.
+- A load needs the 4 queued steps: tapping in the last steps before a bar
+  still lands on that bar (the steps before it keep the old pattern).
+- Performance mode page choices stay when a preset loads.
+- Saved with the Set and with device presets (save format v5). Sets saved
+  before v0.17 load as the working pattern with all slots empty.
+
 ## Performance mode (v0.16)
 
 Loop pages live, one tap each, without touching the sequence.

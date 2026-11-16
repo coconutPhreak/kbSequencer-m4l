@@ -121,7 +121,12 @@ var DEFAULT_BASS_NOTE = 36;
 // v3: per-lane Length (steps) and Euclid settings, after the lanes.
 // v4: macro lock slots replace the CC lock slots (same param ids); the CC
 //     numbers are gone (nCc written as 0). Older CC locks are dropped on load.
-var MAGIC = 7101, VERSION = 4;
+// v5: 16 preset slots after the working pattern: activeSlot, nSlots, then
+//     per slot its length and its own encoded pattern (0 = empty).
+var MAGIC = 7101, VERSION = 5;
+var PRESET_SLOTS = 16;
+// Settings that belong to a preset (the rest are global: kept on load).
+var PATTERN_SETTINGS = { maskKick: true, maskBass: true };
 
 // Nearest LEN entry (by ratio) to a length in steps.
 function nearestLen(steps) {
@@ -136,7 +141,13 @@ function nearestLen(steps) {
 function clamp(v, lo, hi) { v = Math.round(Number(v)); if (isNaN(v)) v = lo; return v < lo ? lo : v > hi ? hi : v; }
 
 // ---------- Model ----------
-function Model() { this.perf = null; this.clear(); }
+function Model() {
+	this.perf = null;
+	this.slots = [];
+	for (var k = 0; k < PRESET_SLOTS; k++) this.slots.push(null);
+	this.activeSlot = -1; // slot last loaded or saved, -1 = none
+	this.clear();
+}
 
 Model.prototype.clear = function () {
 	this.settings = {};
@@ -158,7 +169,7 @@ Model.prototype.clear = function () {
 
 // Called on every edit; the device hooks this to schedule a save.
 Model.prototype.onChange = null;
-Model.prototype.changed = function () { this._reach = null; this._eu = null; if (this.onChange) this.onChange(); };
+Model.prototype.changed = function () { this._reach = null; this._eu = null; this._patKey = null; if (this.onChange) this.onChange(); };
 
 // How many steps back a note could still be sounding, per lane: the longest
 // Length (INF: RETRIG_LOOKBACK), plus one 1/1 interval on retrig steps.
@@ -791,15 +802,77 @@ function keyboardNotes(root, intervals, octave) {
 	return out;
 }
 
+// ---------- preset slots ----------
+// 16 stored copies of the pattern (snapshots). The working pattern is what
+// plays and is edited; a slot changes only by saving, pasting or clearing.
+// A preset holds the pattern: steps, notes, mutes, locks, loop pages,
+// Lengths, Euclid settings, lane defaults and the live masks. Channels, kick
+// note, bend range, scale follow and swing stay global.
+Model.prototype.patternKey = function () {
+	if (this._patKey == null) this._patKey = this.encodePattern(true).join(" ");
+	return this._patKey;
+};
+Model.prototype.slotFull = function (n) { return !!this.slots[n]; };
+// Working pattern differs from the active slot (edited since load / save).
+Model.prototype.isDirty = function () {
+	if (this.activeSlot < 0) return false;
+	var sl = this.slots[this.activeSlot];
+	return !sl || sl.join(" ") !== this.patternKey();
+};
+Model.prototype.saveSlot = function (n) {
+	this.slots[n] = this.encodePattern(true);
+	this.activeSlot = n;
+	this.changed();
+};
+Model.prototype.copySlot = function (from, to) {
+	if (from === to) return;
+	this.slots[to] = this.slots[from] ? this.slots[from].slice() : null;
+	this.changed();
+};
+Model.prototype.clearSlot = function (n) {
+	this.slots[n] = null;
+	this.changed();
+};
+// Replaces the working pattern with slot n (an empty slot: an empty
+// pattern). Global settings, the slots and performance mode are kept.
+Model.prototype.loadSlot = function (n) {
+	var keep = { slots: this.slots, settings: {} }, k;
+	for (k in this.settings) if (!PATTERN_SETTINGS[k]) keep.settings[k] = this.settings[k];
+	var data = this.slots[n] || new Model().encodePattern(true);
+	var saved = this.onChange;
+	this.onChange = null;
+	var ok = this.decode(data);
+	this.onChange = saved;
+	this.slots = keep.slots;
+	for (k in keep.settings) this.settings[k] = keep.settings[k];
+	this.activeSlot = n;
+	this.changed();
+	return ok;
+};
+
 // ---------- serialisation ----------
 // Flat int list (safe to store in a [pattr] blob, no quoting issues). Sparse:
 // only steps with a trig are written.
 // [MAGIC, VERSION, nSettings, settings…, loopStart, loopEnd, nLanes,
 //   per lane: nCc (0 since v4; CC numbers before), ccNums…, nParams, defaults…, nSteps,
 //     per step: index, flags(bit0 muted), note, nLocks, (pid, value)…]
+// Everything: the working pattern, then the preset slots (v5).
 Model.prototype.encode = function () {
+	var out = this.encodePattern(false);
+	out.push(this.activeSlot, PRESET_SLOTS);
+	for (var k = 0; k < PRESET_SLOTS; k++) {
+		var sl = this.slots[k];
+		out.push(sl ? sl.length : 0);
+		if (sl) for (var j = 0; j < sl.length; j++) out.push(sl[j]);
+	}
+	return out;
+};
+// The working pattern alone (same layout as a v4 save). forSlot: global
+// settings written as their defaults, so a slot doesn't depend on them.
+Model.prototype.encodePattern = function (forSlot) {
 	var out = [MAGIC, VERSION, SETTINGS.length], i, l;
-	for (i = 0; i < SETTINGS.length; i++) out.push(this.settings[SETTINGS[i].key]);
+	for (i = 0; i < SETTINGS.length; i++)
+		out.push(forSlot && !PATTERN_SETTINGS[SETTINGS[i].key] ? SETTINGS[i].def : this.settings[SETTINGS[i].key]);
 	out.push(this.loopStart, this.loopEnd, this.lanes.length);
 	for (l = 0; l < this.lanes.length; l++) {
 		var lane = this.lanes[l];
@@ -889,6 +962,19 @@ Model.prototype.decode = function (list) {
 			}
 		}
 		this.updateLoopEnd();
+		// v5: preset slots (none in older saves, or in a slot's own data)
+		this.slots = []; // a new array: loadSlot keeps the old one
+		for (var k = 0; k < PRESET_SLOTS; k++) this.slots.push(null);
+		this.activeSlot = -1;
+		if (ver >= 5 && pos < a.length) {
+			var act = next(), nsl = next();
+			for (k = 0; k < nsl; k++) {
+				var sn = next(), data = [];
+				for (j = 0; j < sn; j++) data.push(next());
+				if (k < PRESET_SLOTS && sn) this.slots[k] = data;
+			}
+			this.activeSlot = act >= 0 && act < PRESET_SLOTS ? act : -1;
+		}
 	} catch (e) {
 		this.clear();
 		this.onChange = saved;
@@ -907,7 +993,7 @@ var api = {
 	CONDITIONS: CONDITIONS, RETRIG_RATES: RETRIG_RATES, RETRIG_LENS: RETRIG_LENS,
 	RETRIG_LEN_LABELS: RETRIG_LEN_LABELS, RETRIG_PMODES: RETRIG_PMODES, RETRIG_VOICES: RETRIG_VOICES,
 	STEPS_PER_PAGE: STEPS_PER_PAGE, PAGES: PAGES, NUM_STEPS: NUM_STEPS,
-	TICKS_PER_STEP: TICKS_PER_STEP, MACRO_SLOTS: MACRO_SLOTS,
+	TICKS_PER_STEP: TICKS_PER_STEP, MACRO_SLOTS: MACRO_SLOTS, PRESET_SLOTS: PRESET_SLOTS,
 	KICK: KICK, BASS: BASS, LANE_NAMES: LANE_NAMES,
 	keyboardNotes: keyboardNotes, CHROMATIC: CHROMATIC,
 	MIN_OCTAVE: MIN_OCTAVE, MAX_OCTAVE: MAX_OCTAVE

@@ -378,6 +378,37 @@ function run(argv) {
 	var pe = new M.Model(); pe.setEuclid(K, "pulses", 4); pe.setPerf(true); pe.perfSwitch(K, 3, 3, -Infinity);
 	eq("euclid hits on a page outside the loop", pe.eventsAt(3 * 32, 100, 0, 0).filter(function (e) { return e.lane === K; }).length, 1);
 
+	// ---- preset slots ----
+	var ps = new M.Model();
+	ps.addTrig(K, 0); ps.addTrig(B, 3, 45); ps.setLock(B, 3, P.m2, 40); ps.setLaneLength(B, 20); ps.setSetting("maskKick", 1); ps.setSetting("swing", 60);
+	eq("no active slot: not dirty", [ps.activeSlot, ps.isDirty()], [-1, false]);
+	ps.saveSlot(2);
+	eq("save: active, clean", [ps.activeSlot, ps.isDirty(), ps.slotFull(2), ps.slotFull(3)], [2, false, true, false]);
+	ps.addTrig(K, 8);
+	eq("edit: dirty", ps.isDirty(), true);
+	ps.setSetting("swing", 70);
+	ps.wipe(K, 8);
+	eq("global setting change: not dirty", ps.isDirty(), false);
+	ps.copySlot(2, 5);
+	ps.clear(); ps.setSetting("swing", 55); ps.setSetting("kickChannel", 9);
+	eq("clear keeps the slots", ps.slotFull(5), true);
+	ps.loadSlot(5);
+	eq("load: pattern back", [ps.hasTrig(K, 0), ps.step(B, 3).note, ps.value(B, 3, P.m2), ps.lanes[B].length, ps.settings.maskKick], [true, 45, 40, 20, 1]);
+	eq("load: globals kept", [ps.settings.swing, ps.settings.kickChannel], [55, 9]);
+	eq("load: active + clean", [ps.activeSlot, ps.isDirty()], [5, false]);
+	ps.loadSlot(9);
+	eq("empty slot loads an empty pattern", [ps.countTrigs(K), ps.countTrigs(B), ps.activeSlot, ps.lanes[B].length], [0, 0, 9, 32]);
+	eq("empty slot active: dirty until saved", ps.isDirty(), true);
+	ps.clearSlot(2);
+	eq("clear slot", ps.slotFull(2), false);
+	var pe5 = ps.encode(), pr = new M.Model();
+	eq("v5 round trip", [pr.decode(pe5), pr.slotFull(5), pr.slotFull(2), pr.activeSlot, pr.encode().join(" ") === pe5.join(" ")], [true, true, false, 9, true]);
+	var old = new M.Model(); old.addTrig(K, 4); var oe = old.encode().slice(0, old.encodePattern(false).length); oe[1] = 4;
+	var pr4 = new M.Model(); pr4.saveSlot(0);
+	eq("v4 save: working pattern, no slots", [pr4.decode(oe), pr4.hasTrig(K, 4), pr4.slotFull(0), pr4.activeSlot], [true, true, false, -1]);
+	ps.setPerf(true); ps.perfSwitch(K, 3, 3, -Infinity); ps.loadSlot(5);
+	eq("load keeps performance mode", ps.perfAt(K, 0).start, 3);
+
 	// ---- save v3 (CC locks) loads into v4 ----
 	var v3 = new M.Model(); v3.addTrig(B, 4, 40); v3.setLock(B, 4, P.m2, 77); v3.setLock(B, 4, P.velocity, 90);
 	var e3 = v3.encode(); e3[1] = 3;
@@ -391,7 +422,7 @@ function run(argv) {
 	var o3 = new M.Model();
 	eq("v3 decodes", o3.decode(e3), true);
 	eq("v3: CC lock dropped, others kept", [o3.isLocked(B, 4, P.m2), o3.value(B, 4, P.velocity), o3.lanes[K].defaults[P.m1]], [false, 90, 0]);
-	eq("v3: saves as v4", o3.encode()[1], 4);
+	eq("v3: saves in the current format", o3.encode()[1], 5);
 
 	// ---- microtime ----
 	var mt = new M.Model(); mt.setLoop(0, 1);
