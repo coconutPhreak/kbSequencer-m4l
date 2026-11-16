@@ -114,7 +114,7 @@ mono note cutting, macro locks (later build steps).
 | Push | Does |
 |---|---|
 | Rows 1–4 | 32 steps of the viewed page (tap / Delete + tap as before; new bass trigs use the brush note) |
-| Rows 5–6 | 16 page pads: viewed = white, playing (follow off) = green, in loop with trigs = mid grey, in loop empty = dim grey, outside loop = off |
+| Rows 5–6 | 16 page pads, always lit. Normal mode: page under the playhead = green, viewed = white, other loop pages = mid grey, the rest = dim grey. Performance mode uses lane colours instead (see Performance mode) |
 | Hold a page pad + press another | Loop from the first page to the second (sets both lanes' Length to those pages) |
 | Long-press a page pad (½ s, alone) | Loop just that page, on release (not if an encoder was turned: that's a page lock) |
 | Tap a page pad (or Select + page pad) | View that page for editing without changing the loop; turns follow off |
@@ -286,6 +286,38 @@ parameters).
 - The bend returns to centre right before every new bass note.
 - Retrig steps don't slide. Kick has Tie (holds the note) but no Slide.
 - Lanes are **mono**: a new note cuts the previous one (unless Slide/Tie connects them, or a retrig VOICES setting above Mono lets them overlap).
+
+## Performance mode (v0.16)
+
+Loop pages live, one tap each, without touching the sequence.
+
+| Push | Does |
+|---|---|
+| **Shift + jog wheel press** | Performance mode on / off. Push's screen shows "PERF" before the bank name |
+| Page pad (performance mode) | The **selected lanes** loop that page: all 32 steps, each lane's Length ignored |
+| Hold a page pad + press another | The selected lanes loop the range between them |
+
+- A switch lands on the **next beat** (quarter note) and **keeps the
+  position**: the step inside the page follows the song position, so at
+  step 13 of page 2 the switch continues at the same bar position on page 5.
+  A switch is always at least one step ahead (the next steps are already
+  queued), so tapping just before a beat lands on the beat after.
+- Stopped: the switch is immediate. Starting playback plays the latest
+  choice from the start.
+- Kick and Bass can loop different pages: select one lane, tap a page.
+- Turning it off returns to the normal loop and Lengths at the next beat,
+  in step with the song position. Nothing is saved: the loop, Lengths and
+  sequence never change, and a reopened Set starts in normal mode.
+- Page pads switch to **lane colours** (both lanes always shown): a lane's
+  playhead page = bright kick orange / bass blue / purple when both; the
+  rest of a lane's looping range = the dim version (a lane that hasn't
+  picked a page shows the normal loop); queued switch = green; viewed =
+  white; other pages = dim grey. Normal mode uses greys, white and green,
+  so the two modes never look alike.
+- Everything else works as usual (steps, locks, banks, jog wheel, undo).
+  Delete / Select / Shift / Mute / Duplicate + page pad keep their normal
+  meaning; holding a page pad for a page lock isn't available while
+  performance mode is on.
 
 ## Step 9 — Macro lock slots ✅ (replaced the CC lock slots in v0.15)
 

@@ -22,7 +22,7 @@ AMXD_MIDI = int.from_bytes(b"mmmm", "big")  # 1835887981
 
 # Shown on every device and printed to the Max Console at load, so it's easy
 # to tell which build is running. VERSION: bump the minor per spec build step.
-VERSION = "0.15.2"
+VERSION = "0.16.0"
 BUILD = datetime.datetime.now().strftime("%m%d.%H%M")  # build time, MMDD.HHMM
 STAMP = f"v{VERSION} · {BUILD}"
 
@@ -246,15 +246,18 @@ class Patch:
 
     def write(self, stem):
         pj = self.patcher()
-        body = json.dumps(pj, indent=1).encode("utf-8") + b"\n\x00"
-        # ampf container: device type (mmmm = MIDI effect), meta, ptch(JSON)
-        amxd = (b"ampf" + struct.pack("<I", 4) + b"mmmm"
-                + b"meta" + struct.pack("<I", 4) + struct.pack("<I", 0)
-                + b"ptch" + struct.pack("<I", len(body)) + body)
         OUT.mkdir(exist_ok=True)
-        (OUT / f"{stem}.amxd").write_bytes(amxd)
+        (OUT / f"{stem}.amxd").write_bytes(amxd_bytes(json.dumps(pj, indent=1)))
         (OUT / f"{stem}.maxpat").write_text(json.dumps(pj, indent=1))
         print("wrote", OUT / f"{stem}.amxd")
+
+
+def amxd_bytes(patch_json):
+    """ampf container: device type (mmmm = MIDI effect), meta, ptch (the patch JSON)."""
+    body = patch_json.encode("utf-8") + b"\n\x00"
+    return (b"ampf" + struct.pack("<I", 4) + b"mmmm"
+            + b"meta" + struct.pack("<I", 4) + struct.pack("<I", 0)
+            + b"ptch" + struct.pack("<I", len(body)) + body)
 
 
 def common(p, js_text, js_outs, wire_init=True):

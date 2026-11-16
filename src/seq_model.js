@@ -136,7 +136,7 @@ function nearestLen(steps) {
 function clamp(v, lo, hi) { v = Math.round(Number(v)); if (isNaN(v)) v = lo; return v < lo ? lo : v > hi ? hi : v; }
 
 // ---------- Model ----------
-function Model() { this.clear(); }
+function Model() { this.perf = null; this.clear(); }
 
 Model.prototype.clear = function () {
 	this.settings = {};
@@ -341,7 +341,7 @@ Model.prototype.setEuclid = function (l, key, value) {
 // restarts with every pass of the lane's Length.
 Model.prototype.euclidHit = function (l, i) {
 	var eu = this.lanes[l].euclid, n = eu.follow ? this.lanes[l].length : eu.steps, k = Math.min(eu.pulses, n);
-	if (k <= 0 || !this.inLoop(l, i)) return false;
+	if (k <= 0 || (!this.inLoop(l, i) && !this.perf)) return false; // performance mode: any page
 	var m = i - this.loopStart * STEPS_PER_PAGE;
 	var e = (((m % n) - eu.rotate) % n + n) % n;
 	return (e * k) % n < k;
@@ -432,6 +432,58 @@ Model.prototype.maskedAt = function (l, absStep, seed) {
 	return !!this.rawNoteAt(src, absStep, 0, seed);
 };
 
+// ---------- performance mode ----------
+// Not part of the sequence (not saved, survives undo / restore): per lane, a
+// list of segments { from, start, end }: from abs step `from` on, the lane
+// loops pages start..end (start null = the normal loop again). Switches are
+// added ahead of time (quantized to a beat), so lookahead and lookback see
+// the old pages before `from` and the new ones after it. The position inside
+// the pages follows the song position, so a switch keeps the bar position.
+Model.prototype.setPerf = function (on) {
+	this.perf = on ? [[], []] : null;
+	this._reach = null;
+};
+Model.prototype.perfSwitch = function (l, start, end, from) {
+	if (!this.perf) return;
+	var segs = this.perf[l].filter(function (s) { return s.from < from; });
+	segs.push({ from: from, start: start, end: start === null ? null : Math.max(start, end) });
+	this.perf[l] = segs;
+};
+// The segment in force on lane l at absStep, or null (normal loop).
+Model.prototype.perfAt = function (l, absStep) {
+	if (!this.perf) return null;
+	var segs = this.perf[l], hit = null;
+	for (var k = 0; k < segs.length; k++) if (segs[k].from <= absStep) hit = segs[k];
+	return hit && hit.start !== null ? hit : null;
+};
+// A switch still waiting on lane l after absStep, or null.
+Model.prototype.perfPending = function (l, absStep) {
+	if (!this.perf) return null;
+	var segs = this.perf[l];
+	for (var k = 0; k < segs.length; k++) if (segs[k].from > absStep) return segs[k];
+	return null;
+};
+// Playback jumped (start, locate): every lane keeps its latest choice, now.
+Model.prototype.perfCollapse = function () {
+	if (!this.perf) return;
+	for (var l = 0; l < 2; l++) {
+		var segs = this.perf[l];
+		this.perf[l] = segs.length ? [{ from: -Infinity, start: segs[segs.length - 1].start, end: segs[segs.length - 1].end }] : [];
+	}
+};
+// Forget segments that ended more than the lookback ago. Returns true when
+// performance mode has fully ended (only "normal" left on both lanes).
+Model.prototype.perfPrune = function (absStep) {
+	if (!this.perf) return false;
+	var done = true;
+	for (var l = 0; l < 2; l++) {
+		var segs = this.perf[l];
+		while (segs.length > 1 && segs[1].from <= absStep - RETRIG_LOOKBACK) segs.shift();
+		if (segs.length > 1 || (segs.length === 1 && (segs[0].start !== null || segs[0].from > absStep - RETRIG_LOOKBACK))) done = false;
+	}
+	return done;
+};
+
 // ---------- playback ----------
 // absStep: 1/16 steps since song start (from Live's transport).
 // Maps it into the lane's loop (Length steps from the loop's start page), so
@@ -440,6 +492,11 @@ Model.prototype.loopLength = function (l) {
 	return this.lanes[l].length;
 };
 Model.prototype.seqIndexFor = function (absStep, l) {
+	var pf = this.perfAt(l, absStep);
+	if (pf) { // performance mode: the chosen page(s), full 32 steps each
+		var plen = (pf.end - pf.start + 1) * STEPS_PER_PAGE, pm = absStep % plen;
+		return pf.start * STEPS_PER_PAGE + (pm < 0 ? pm + plen : pm);
+	}
 	var len = this.lanes[l].length;
 	var m = absStep % len;
 	if (m < 0) m += len;

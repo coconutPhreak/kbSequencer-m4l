@@ -15,7 +15,7 @@ From the step 1 takeover test (Push 3 tethered to a Mac).
 | Select | `Select_Button` | needed for Select + page pad |
 | Mute | `Global_Mute_Button` | Mute + page pad: un-mute the page |
 | Octave | `Octave_Up_Button`, `Octave_Down_Button` | note keyboard octave |
-| Jog wheel | `Jogwheel` | turn: next / previous bank. Also exist: `Jogwheel_Left_nudge`, `Jogwheel_Right_nudge` (used: previous / next bank), `Jogwheel_Press`, `Jogwheel_Tap` (not used). Turn value format not confirmed yet: first messages print as `jog raw …` |
+| Jog wheel | `Jogwheel` | turn: next / previous bank. Also exist: `Jogwheel_Left_nudge`, `Jogwheel_Right_nudge` (used: previous / next bank), `Jogwheel_Press` (Shift + press: performance mode), `Jogwheel_Tap` (not used). Turn value format not confirmed yet: first messages print as `jog raw …` |
 
 Grab/release via `grab_control id N` / `release_control id N` on the
 control surface works, and Push restores itself on release.

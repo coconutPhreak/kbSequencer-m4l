@@ -30,10 +30,14 @@ var COL = {
 	bass: 125,        bassMuted: 124,  bassLocked: 125,  // blue · dim · lighter blue
 	both: 49,         bothMuted: 124,  bothLocked: 49,   // purple
 	playhead: 122,    // white
+	// Page pads, normal mode: greys, white, green
 	pageViewed: 122,  // white
-	pagePlaying: 126, // green (follow off)
-	pageTrigs: 123,   // mid grey: in loop, has trigs
-	pageEmpty: 124,   // dim grey: in loop, empty
+	pagePlaying: 126, // green: page under the playhead
+	pageLoop: 123,    // mid grey: other pages of the loop
+	pageOther: 124,   // dim grey: outside the loop (every pad stays lit)
+	// Page pads, performance mode: lane colours (kick / bass / both above),
+	// bright = a lane's playhead is on that page, dim = the rest of its range
+	perfQueued: 126,  // green: a switch waiting for the next beat
 	noteRoot: 125,    // blue
 	noteScale: 123,   // dim white
 	noteBrush: 122,   // bright white
@@ -95,6 +99,7 @@ var CONTROL_NAMES = {
 	duplicateBtn: "Duplicate_Button",
 	muteBtn: "Global_Mute_Button",
 	jog: "Jogwheel",                 // turn: next / previous bank
+	jogPress: "Jogwheel_Press",      // Shift + press: performance mode on / off
 	jogLeft: "Jogwheel_Left_nudge",  // nudge: previous bank
 	jogRight: "Jogwheel_Right_nudge" // nudge: next bank
 };
@@ -316,9 +321,12 @@ function syncToSongTime(beats) {
 // From the patch, low priority, right after the clock played absStep.
 function tick(absStep) {
 	absStep = absStep | 0;
+	var pendingBefore = perfPendingAny(); // a switch waiting until now: repaint the page pads
 	var jumped = absStep !== lastAbs + 1; // start, song loop, or locate
-	if (jumped) playStartAbs = absStep; // retrig bursts only from here on
+	if (jumped) { playStartAbs = absStep; model.perfCollapse(); } // retrig bursts only from here on
 	lastAbs = absStep;
+	if (model.perf && !perfMode && model.perfPrune(absStep)) model.setPerf(false); // exit fully done
+	else if (model.perf) model.perfPrune(absStep);
 	if (!playing) playing = true; // tick can arrive before the is_playing notification
 	if (jumped) refillWindow(); else fillSlot(absStep + LOOKAHEAD);
 	var old = playSteps, oldPage = playPage();
@@ -326,7 +334,9 @@ function tick(absStep) {
 	if (!grabbed || (old[0] === playSteps[0] && old[1] === playSteps[1])) return;
 	if (followPlayhead()) { renderAll(); showStatus(); return; }
 	for (var l = 0; l < 2; l++) { renderStep(old[l]); renderStep(playSteps[l]); }
-	if (playPage() !== oldPage) renderPages();
+	var pg = function (st) { return st >= 0 ? Math.floor(st / S.STEPS_PER_PAGE) : -1; };
+	if (playPage() !== oldPage || pendingBefore !== perfPendingAny() ||
+		(perfMode && (pg(old[0]) !== pg(playSteps[0]) || pg(old[1]) !== pg(playSteps[1])))) renderPages();
 }
 
 function refillSoon() { refillTask.schedule(0); }
@@ -567,6 +577,7 @@ function handleInput(role, v) {
 	if (role === "encoders") { onEncoder(v); return; }
 	if (role === "touches") { onTouch(v); return; }
 	if (role === "jog") { onJog(v); return; }
+	if (role === "jogPress") { if (pressed && shiftHeld) togglePerf(); return; }
 	if (role === "jogLeft") { if (pressed) stepBank(-1); return; }
 	if (role === "jogRight") { if (pressed) stepBank(1); return; }
 }
@@ -830,10 +841,11 @@ function updateDisplay() {
 	if (!banksReady) return;
 	var bank = currentBank(), names = [];
 	for (var k = 0; k < 8; k++) names.push(itemShown(bank.items[k]) ? DISPLAY_PARAMS[bank.items[k]].longname : "-");
-	var sig = bank.name + "|" + names.join("|");
+	var bname = (perfMode ? "PERF " : "") + bank.name;
+	var sig = bname + "|" + names.join("|");
 	if (sig !== lastBankSig) {
 		var b = this.patcher.getnamed("banks");
-		b.message.apply(b, ["edit", 0, bank.name].concat(names));
+		b.message.apply(b, ["edit", 0, bname].concat(names));
 		lastBankSig = sig;
 	}
 	for (var j = 0; j < 8; j++) if (itemShown(bank.items[j])) setDisplayParam(bank.items[j], itemValue(bank.items[j]));
@@ -1136,6 +1148,7 @@ function viewPageAndStopFollow(page) {
 function onPagePad(page, pressed) {
 	if (dupHeld || page === dupPageAnchor) { onDupPage(page, pressed); return; }
 	if (muteHeld && pressed) { unmutePage(page); return; }
+	if (perfMode && !deleteHeld && !selectHeld && !shiftHeld) { onPerfPage(page, pressed); return; }
 	var at = heldPages.indexOf(page);
 	if (!pressed) {
 		if (at >= 0) heldPages.splice(at, 1);
@@ -1329,16 +1342,49 @@ function euShown(l, i) {
 // Follow uses the first selected lane's playhead (lanes can differ in Length).
 function playPage() { var ps = playSteps[editLane()]; return ps >= 0 ? Math.floor(ps / S.STEPS_PER_PAGE) : -1; }
 
+// Page pads. Normal mode (selected lanes): page under the playhead (green)
+// > viewed (white) > other loop pages (mid grey) > the rest (dim grey).
+// Performance mode (both lanes, lane colours): queued switch (green) > a
+// lane's playhead page (kick / bass / both colour) > viewed (white) > the
+// rest of a lane's range (dim lane colour) > the rest (dim grey). A lane
+// that hasn't picked a page shows the normal loop as its range.
 function renderPages() {
 	if (!grabbed || !controls.matrix || paletteBase >= 0) return;
-	var pp = playing ? playPage() : -1;
-	for (var p = 0; p < S.PAGES; p++) {
-		var c;
-		if (p === viewPage) c = COL.pageViewed;
-		else if (p === pp) c = COL.pagePlaying; // only differs from viewed when follow is off
-		else if (p < model.loopStart || p > model.loopEnd) c = COL.off;
-		else c = (model.pageHasTrigs(S.KICK, p) || model.pageHasTrigs(S.BASS, p) ||
-			model.pageHasEuclid(S.KICK, p) || model.pageHasEuclid(S.BASS, p)) ? COL.pageTrigs : COL.pageEmpty;
+	var p, k, c;
+	if (perfMode) {
+		var head = [{}, {}], range = [{}, {}], queued = {};
+		for (k = 0; k < 2; k++) {
+			var cur = null;
+			if (model.perf) {
+				var q = model.perfPending(k, lastAbs);
+				if (q && q.start !== null) for (p = q.start; p <= q.end; p++) queued[p] = true;
+				cur = model.perfAt(k, playing ? lastAbs : Infinity);
+			}
+			for (p = cur ? cur.start : model.loopStart; p <= (cur ? cur.end : model.loopEnd); p++) range[k][p] = true;
+			if (playing && playSteps[k] >= 0) head[k][Math.floor(playSteps[k] / S.STEPS_PER_PAGE)] = true;
+		}
+		var laneCol = function (kick, bass, bright) {
+			if (kick && bass) return bright ? COL.both : COL.euBoth;
+			if (kick) return bright ? COL.kick : COL.euKick;
+			return bright ? COL.bass : COL.euBass;
+		};
+		for (p = 0; p < S.PAGES; p++) {
+			if (queued[p]) c = COL.perfQueued;
+			else if (head[0][p] || head[1][p]) c = laneCol(head[0][p], head[1][p], true);
+			else if (p === viewPage) c = COL.pageViewed;
+			else if (range[0][p] || range[1][p]) c = laneCol(range[0][p], range[1][p], false);
+			else c = COL.pageOther;
+			sendPad(p % 8, 4 + (p >> 3), c);
+		}
+		return;
+	}
+	var lanes = selectedLanes(), heads = {};
+	if (playing) for (k = 0; k < lanes.length; k++) if (playSteps[lanes[k]] >= 0) heads[Math.floor(playSteps[lanes[k]] / S.STEPS_PER_PAGE)] = true;
+	for (p = 0; p < S.PAGES; p++) {
+		if (heads[p]) c = COL.pagePlaying;
+		else if (p === viewPage) c = COL.pageViewed;
+		else if (p >= model.loopStart && p <= model.loopEnd) c = COL.pageLoop;
+		else c = COL.pageOther;
 		sendPad(p % 8, 4 + (p >> 3), c);
 	}
 }
@@ -1394,12 +1440,64 @@ function followPlayhead() {
 	return true;
 }
 
+// ---------- performance mode ----------
+// Shift + jog wheel press turns it on / off. While on, a page pad loops that
+// page (full 32 steps, each lane's Length ignored) on the selected lanes;
+// hold one page pad and press another to loop the range between them. A
+// switch waits for the next beat (quarter note) and keeps the position: the
+// step inside the page follows the song position, so the bar grid never
+// moves. Turning it off returns to the normal loop at the next beat too.
+// Nothing is saved; the sequence, loop and Lengths are never changed.
+// Delete / Select / Shift / Mute / Duplicate + page pad work as usual.
+var perfMode = false;
+var perfHeld = [];   // page pads held in performance mode, in press order
+var PERF_BEAT = 4;   // steps per beat: switches land on quarter notes
+function togglePerf() {
+	perfMode = !perfMode;
+	perfHeld = [];
+	if (perfMode) {
+		if (!model.perf) model.setPerf(true);
+		else for (var j = 0; j < 2; j++) model.perf[j] = model.perf[j].filter(function (sg) { return sg.from <= lastAbs; }); // cancel a pending exit
+	} else if (model.perf) {
+		var at = perfSwitchAt();
+		for (var l = 0; l < 2; l++) model.perfSwitch(l, null, null, at);
+		if (!playing) model.setPerf(false);
+	}
+	post("kbSequencer: performance mode " + (perfMode ? "on" : "off") + "\n");
+	refillSoon();
+	lastBankSig = "";
+	renderAll();
+	updateDisplay();
+	showStatus();
+}
+// The abs step a switch made now lands on: the next beat at least one step
+// after the step about to play (the patch already holds the next steps, and
+// the refill rewrites them). Stopped: at once.
+function perfSwitchAt() {
+	if (!playing || lastAbs < 0) return -Infinity;
+	return Math.ceil((lastAbs + 2) / PERF_BEAT) * PERF_BEAT;
+}
+function onPerfPage(page, pressed) {
+	var at = perfHeld.indexOf(page);
+	if (!pressed) { if (at >= 0) perfHeld.splice(at, 1); return; }
+	if (at < 0) perfHeld.push(page);
+	var a = perfHeld[0], b = perfHeld.length > 1 ? page : a; // second pad: the range
+	var lanes = selectedLanes(), when = perfSwitchAt();
+	for (var k = 0; k < lanes.length; k++) model.perfSwitch(lanes[k], Math.min(a, b), Math.max(a, b), when);
+	refillSoon();
+	renderPages();
+	showStatus();
+}
+function perfPendingAny() {
+	return !!(model.perf && (model.perfPending(S.KICK, lastAbs) || model.perfPending(S.BASS, lastAbs)));
+}
 // ---------- status ----------
 function showStatus() {
 	if (!surface) { status("No Push found"); return; }
 	var parts = [grabbed ? "GRABBED" : "released"];
 	if (!enabled) parts.push("(takeover off)");
 	else if (followFocus && !focused) parts.push("(track not selected)");
+	if (perfMode) parts.push("PERF");
 	parts.push("lanes " + (selKick ? "K" : "") + (selBass ? "B" : ""));
 	parts.push("page " + (viewPage + 1) + (follow ? " (follow)" : ""));
 	parts.push("oct " + octave);

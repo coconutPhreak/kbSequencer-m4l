@@ -351,6 +351,33 @@ function run(argv) {
 	var ce = new M.Model(); ce.setEuclid(K, "pulses", 4); ce.setEuclid(K, "layer", 1);
 	eq("euclid hit: reset only", mac(ce.eventsAt(0, 100, 0, 0), 3), [[0, 0]]);
 
+	// ---- performance mode ----
+	var pm = new M.Model(); pm.setLaneLength(K, 12);
+	pm.addTrig(K, 0); pm.addTrig(K, 4 * 32 + 13); pm.addTrig(B, 2 * 32 + 5, 40);
+	eq("perf off: normal loop", [pm.seqIndexFor(45, K), pm.seqIndexFor(45, B)], [9, 13]);
+	pm.setPerf(true);
+	eq("perf on, nothing picked: normal loop", pm.seqIndexFor(45, K), 9);
+	pm.perfSwitch(K, 4, 4, 48);
+	eq("before the switch: old mapping", pm.seqIndexFor(47, K), 47 % 12);
+	eq("from the switch: page 5, position kept, Length ignored", [pm.seqIndexFor(48, K), pm.seqIndexFor(77, K)], [4 * 32 + 16, 4 * 32 + 13]);
+	eq("other lane untouched", pm.seqIndexFor(77, B), 13);
+	eq("pending", [pm.perfPending(K, 40).start, pm.perfPending(K, 48)], [4, null]);
+	eq("note on the new page plays at the same bar position", pm.eventsAt(77, 100, 0, 0).filter(function (e) { return e.lane === K; }).length, 1);
+	pm.perfSwitch(B, 1, 2, 64);
+	eq("range of 2 pages", [pm.seqIndexFor(64, B), pm.seqIndexFor(64 + 37, B)], [32 + 0, 32 + 37]);
+	pm.perfSwitch(B, 5, 5, 60);
+	eq("a newer switch replaces later ones", [pm.perf[B].length, pm.seqIndexFor(64, B)], [1, 5 * 32]);
+	pm.addTrig(B, 2, 41); pm.clear(); pm.addTrig(K, 0);
+	eq("survives clear / undo (not part of the sequence)", pm.perf !== null, true);
+	pm.perfCollapse();
+	eq("collapse: latest choice from the start", [pm.perf[K][0].from, pm.seqIndexFor(3, K)], [-Infinity, 4 * 32 + 3]);
+	pm.perfSwitch(K, null, null, 200); pm.perfSwitch(B, null, null, 200);
+	eq("exit: normal again from the switch", [pm.seqIndexFor(199, K), pm.seqIndexFor(200, K)], [4 * 32 + 7, 200 % 32]);
+	eq("exit not done within the lookback", pm.perfPrune(300), false);
+	eq("exit done after the lookback", pm.perfPrune(200 + 256), true);
+	var pe = new M.Model(); pe.setEuclid(K, "pulses", 4); pe.setPerf(true); pe.perfSwitch(K, 3, 3, -Infinity);
+	eq("euclid hits on a page outside the loop", pe.eventsAt(3 * 32, 100, 0, 0).filter(function (e) { return e.lane === K; }).length, 1);
+
 	// ---- save v3 (CC locks) loads into v4 ----
 	var v3 = new M.Model(); v3.addTrig(B, 4, 40); v3.setLock(B, 4, P.m2, 77); v3.setLock(B, 4, P.velocity, 90);
 	var e3 = v3.encode(); e3[1] = 3;
