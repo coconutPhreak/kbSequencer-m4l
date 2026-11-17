@@ -10,8 +10,8 @@ Spec: [Push Kick + Bass Sequencer (M4L) — Spec v1](https://claude.ai/artifact/
 | `src/seq_model.js` | Sequence data model + save format (pure JS, tested) |
 | `src/kbTakeover.js` | Step 1 takeover test logic (kept as a reference) |
 | `device/` | **Generated** — `kbSequencer.amxd` + one bundled `kbSequencer.js` (and the takeover test). Don't edit. |
-| `device/kbLane.amxd` + `kbLane.js` | Receiving-track device: plays one lane (Kick/Bass) of the sequencer with the same Group, and applies that lane's macro locks to the Rack after it |
-| `src/kbLane.js` | kbLane's Rack / macro discovery |
+| `device/kbLane.amxd` + `kbLane.js` | Receiving-track device: plays one lane (Kick/Bass) of the sequencer with the same Group, sends that lane's CC locks as MIDI CCs and modulates the parameters mapped to them |
+| `src/kbLane.js` | kbLane's CC slot mapping (device view and Push) |
 | `docs/push3-notes.md` | Confirmed Push 3 control names and pad orientation |
 | `tools/build.py` | Bundles src/ into device/ and generates the .amxd/.maxpat files |
 | `tools/test_model.js` | Model tests (run with osascript, no Node needed) |
@@ -45,7 +45,7 @@ buttons and Delete all work. Details in `docs/push3-notes.md`.
 
 ## Step 2 — Step data and storage ✅
 
-The sequence (2 lanes × 512 steps, p-locks incl. macro locks, settings, loop) lives
+The sequence (2 lanes × 512 steps, p-locks incl. CC locks, settings, loop) lives
 in `seq_model.js`. It is saved as a flat number list in a hidden
 `[pattr kbData]` blob parameter, which Live stores with the Set and with
 device presets.
@@ -104,7 +104,7 @@ locked to the song position and loops over the loop pages (page 1 by
 default; testfill sets pages 1–2). The playhead step shows white on Push.
 
 Not yet: swing, microtime, conditions, fill, retrig, accent, slide/tie,
-mono note cutting, macro locks (later build steps).
+mono note cutting, CC locks (later build steps).
 
 ### Test
 
@@ -200,10 +200,10 @@ kbSequencer (Device mode, device selected) to see the bank.
 
 | Context | Display buttons 3–8 (the row under the knobs) | Encoders |
 |---|---|---|
-| Nothing held | 3 **Settings**, 4 **Kick Euclid**, 5 **Bass Euclid** (6–8 free) | Edit them (one Undo per turn) |
-| Step or page held | 3 **Step**, 4 **Retrig**, 5 **Rt Chance**, 6 **More** (Fill, Cond: not played yet), 7 **Slide**, 8 **Macro Locks** | Show and lock the held step's values |
+| Nothing held | 3 **Settings**, 4 **Kick Euclid**, 5 **Bass Euclid**, 6 **CC Map** (7–8 free) | Edit them (one Undo per turn) |
+| Step or page held | 3 **Step**, 4 **Retrig**, 5 **Rt Chance**, 6 **More** (Fill, Cond: not played yet), 7 **Slide**, 8 **CC Locks** | Show and lock the held step's values |
 
-- Settings: Kick Ch, Bass Ch, Kick Note, Bend, Scale (follow), Swing, Refresh (turn: the kbLanes report their macros again), **Takeover** (encoder 8).
+- Settings: Kick Ch, Bass Ch, Kick Note, Bend, Scale (follow), Swing, Refresh (turn: the kbLanes report their CC slot mappings again), **Takeover** (encoder 8).
 - **Takeover**: Off / Track selected (default: only while kbSequencer's track
   is selected) / Always. A real device parameter, saved with the Set and
   also in the device view (it replaces the two old takeover toggles). When
@@ -212,11 +212,12 @@ kbSequencer (Device mode, device selected) to see the bank.
   kbSequencer selected) turns takeover back on. Always: only use it with one
   kbSequencer in the Set, or they fight over Push. While released, Push can
   also turn the other Settings knobs, but those don't change anything.
-- Macro Locks: the held step's offset per macro slot, in macro units (−127 … +127, Live's 0–127 macro scale). These encoders are **fine by default** (one unit at a time); **Shift + turn = coarse** (8 units at a time).
+- CC Locks: the held step's CC value per slot (0–127). These encoders are **fine by default** (one value at a time); **Shift + turn = coarse** (8 at a time).
+- CC Map: pick each slot's mapped parameter on Push (see CC lock slots).
 - Step: Note, Velocity, Length (retrig's LEN list: 0.125 … 128 steps, INF), Micro (1/24 step), Prob, Accent, Slide, Tie.
   Note and Slide are hidden when bass isn't selected.
 - More: Retrig, Rt Rate, Rt Fade, Fill, Cond.
-- Macro Locks shows the lane of the held trig (else the first selected lane); slots without a visible macro on that lane's Rack show "-".
+- CC Locks shows the lane of the held trig (else the first selected lane).
 - **Shift + turn = fine adjust**: 4× the turning per value, and never more
   than one value per encoder message (works for step locks and settings;
   menus are unaffected). Short menus (up to 4 items, e.g. Layer) always move
@@ -244,7 +245,7 @@ kbSequencer (Device mode, device selected) to see the bank.
 - After a page lock, any single step can still be overridden.
 - One Undo takes back one encoder turn (edits within 0.6 s are grouped).
 - Playback already uses velocity, length and probability locks; accent,
-  slide, tie, retrig, microtime and macro locks now play too (later steps);
+  slide, tie, retrig, microtime and CC locks now play too (later steps);
   fill and condition are stored and shown but don't play (nice to have).
 - The first 4 touch messages are printed to the Max Console (`touch raw …`).
 
@@ -301,7 +302,7 @@ parameters).
 | Sl Curve | −100 … +100 | 0 | −100 fast start, 0 straight, +100 slow start |
 
 - Slides are pitch bend on the bass channel (14-bit, a message every 5 ms while gliding). Set the instrument's pitch-bend range to **Bend** in Settings (default ±24 semitones, up to ±96). A target further than that plays as a new note.
-- The connected step gives only its **note** and its own **Slide / Tie** (so chains continue: A → B → C is one held note). Its velocity, Length, retrig, macro and other locks don't apply.
+- The connected step gives only its **note** and its own **Slide / Tie** (so chains continue: A → B → C is one held note). Its velocity, Length, retrig, CC and other locks don't apply.
 - The **first note** of a chain sets velocity, Sl Time, Sl Curve and **Length**: the whole held note lasts the first note's Length from its start (a short Length ends before the slide is heard; the next new note still cuts it).
 - The bend returns to centre right before every new bass note.
 - Retrig steps don't slide. Kick has Tie (holds the note) but no Slide.
@@ -367,43 +368,57 @@ Loop pages live, one tap each, without touching the sequence.
   meaning; holding a page pad for a page lock isn't available while
   performance mode is on.
 
-## Step 9 — Macro lock slots ✅ (replaced the CC lock slots in v0.15)
+## Step 9 — CC lock slots ✅ (v0.22; macro locks before that)
 
-Each lane has 8 macro lock slots. Slot N modulates **macro N of the first
-Rack after kbLane** on that lane's track. kbLane applies them with
-`live.modulate~` (Live's Modulate mode): the lock is an **offset from the
-macro's knob**, −127 … +127 macro units (the knob's own 0–127 scale), added to the knob and clipped at
-the range. The macro stays hand-turnable and automatable. No MIDI CCs.
+Each lane has 8 **CC lock slots**. A lock is a CC value **0–127** per step.
+Every note sends all 8 slots of its lane (the locked value, or the lane
+default **64** on an unlocked step), just before the note on the same path, so
+they arrive in order with it. kbLane does two things with each slot:
 
-- Put the instrument (or effects) in a Rack after kbLane and map its macros.
-  kbLane finds the Rack and reads the macro names and the visible macro
-  count; the sequencer's device view lists them per lane. Push shows the
-  slots as "Macro 1–8" (Max for Live can't rename parameters at runtime);
-  slots past the visible macros show "-".
-- kbLane re-scans when the Set loads, when its track's devices change, when
-  the Rack's visible macro count or a macro name changes, and on
-  Settings > Refresh. No Rack: the device view says "no rack" and the slots
-  are hidden.
-- Lock an offset in the **Macro Locks** bank (step or page held, button 8).
-  Clearing, page locks, copy/paste, undo and delete work as for every lock.
-  Euclid hits have none.
-- Sent only when the step's note plays (not muted, not on a failed
-  probability roll, not on a step a slide connects into; a retrig burst
-  sends them once, with its first hit), just before the note on the same
-  path, so they arrive in order with it. Every note first resets all 8
-  offsets to 0, so an **unlocked step plays the knob alone**. Transport stop
-  also returns the offsets to 0.
-- Sets saved before v0.20 stored the offset in % (−100 … +100): they load
-  scaled to units (50 % → 64), presets included (save format v6).
-- Sets saved with CC locks (before v0.15) load normally: the CC locks and
-  CC numbers are dropped, everything else is kept; the next save writes the
-  new format (v4).
+1. **MIDI CC out** to the devices after it: slot N goes out as the CC number
+   set in kbLane's row N (default 20–27), on the lane's channel. Plugins and
+   hardware can learn them, and a track recording kbLane's output **records
+   them into the clip**.
+2. **Modulates a mapped parameter** (any parameter on the track, Rack macros
+   included) with `live.modulate~`: CC 0 = **Min**, **64 = halfway**, 127 =
+   **Max** (% of the parameter's range, default **−100 / +100**, so 64 = no
+   change), as an offset added to the parameter's knob. The knob stays
+   hand-turnable and automatable, and an unlocked step (64) plays it alone.
+
+- **Clips drive it too:** CCs arriving at kbLane's MIDI input (a recorded
+  clip, a controller) with a slot's CC number move that slot's mapped
+  parameter the same way. So a recorded pattern plays back with its locks.
+- **Mapping in the device view:** click **map N**, then click any parameter
+  in Live; **clear N** unmaps.
+- **Mapping on Push:** Settings context (nothing held), display button 6
+  **CC Map**. Encoder N steps slot N's target through every parameter of the
+  devices after kbLane on the first selected lane's track (Racks: their
+  chains too); turning back to the start unmaps. The knob shows **Macro
+  1–16** for a macro of a Rack on the track itself, **other** for any other
+  parameter, **-** when unmapped; the bank title shows the full name
+  ("Bass 3: Rack › Cutoff"). One parameter per detent.
+- **Default:** a kbLane with nothing saved (new, or from a Set made before
+  v0.22) maps slots 1–8 to the macros of the first Rack after it, as the
+  old macro locks did.
+- Lock values in the **CC Locks** bank (step or page held, button 8): fine
+  by default (one value per detent), **Shift + turn = coarse** (8 at a
+  time). Clearing, page locks, copy/paste, undo and delete work as for every
+  lock. Euclid hits send the lane defaults.
+- Not sent on a muted step, a failed probability roll or a step a slide
+  connects into; a retrig burst sends them once, with its first hit.
+  Transport stop returns every mapped parameter to its knob.
+- Mappings are saved with the Set as parameter positions (track / device /
+  parameter): moving the target device breaks a mapping ("(missing)"), map
+  it again.
+- Older Sets: macro locks load as the CC value that gives the same offset
+  with the default range (offset 0 → 64, +64 → 96, −127 → 0), presets
+  included (save format v7).
 
 ## Step 10 — Microtime ✅
 
 **Micro** (Step bank) moves a step's note off the grid in 1/24-step
 amounts, −12/24 to +12/24 (half a step either way). Everything that belongs
-to the note moves with it: its macro locks and bend reset, retrig hits, the
+to the note moves with it: its CC locks and bend reset, retrig hits, the
 Length (counted from the moved start) and slide timing (glides are measured
 from the moved start). Steps a slide connects into stay on the grid.
 
@@ -479,7 +494,7 @@ adds or changes one. Details are in the sections above.
 |---|---|
 | Press an empty step | Creates a trig (bass: the brush note); keep holding to edit it |
 | Tap a lit step | Mute / unmute (on release, quick taps only) |
-| Hold step(s) + turn an encoder | P-lock the held steps (Shift + turn = fine; macro locks: fine by default, Shift + turn = coarse) |
+| Hold step(s) + turn an encoder | P-lock the held steps (Shift + turn = fine; CC locks: fine by default, Shift + turn = coarse) |
 | Hold step(s) + tap a note pad | Set the held bass steps' note |
 | Hold step(s) + Delete + touch an encoder | Clear that lock (a single Delete tap latches clear mode) |
 | Delete + tap a step | Wipe the step |
@@ -518,7 +533,8 @@ adds or changes one. Details are in the sections above.
 | Combo | Does |
 |---|---|
 | Display button 1 / 2 | Select Kick / Bass (one stays on) |
-| Display buttons 3–8 | Pick the bank (Settings / Euclid banks, or the held step's banks) |
+| Display buttons 3–8 | Pick the bank (Settings / Euclid / CC Map banks, or the held step's banks) |
+| CC Map bank: turn encoder N | Pick slot N's mapped parameter (first selected lane) |
 | Jog wheel turn / nudge | Next / previous bank |
 | **Shift + jog wheel press** | Performance mode on / off |
 | Shift + lane button | Live negative mask on / off for that lane |

@@ -784,7 +784,11 @@ var BANKS = {
 	settings: [
 		{ name: "Settings", items: ["kickChannel", "bassChannel", "kickNote", "bendRange", "scaleFollow", "swing", "macroRefresh", "takeover"] },
 		{ name: "Kick Euclid", items: ["kLength", "kEuSteps", "kEuPulses", "kEuRotate", "kEuLayer", "kEuVel", "kEuFollow", null] },
-		{ name: "Bass Euclid", items: ["bLength", "bEuSteps", "bEuPulses", "bEuRotate", "bEuLayer", "bEuVel", "bEuFollow", "bEuNote"] }
+		{ name: "Bass Euclid", items: ["bLength", "bEuSteps", "bEuPulses", "bEuRotate", "bEuLayer", "bEuVel", "bEuFollow", "bEuNote"] },
+		// turn encoder N to step slot N's target through the
+		// parameters on the lane's track (first selected lane); the bank
+		// title shows the picked parameter.
+		{ name: "CC Map", items: ["map1", "map2", "map3", "map4", "map5", "map6", "map7", "map8"] }
 	],
 	step: [
 		{ name: "Step", items: ["note", "velocity", "length", "microtime", "probability", "accent", "slide", "tie"] },
@@ -792,7 +796,7 @@ var BANKS = {
 		{ name: "Rt Chance", items: ["retrigProb", "retrigLock", "retrigPMode", "retrigVoices", null, null, null, null] },
 		{ name: "More", items: ["fill", "condition", null, null, null, null, null, null] },
 		{ name: "Slide", items: ["slide", "tie", "slideTime", "slideCurve", null, null, null, null] },
-		{ name: "Macro Locks", items: ["m1", "m2", "m3", "m4", "m5", "m6", "m7", "m8"] }
+		{ name: "CC Locks", items: ["m1", "m2", "m3", "m4", "m5", "m6", "m7", "m8"] }
 	]
 };
 // Display buttons that pick banks (0-based): 3–8 (8 = Macro Locks while a
@@ -829,6 +833,9 @@ function itemShown(key) {
 	return true;
 }
 var MACRO_KEY = /^m[1-8]$/;
+var MAP_KEY = /^map[1-8]$/; // CC Map bank
+var mapTitle = "";          // last picked target, shown as the bank title
+var mapPending = null;      // { lane, slot } of the last pick, until its report arrives
 
 // The held step and the lane its values are read from: the first selected
 // lane with a trig there.
@@ -865,6 +872,7 @@ function lockTargets() {
 
 // Value of a display item, in the display parameter's own units.
 function itemValue(key) {
+	if (MAP_KEY.test(key)) { var mi = macroInfo[editLane()]; return mi && mi.codes ? mi.codes[Number(key.slice(3)) - 1] || 0 : 0; }
 	if (key === "macroRefresh") return refreshShown ? 1 : 0;
 	if (key === "takeover") return takeoverMode;
 	if (LANE_ITEMS[key]) return laneItemValue(key);
@@ -914,6 +922,7 @@ function updateDisplay() {
 	var bank = currentBank(), names = [];
 	for (var k = 0; k < 8; k++) names.push(itemShown(bank.items[k]) ? DISPLAY_PARAMS[bank.items[k]].longname : "-");
 	var bname = (perfMode ? "PERF " : "") + (model.activeSlot >= 0 ? "P" + (model.activeSlot + 1) + (model.isDirty() ? "* " : " ") : "") + bank.name;
+	if (bank.name === "CC Map") bname = mapTitle || ("CC Map " + S.LANE_NAMES[editLane()] + ": turn to pick");
 	var sig = bname + "|" + names.join("|");
 	if (sig !== lastBankSig) {
 		var b = this.patcher ? this.patcher.getnamed("banks") : null;
@@ -958,6 +967,7 @@ function onEncoder(v) {
 	// units per value); everything else is normal, Shift + turn = fine.
 	var d0 = DISPLAY_PARAMS[key], macro = MACRO_KEY.test(key);
 	var fine = macro ? !shiftHeld : shiftHeld && d0.kind !== "enum";
+	if (MAP_KEY.test(key)) fine = true; // one parameter per detent
 	var per = ticksPerStep(key) * (fine ? FINE_FACTOR : 1), steps = (encAcc[idx] / per) | 0;
 	if (!steps) return;
 	encAcc[idx] -= steps * per;
@@ -1044,6 +1054,13 @@ function editSetting(key, steps) {
 	if (key === "macroRefresh") {
 		encoderEdit = false;
 		refresh();
+		return;
+	}
+	if (MAP_KEY.test(key)) { // ask the lane's kbLane to step the slot's target
+		encoderEdit = false;
+		var lc = this.patcher ? this.patcher.getnamed("lane_cmd") : null, l = editLane(), slot = Number(key.slice(3));
+		mapPending = { lane: l, slot: slot };
+		if (lc) lc.message("pick", laneGroup, l, slot, steps > 0 ? 1 : -1);
 		return;
 	}
 	if (key === "takeover") { // through the parameter, so it's saved; its output calls takeover()
@@ -1697,7 +1714,10 @@ function refresh() {
 function laneinfo() {
 	var a = arrayfromargs(arguments), g = Number(a[0]), l = Number(a[1]), n = Number(a[2]);
 	if (g !== laneGroup || (l !== S.KICK && l !== S.BASS)) return;
-	macroInfo[l] = n === -2 ? null : { count: Math.max(-1, Math.min(S.MACRO_SLOTS, n)), names: a.slice(3, 3 + S.MACRO_SLOTS).map(String) };
+	macroInfo[l] = n === -2 ? null : { count: Math.max(-1, Math.min(S.MACRO_SLOTS, n)), names: a.slice(3, 3 + S.MACRO_SLOTS).map(String),
+		codes: a.slice(3 + S.MACRO_SLOTS, 3 + 2 * S.MACRO_SLOTS).map(Number) }; // macro number per slot
+	if (mapPending && mapPending.lane === l && macroInfo[l]) // show the picked target
+		mapTitle = S.LANE_NAMES[l] + " " + mapPending.slot + ": " + macroInfo[l].names[mapPending.slot - 1];
 	post("kbSequencer: " + S.LANE_NAMES[l] + " macros: " + macroText(l) + "\n");
 	renderMacroView();
 	lastBankSig = ""; // slot names / availability may have changed

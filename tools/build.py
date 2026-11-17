@@ -29,7 +29,7 @@ AMXD_MIDI = int.from_bytes(b"mmmm", "big")  # 1835887981
 
 # Shown on every device and printed to the Max Console at load, so it's easy
 # to tell which build is running. VERSION: bump the minor per spec build step.
-VERSION = "0.20.1"
+VERSION = "0.22.1"
 BUILD = datetime.datetime.now().strftime("%m%d.%H%M")  # build time, MMDD.HHMM
 STAMP = f"v{VERSION} · {BUILD}"
 
@@ -93,7 +93,10 @@ DISPLAY_PARAMS = (
     # Macro Locks bank: offset added to macro N of the lane's Rack (by kbLane).
     # Push can't show the real macro names (parameter names are fixed).
     # Offset in macro units (Live's macros run 0–127), not %.
-    + [(f"m{n}", f"Macro{n}", f"Macro {n}", "int", -127, 127, None) for n in range(1, 9)]
+    + [(f"m{n}", f"CCLock{n}", f"CC {n}", "int", 0, 127, None) for n in range(1, 9)]
+    # CC Map bank: which macro of the track's Rack the slot drives
+    # ("other" = any other parameter; the bank title shows its name)
+    + [(f"map{n}", f"CCMap{n}", f"Map {n}", "enum", 0, 17, ["-"] + [f"Macro {m}" for m in range(1, 17)] + ["other"]) for n in range(1, 9)]
     # Retrig (as retrig-m4l): banks Retrig and Rt Chance
     + [("retrig", "Retrig", "RTRG", "enum", 0, 1, OFF_ON),
        ("retrigRate", "RtRate", "RATE", "enum", 0, 16, RETRIG_RATES),
@@ -544,12 +547,15 @@ s.wire("pb_iter", 0, "lane_pack1", 0)
 # applies it with live.modulate~ (patch objects only: high priority).
 for lane in (0, 1):
     p, x = f"mac{lane}_", 820 + lane * 200
-    s.obj(p + "slice", "zl slice 2", [x, 830, 65, 22], 2, 2)
-    s.obj(p + "pack", f"pack 0 0 1 {lane}", [x, 860, 90, 22], 4, 1)
+    # "slot value 0 channel" -> "m slot value group lane channel"
+    s.obj(p + "slice", "unpack 0 0 0 0", [x, 830, 90, 22], 1, 4, ["int"] * 4)
+    s.obj(p + "pack", f"pack 0 0 1 {lane} 1", [x, 860, 100, 22], 5, 1)
     s.obj(p + "pre", "prepend m", [x, 890, 70, 22], 1, 1)
     s.wire("ev_route", 3 + lane, p + "slice", 0)
     s.wire("group", 0, p + "pack", 2)
-    s.wire(p + "slice", 0, p + "pack", 0)  # "slot offset" fills inlets 0-1 and outputs
+    s.wire(p + "slice", 3, p + "pack", 4)  # unpack fires right to left: channel first
+    s.wire(p + "slice", 1, p + "pack", 1)
+    s.wire(p + "slice", 0, p + "pack", 0)
     s.wire(p + "pack", 0, p + "pre", 0)
     s.wire(p + "pre", 0, "lane_send", 0)
 
@@ -636,58 +642,119 @@ f.wire("t", 1, "heard_g", 0)
 f.wire("t", 1, "heard_l", 0)
 f.wire("heard_g", 0, "heard_gn", 0)
 f.wire("heard_l", 0, "heard_ln", 0)
-f.comment("c_title", "kbLane", [300, 20, 60, 20], [6, 2, 100, 20])
+f.comment("c_title", "kbLane", [300, 20, 60, 20], [6, 2, 110, 20])
 f.comment("c_stamp", STAMP, [300, 160, 110, 20], [6, 146, 112, 18])
 f.comment("c_group", "Group", [300, 60, 40, 20], [6, 22, 44, 18])
 f.comment("c_lane", "Lane", [300, 80, 40, 20], [6, 42, 44, 18])
 f.comment("c_heard", "Heard", [300, 100, 40, 20], [6, 64, 44, 18])
 f.comment("c_heard2", "group · lane (0 kick, 1 bass)", [300, 120, 160, 20], [6, 84, 112, 30])
 
-# Macro locks: "m slot offset group lane" -> live.modulate~ N (high priority,
-# so the offset is set before the note bytes that follow it). The offset is
-# added to the macro's knob (bipolar additive, checked with kbMacroProbe) and
-# applied at the next audio buffer (smoothing 0). Slot 0 = all back to 0.
+# "m slot value group lane channel" (slot 1–8, value 0–127). Patch
+# only (high priority). Per slot: a MIDI CC out (the slot's CC number, the
+# lane's channel), and live.modulate~ on the mapped parameter: CC 0 / 64 /
+# 127 -> Min / halfway / Max (% of its range, default −100 / 0 / +100) as an
+# offset added to its knob.
 bundle("kbLane.js", "kbLane.js")
+f.size = (560, 169)
 f.obj("m_t", "t l l", [500, 140, 40, 22], 1, 2, ["", ""])
-f.obj("m_match", "expr ($i3 == $i5) && ($i4 == $i6)", [580, 180, 200, 22], 6, 1)
-f.obj("m_slice", "zl slice 2", [500, 220, 65, 22], 2, 2)
+f.obj("m_match", "expr ($i3 == $i6) && ($i4 == $i7)", [580, 180, 200, 22], 7, 1)
 f.obj("m_gate", "gate 1 0", [500, 260, 50, 22], 2, 1)
-f.obj("m_route", "route 0 1 2 3 4 5 6 7 8", [500, 300, 160, 22], 1, 10)
+f.obj("m_route", "route 1 2 3 4 5 6 7 8", [500, 300, 160, 22], 1, 9)
 f.wire("recv_m", 0, "m_t", 0)
 f.wire("m_t", 1, "m_match", 0)
-f.wire("group", 0, "m_match", 4)
-f.wire("lane", 0, "m_match", 5)
+f.wire("group", 0, "m_match", 5)
+f.wire("lane", 0, "m_match", 6)
 f.wire("m_match", 0, "m_gate", 0)
-f.wire("m_t", 0, "m_slice", 0)
-f.wire("m_slice", 0, "m_gate", 1)
+f.wire("m_t", 0, "m_gate", 1)
 f.wire("m_gate", 0, "m_route", 0)
-f.obj("m_reset", "t b", [500, 340, 30, 22], 1, 1, ["bang"])
 f.message("m_zero", "0.", [500, 370, 30, 22])
-f.wire("m_route", 0, "m_reset", 0)
-f.wire("m_reset", 0, "m_zero", 0)
-f.obj("js", "js kbLane.js", [800, 100, 90, 22], 1, 4)
+f.obj("js", "js kbLane.js", [800, 100, 100, 22], 1, 5)
 f.obj("js_ids", "route 1 2 3 4 5 6 7 8", [800, 140, 150, 22], 1, 9)
-f.obj("js_info", "send kbLaneInfo", [960, 140, 95, 22], 1, 0)
-f.obj("cmd_recv", "receive kbLaneCmd", [800, 40, 110, 22], 1, 1)
+f.obj("js_info", "send kbLaneInfo", [960, 140, 105, 22], 1, 0)
+f.obj("cmd_recv", "receive kbLaneCmd", [800, 40, 120, 22], 1, 1)
 f.obj("g_pre", "prepend group", [900, 60, 85, 22], 1, 1)
 f.obj("l_pre", "prepend lane", [1000, 60, 80, 22], 1, 1)
-f.wire("thisdevice", 0, "js", 0)
+f.blob_pattr("pattr", "kbLaneData", [1100, 40, 120, 22])
+f.obj("t_init", "t b b", [1100, 10, 40, 22], 1, 2, ["bang", "bang"])
+f.obj("pre_restore", "prepend restore", [1100, 70, 95, 22], 1, 1)
+f.wire("thisdevice", 0, "t_init", 0)
+f.wire("t_init", 1, "pattr", 0)
+f.wire("t_init", 0, "js", 0)
+f.wire("js", 4, "pattr", 0)
+f.wire("pattr", 0, "pre_restore", 0)
+f.wire("pre_restore", 0, "js", 0)
 f.wire("cmd_recv", 0, "js", 0)
 f.wire("group", 0, "g_pre", 0)
 f.wire("lane", 0, "l_pre", 0)
 f.wire("g_pre", 0, "js", 0)
 f.wire("l_pre", 0, "js", 0)
 f.wire("js", 1, "js_ids", 0)
-f.wire("js", 2, "m_reset", 0)  # transport stopped
+f.wire("js", 2, "m_zero", 0)  # transport stopped
 f.wire("js", 3, "js_info", 0)
+# Incoming MIDI CCs (a recorded clip, a controller) drive the same mappings:
+# "ctl val" whose CC number matches a slot goes to that slot's modulation.
+# (They already pass through to the instrument via midiin -> midiout.)
+f.obj("in_parse", "midiparse", [30, 380, 80, 22], 1, 8, ["", "", "", "int", "int", "", "int", ""])
+f.obj("in_t", "t l l", [30, 410, 40, 22], 1, 2, ["", ""])
+f.wire("midiin", 0, "in_parse", 0)
+f.wire("in_parse", 2, "in_t", 0)
+f.comment("c_slots", "CC · map · clear · mapped parameter · min % · max %", [1300, 10, 300, 20], [236, 150, 300, 18])
 for n in range(8):
-    dv, mod = f"m_div{n}", f"m_mod{n}"
-    f.obj(dv, "/ 127.", [500 + n * 70, 420, 45, 22], 2, 1, ["float"])  # macro units -> live.modulate~ ±1
-    f.obj(mod, "live.modulate~ @smoothing 0", [500 + n * 70, 460, 160, 22], 2, 1)
-    f.wire("m_route", n + 1, dv, 0)
-    f.wire(dv, 0, mod, 0)
-    f.wire("m_zero", 0, mod, 0)
-    f.wire("js_ids", n, mod, 1)
+    k, x, y, py = n + 1, 500 + n * 170, 520, 4 + n * 18
+    f.comment(f"lbl{k}", str(k), [x, y - 20, 20, 20], [236, py, 14, 16])
+    f.int_param(f"cc{k}", f"CC{k}", [x, y, 40, 15], [250, py + 1, 30, 14], 0, 127, 20 + n)
+    f.message(f"map{k}", f"map {k}", [x, y + 30, 40, 22], [282, py, 38, 16])
+    f.message(f"clr{k}", f"clear {k}", [x + 45, y + 30, 45, 22], [322, py, 42, 16])
+    f.wire(f"map{k}", 0, "js", 0)
+    f.wire(f"clr{k}", 0, "js", 0)
+    f.box(f"name{k}", "comment", [x, y + 60, 150, 20], [366, py, 120, 16], text="-",
+          numinlets=1, numoutlets=0, varname=f"name{k}")
+    f.int_param(f"min{k}", f"Min{k}", [x, y + 90, 40, 15], [488, py + 1, 32, 14], -100, 100, -100)
+    f.int_param(f"max{k}", f"Max{k}", [x + 45, y + 90, 40, 15], [522, py + 1, 32, 14], -100, 100, 100)
+    f.wire("t_init", 0, f"min{k}", 0)
+    f.wire("t_init", 0, f"max{k}", 0)
+    f.wire("t_init", 0, f"cc{k}", 0)
+    # "value group lane channel": unpack fires right to left (channel first)
+    f.obj(f"su{k}", "unpack 0 0 0 0", [x, y + 130, 90, 22], 1, 4, ["int"] * 4)
+    f.wire("m_route", n, f"su{k}", 0)
+    # MIDI CC out: bytes 175+ch, CC number, value
+    f.obj(f"st{k}", "+ 175", [x + 100, y + 160, 45, 22], 2, 1, ["int"])
+    f.obj(f"ccp{k}", "pack 0 0 0", [x, y + 190, 70, 22], 3, 1)
+    f.obj(f"ccr{k}", "zl rot 2", [x, y + 220, 60, 22], 2, 2)
+    f.obj(f"cci{k}", "iter", [x, y + 250, 35, 22], 1, 1)
+    f.wire(f"su{k}", 3, f"st{k}", 0)
+    f.wire(f"st{k}", 0, f"ccp{k}", 1)
+    f.wire(f"cc{k}", 0, f"ccp{k}", 2)
+    f.wire(f"su{k}", 0, f"ccp{k}", 0)   # "value status cc" -> rotate -> "status cc value"
+    f.wire(f"ccp{k}", 0, f"ccr{k}", 0)
+    f.wire(f"ccr{k}", 0, f"cci{k}", 0)
+    f.wire(f"cci{k}", 0, "midiout", 0)
+    # modulation of the mapped parameter
+    f.obj(f"mn{k}", "/ 100.", [x + 90, y + 100, 45, 22], 2, 1, ["float"])
+    f.obj(f"mx{k}", "/ 100.", [x + 140, y + 100, 45, 22], 2, 1, ["float"])
+    f.wire(f"min{k}", 0, f"mn{k}", 0)
+    f.wire(f"max{k}", 0, f"mx{k}", 0)
+    # CC 0 = Min, 64 = halfway (Min −100 / Max 100: no change, the knob alone),
+    # 127 = Max; linear on each side of 64, so 64 is exactly the middle.
+    f.obj(f"norm{k}", "expr ($f1 <= 64) * ($f2 + ($f3 - $f2) * 0.5 * $f1 / 64.) + ($f1 > 64) * (($f2 + $f3) * 0.5 + ($f3 - $f2) * 0.5 * ($f1 - 64) / 63.)",
+          [x, y + 290, 300, 22], 3, 1)
+    f.wire(f"su{k}", 0, f"norm{k}", 0)
+    f.wire(f"mn{k}", 0, f"norm{k}", 1)
+    f.wire(f"mx{k}", 0, f"norm{k}", 2)
+    # incoming CC with this slot's number -> the same scaling and modulation
+    f.obj(f"im{k}", "expr $i1 == $i3", [x, y + 360, 90, 22], 3, 1)
+    f.obj(f"iv{k}", "zl slice 1", [x, y + 390, 65, 22], 2, 2)
+    f.obj(f"ig{k}", "gate 1 0", [x, y + 420, 50, 22], 2, 1)
+    f.wire("in_t", 1, f"im{k}", 0)
+    f.wire(f"cc{k}", 0, f"im{k}", 2)
+    f.wire(f"im{k}", 0, f"ig{k}", 0)
+    f.wire("in_t", 0, f"iv{k}", 0)
+    f.wire(f"iv{k}", 1, f"ig{k}", 1)
+    f.wire(f"ig{k}", 0, f"norm{k}", 0)
+    f.obj(f"mod{k}", "live.modulate~ @smoothing 0", [x, y + 320, 160, 22], 2, 1)
+    f.wire(f"norm{k}", 0, f"mod{k}", 0)
+    f.wire("m_zero", 0, f"mod{k}", 0)
+    f.wire("js_ids", n, f"mod{k}", 1)
 f.obj("st_pre", "prepend set", [800, 180, 75, 22], 1, 1)
 f.box("st_msg", "comment", [800, 210, 200, 20], [122, 24, 112, 120], text="", numinlets=1,
       numoutlets=0, varname="st_msg")
@@ -695,6 +762,7 @@ f.wire("js", 0, "st_pre", 0)
 f.wire("st_pre", 0, "st_msg", 0)
 f.deps = ["kbLane.js"]
 f.write("kbLane")
+
 
 for dev in (t, s, f):
     dev.write_frozen()

@@ -208,7 +208,7 @@
       400,
       20
      ],
-     "text": "kbSequencer   v0.20.1 \u00b7 1117.1835",
+     "text": "kbSequencer   v0.22.1 \u00b7 1117.2100",
      "numinlets": 1,
      "numoutlets": 0
     }
@@ -1285,15 +1285,17 @@
      "patching_rect": [
       820,
       830,
-      65,
+      90,
       22
      ],
-     "text": "zl slice 2",
-     "numinlets": 2,
-     "numoutlets": 2,
+     "text": "unpack 0 0 0 0",
+     "numinlets": 1,
+     "numoutlets": 4,
      "outlettype": [
-      "",
-      ""
+      "int",
+      "int",
+      "int",
+      "int"
      ]
     }
    },
@@ -1304,11 +1306,11 @@
      "patching_rect": [
       820,
       860,
-      90,
+      100,
       22
      ],
-     "text": "pack 0 0 1 0",
-     "numinlets": 4,
+     "text": "pack 0 0 1 0 1",
+     "numinlets": 5,
      "numoutlets": 1,
      "outlettype": [
       ""
@@ -1340,15 +1342,17 @@
      "patching_rect": [
       1020,
       830,
-      65,
+      90,
       22
      ],
-     "text": "zl slice 2",
-     "numinlets": 2,
-     "numoutlets": 2,
+     "text": "unpack 0 0 0 0",
+     "numinlets": 1,
+     "numoutlets": 4,
      "outlettype": [
-      "",
-      ""
+      "int",
+      "int",
+      "int",
+      "int"
      ]
     }
    },
@@ -1359,11 +1363,11 @@
      "patching_rect": [
       1020,
       860,
-      90,
+      100,
       22
      ],
-     "text": "pack 0 0 1 1",
-     "numinlets": 4,
+     "text": "pack 0 0 1 1 1",
+     "numinlets": 5,
      "numoutlets": 1,
      "outlettype": [
       ""
@@ -2489,11 +2493,11 @@
      "varname": "pv_m1",
      "saved_attribute_attributes": {
       "valueof": {
-       "parameter_longname": "Macro1",
-       "parameter_shortname": "Macro 1",
+       "parameter_longname": "CCLock1",
+       "parameter_shortname": "CC 1",
        "parameter_initial_enable": 0,
        "parameter_type": 1,
-       "parameter_mmin": -127,
+       "parameter_mmin": 0,
        "parameter_mmax": 127,
        "parameter_unitstyle": 0
       }
@@ -2520,11 +2524,11 @@
      "varname": "pv_m2",
      "saved_attribute_attributes": {
       "valueof": {
-       "parameter_longname": "Macro2",
-       "parameter_shortname": "Macro 2",
+       "parameter_longname": "CCLock2",
+       "parameter_shortname": "CC 2",
        "parameter_initial_enable": 0,
        "parameter_type": 1,
-       "parameter_mmin": -127,
+       "parameter_mmin": 0,
        "parameter_mmax": 127,
        "parameter_unitstyle": 0
       }
@@ -2551,11 +2555,11 @@
      "varname": "pv_m3",
      "saved_attribute_attributes": {
       "valueof": {
-       "parameter_longname": "Macro3",
-       "parameter_shortname": "Macro 3",
+       "parameter_longname": "CCLock3",
+       "parameter_shortname": "CC 3",
        "parameter_initial_enable": 0,
        "parameter_type": 1,
-       "parameter_mmin": -127,
+       "parameter_mmin": 0,
        "parameter_mmax": 127,
        "parameter_unitstyle": 0
       }
@@ -2582,11 +2586,11 @@
      "varname": "pv_m4",
      "saved_attribute_attributes": {
       "valueof": {
-       "parameter_longname": "Macro4",
-       "parameter_shortname": "Macro 4",
+       "parameter_longname": "CCLock4",
+       "parameter_shortname": "CC 4",
        "parameter_initial_enable": 0,
        "parameter_type": 1,
-       "parameter_mmin": -127,
+       "parameter_mmin": 0,
        "parameter_mmax": 127,
        "parameter_unitstyle": 0
       }
@@ -2613,11 +2617,11 @@
      "varname": "pv_m5",
      "saved_attribute_attributes": {
       "valueof": {
-       "parameter_longname": "Macro5",
-       "parameter_shortname": "Macro 5",
+       "parameter_longname": "CCLock5",
+       "parameter_shortname": "CC 5",
        "parameter_initial_enable": 0,
        "parameter_type": 1,
-       "parameter_mmin": -127,
+       "parameter_mmin": 0,
        "parameter_mmax": 127,
        "parameter_unitstyle": 0
       }
@@ -2644,11 +2648,11 @@
      "varname": "pv_m6",
      "saved_attribute_attributes": {
       "valueof": {
-       "parameter_longname": "Macro6",
-       "parameter_shortname": "Macro 6",
+       "parameter_longname": "CCLock6",
+       "parameter_shortname": "CC 6",
        "parameter_initial_enable": 0,
        "parameter_type": 1,
-       "parameter_mmin": -127,
+       "parameter_mmin": 0,
        "parameter_mmax": 127,
        "parameter_unitstyle": 0
       }
@@ -2675,11 +2679,11 @@
      "varname": "pv_m7",
      "saved_attribute_attributes": {
       "valueof": {
-       "parameter_longname": "Macro7",
-       "parameter_shortname": "Macro 7",
+       "parameter_longname": "CCLock7",
+       "parameter_shortname": "CC 7",
        "parameter_initial_enable": 0,
        "parameter_type": 1,
-       "parameter_mmin": -127,
+       "parameter_mmin": 0,
        "parameter_mmax": 127,
        "parameter_unitstyle": 0
       }
@@ -2706,13 +2710,413 @@
      "varname": "pv_m8",
      "saved_attribute_attributes": {
       "valueof": {
-       "parameter_longname": "Macro8",
-       "parameter_shortname": "Macro 8",
+       "parameter_longname": "CCLock8",
+       "parameter_shortname": "CC 8",
        "parameter_initial_enable": 0,
        "parameter_type": 1,
-       "parameter_mmin": -127,
+       "parameter_mmin": 0,
        "parameter_mmax": 127,
        "parameter_unitstyle": 0
+      }
+     }
+    }
+   },
+   {
+    "box": {
+     "id": "pv_map1",
+     "maxclass": "live.menu",
+     "patching_rect": [
+      1180,
+      68,
+      80,
+      15
+     ],
+     "numinlets": 1,
+     "numoutlets": 3,
+     "outlettype": [
+      "",
+      "",
+      "float"
+     ],
+     "parameter_enable": 1,
+     "varname": "pv_map1",
+     "saved_attribute_attributes": {
+      "valueof": {
+       "parameter_longname": "CCMap1",
+       "parameter_shortname": "Map 1",
+       "parameter_initial_enable": 0,
+       "parameter_type": 2,
+       "parameter_enum": [
+        "-",
+        "Macro 1",
+        "Macro 2",
+        "Macro 3",
+        "Macro 4",
+        "Macro 5",
+        "Macro 6",
+        "Macro 7",
+        "Macro 8",
+        "Macro 9",
+        "Macro 10",
+        "Macro 11",
+        "Macro 12",
+        "Macro 13",
+        "Macro 14",
+        "Macro 15",
+        "Macro 16",
+        "other"
+       ],
+       "parameter_mmax": 17
+      }
+     }
+    }
+   },
+   {
+    "box": {
+     "id": "pv_map2",
+     "maxclass": "live.menu",
+     "patching_rect": [
+      1180,
+      92,
+      80,
+      15
+     ],
+     "numinlets": 1,
+     "numoutlets": 3,
+     "outlettype": [
+      "",
+      "",
+      "float"
+     ],
+     "parameter_enable": 1,
+     "varname": "pv_map2",
+     "saved_attribute_attributes": {
+      "valueof": {
+       "parameter_longname": "CCMap2",
+       "parameter_shortname": "Map 2",
+       "parameter_initial_enable": 0,
+       "parameter_type": 2,
+       "parameter_enum": [
+        "-",
+        "Macro 1",
+        "Macro 2",
+        "Macro 3",
+        "Macro 4",
+        "Macro 5",
+        "Macro 6",
+        "Macro 7",
+        "Macro 8",
+        "Macro 9",
+        "Macro 10",
+        "Macro 11",
+        "Macro 12",
+        "Macro 13",
+        "Macro 14",
+        "Macro 15",
+        "Macro 16",
+        "other"
+       ],
+       "parameter_mmax": 17
+      }
+     }
+    }
+   },
+   {
+    "box": {
+     "id": "pv_map3",
+     "maxclass": "live.menu",
+     "patching_rect": [
+      1180,
+      116,
+      80,
+      15
+     ],
+     "numinlets": 1,
+     "numoutlets": 3,
+     "outlettype": [
+      "",
+      "",
+      "float"
+     ],
+     "parameter_enable": 1,
+     "varname": "pv_map3",
+     "saved_attribute_attributes": {
+      "valueof": {
+       "parameter_longname": "CCMap3",
+       "parameter_shortname": "Map 3",
+       "parameter_initial_enable": 0,
+       "parameter_type": 2,
+       "parameter_enum": [
+        "-",
+        "Macro 1",
+        "Macro 2",
+        "Macro 3",
+        "Macro 4",
+        "Macro 5",
+        "Macro 6",
+        "Macro 7",
+        "Macro 8",
+        "Macro 9",
+        "Macro 10",
+        "Macro 11",
+        "Macro 12",
+        "Macro 13",
+        "Macro 14",
+        "Macro 15",
+        "Macro 16",
+        "other"
+       ],
+       "parameter_mmax": 17
+      }
+     }
+    }
+   },
+   {
+    "box": {
+     "id": "pv_map4",
+     "maxclass": "live.menu",
+     "patching_rect": [
+      1180,
+      140,
+      80,
+      15
+     ],
+     "numinlets": 1,
+     "numoutlets": 3,
+     "outlettype": [
+      "",
+      "",
+      "float"
+     ],
+     "parameter_enable": 1,
+     "varname": "pv_map4",
+     "saved_attribute_attributes": {
+      "valueof": {
+       "parameter_longname": "CCMap4",
+       "parameter_shortname": "Map 4",
+       "parameter_initial_enable": 0,
+       "parameter_type": 2,
+       "parameter_enum": [
+        "-",
+        "Macro 1",
+        "Macro 2",
+        "Macro 3",
+        "Macro 4",
+        "Macro 5",
+        "Macro 6",
+        "Macro 7",
+        "Macro 8",
+        "Macro 9",
+        "Macro 10",
+        "Macro 11",
+        "Macro 12",
+        "Macro 13",
+        "Macro 14",
+        "Macro 15",
+        "Macro 16",
+        "other"
+       ],
+       "parameter_mmax": 17
+      }
+     }
+    }
+   },
+   {
+    "box": {
+     "id": "pv_map5",
+     "maxclass": "live.menu",
+     "patching_rect": [
+      1180,
+      164,
+      80,
+      15
+     ],
+     "numinlets": 1,
+     "numoutlets": 3,
+     "outlettype": [
+      "",
+      "",
+      "float"
+     ],
+     "parameter_enable": 1,
+     "varname": "pv_map5",
+     "saved_attribute_attributes": {
+      "valueof": {
+       "parameter_longname": "CCMap5",
+       "parameter_shortname": "Map 5",
+       "parameter_initial_enable": 0,
+       "parameter_type": 2,
+       "parameter_enum": [
+        "-",
+        "Macro 1",
+        "Macro 2",
+        "Macro 3",
+        "Macro 4",
+        "Macro 5",
+        "Macro 6",
+        "Macro 7",
+        "Macro 8",
+        "Macro 9",
+        "Macro 10",
+        "Macro 11",
+        "Macro 12",
+        "Macro 13",
+        "Macro 14",
+        "Macro 15",
+        "Macro 16",
+        "other"
+       ],
+       "parameter_mmax": 17
+      }
+     }
+    }
+   },
+   {
+    "box": {
+     "id": "pv_map6",
+     "maxclass": "live.menu",
+     "patching_rect": [
+      1180,
+      188,
+      80,
+      15
+     ],
+     "numinlets": 1,
+     "numoutlets": 3,
+     "outlettype": [
+      "",
+      "",
+      "float"
+     ],
+     "parameter_enable": 1,
+     "varname": "pv_map6",
+     "saved_attribute_attributes": {
+      "valueof": {
+       "parameter_longname": "CCMap6",
+       "parameter_shortname": "Map 6",
+       "parameter_initial_enable": 0,
+       "parameter_type": 2,
+       "parameter_enum": [
+        "-",
+        "Macro 1",
+        "Macro 2",
+        "Macro 3",
+        "Macro 4",
+        "Macro 5",
+        "Macro 6",
+        "Macro 7",
+        "Macro 8",
+        "Macro 9",
+        "Macro 10",
+        "Macro 11",
+        "Macro 12",
+        "Macro 13",
+        "Macro 14",
+        "Macro 15",
+        "Macro 16",
+        "other"
+       ],
+       "parameter_mmax": 17
+      }
+     }
+    }
+   },
+   {
+    "box": {
+     "id": "pv_map7",
+     "maxclass": "live.menu",
+     "patching_rect": [
+      1180,
+      212,
+      80,
+      15
+     ],
+     "numinlets": 1,
+     "numoutlets": 3,
+     "outlettype": [
+      "",
+      "",
+      "float"
+     ],
+     "parameter_enable": 1,
+     "varname": "pv_map7",
+     "saved_attribute_attributes": {
+      "valueof": {
+       "parameter_longname": "CCMap7",
+       "parameter_shortname": "Map 7",
+       "parameter_initial_enable": 0,
+       "parameter_type": 2,
+       "parameter_enum": [
+        "-",
+        "Macro 1",
+        "Macro 2",
+        "Macro 3",
+        "Macro 4",
+        "Macro 5",
+        "Macro 6",
+        "Macro 7",
+        "Macro 8",
+        "Macro 9",
+        "Macro 10",
+        "Macro 11",
+        "Macro 12",
+        "Macro 13",
+        "Macro 14",
+        "Macro 15",
+        "Macro 16",
+        "other"
+       ],
+       "parameter_mmax": 17
+      }
+     }
+    }
+   },
+   {
+    "box": {
+     "id": "pv_map8",
+     "maxclass": "live.menu",
+     "patching_rect": [
+      1180,
+      236,
+      80,
+      15
+     ],
+     "numinlets": 1,
+     "numoutlets": 3,
+     "outlettype": [
+      "",
+      "",
+      "float"
+     ],
+     "parameter_enable": 1,
+     "varname": "pv_map8",
+     "saved_attribute_attributes": {
+      "valueof": {
+       "parameter_longname": "CCMap8",
+       "parameter_shortname": "Map 8",
+       "parameter_initial_enable": 0,
+       "parameter_type": 2,
+       "parameter_enum": [
+        "-",
+        "Macro 1",
+        "Macro 2",
+        "Macro 3",
+        "Macro 4",
+        "Macro 5",
+        "Macro 6",
+        "Macro 7",
+        "Macro 8",
+        "Macro 9",
+        "Macro 10",
+        "Macro 11",
+        "Macro 12",
+        "Macro 13",
+        "Macro 14",
+        "Macro 15",
+        "Macro 16",
+        "other"
+       ],
+       "parameter_mmax": 17
       }
      }
     }
@@ -2723,7 +3127,7 @@
      "maxclass": "live.menu",
      "patching_rect": [
       1180,
-      68,
+      260,
       80,
       15
      ],
@@ -2757,7 +3161,7 @@
      "maxclass": "live.menu",
      "patching_rect": [
       1180,
-      92,
+      284,
       80,
       15
      ],
@@ -2805,8 +3209,8 @@
      "id": "pv_retrigFade",
      "maxclass": "live.numbox",
      "patching_rect": [
-      1180,
-      116,
+      1270,
+      20,
       80,
       15
      ],
@@ -2837,8 +3241,8 @@
      "id": "pv_retrigCurve",
      "maxclass": "live.numbox",
      "patching_rect": [
-      1180,
-      140,
+      1270,
+      44,
       80,
       15
      ],
@@ -2869,8 +3273,8 @@
      "id": "pv_retrigProb",
      "maxclass": "live.numbox",
      "patching_rect": [
-      1180,
-      164,
+      1270,
+      68,
       80,
       15
      ],
@@ -2901,8 +3305,8 @@
      "id": "pv_retrigTRate",
      "maxclass": "live.menu",
      "patching_rect": [
-      1180,
-      188,
+      1270,
+      92,
       80,
       15
      ],
@@ -2951,8 +3355,8 @@
      "id": "pv_retrigGlide",
      "maxclass": "live.numbox",
      "patching_rect": [
-      1180,
-      212,
+      1270,
+      116,
       80,
       15
      ],
@@ -2983,8 +3387,8 @@
      "id": "pv_retrigLock",
      "maxclass": "live.menu",
      "patching_rect": [
-      1180,
-      236,
+      1270,
+      140,
       80,
       15
      ],
@@ -3017,8 +3421,8 @@
      "id": "pv_retrigPMode",
      "maxclass": "live.menu",
      "patching_rect": [
-      1180,
-      260,
+      1270,
+      164,
       80,
       15
      ],
@@ -3052,8 +3456,8 @@
      "id": "pv_retrigVoices",
      "maxclass": "live.menu",
      "patching_rect": [
-      1180,
-      284,
+      1270,
+      188,
       80,
       15
      ],
@@ -3093,7 +3497,7 @@
      "maxclass": "live.numbox",
      "patching_rect": [
       1270,
-      20,
+      212,
       80,
       15
      ],
@@ -3125,7 +3529,7 @@
      "maxclass": "live.numbox",
      "patching_rect": [
       1270,
-      44,
+      236,
       80,
       15
      ],
@@ -3156,7 +3560,7 @@
      "maxclass": "live.numbox",
      "patching_rect": [
       1270,
-      68,
+      260,
       80,
       15
      ],
@@ -3187,7 +3591,7 @@
      "maxclass": "live.numbox",
      "patching_rect": [
       1270,
-      92,
+      284,
       80,
       15
      ],
@@ -3217,8 +3621,8 @@
      "id": "pv_kEuPulses",
      "maxclass": "live.numbox",
      "patching_rect": [
-      1270,
-      116,
+      1360,
+      20,
       80,
       15
      ],
@@ -3248,8 +3652,8 @@
      "id": "pv_kEuRotate",
      "maxclass": "live.numbox",
      "patching_rect": [
-      1270,
-      140,
+      1360,
+      44,
       80,
       15
      ],
@@ -3279,8 +3683,8 @@
      "id": "pv_kEuLayer",
      "maxclass": "live.menu",
      "patching_rect": [
-      1270,
-      164,
+      1360,
+      68,
       80,
       15
      ],
@@ -3314,8 +3718,8 @@
      "id": "pv_kEuVel",
      "maxclass": "live.numbox",
      "patching_rect": [
-      1270,
-      188,
+      1360,
+      92,
       80,
       15
      ],
@@ -3345,8 +3749,8 @@
      "id": "pv_kEuFollow",
      "maxclass": "live.menu",
      "patching_rect": [
-      1270,
-      212,
+      1360,
+      116,
       80,
       15
      ],
@@ -3379,8 +3783,8 @@
      "id": "pv_bLength",
      "maxclass": "live.numbox",
      "patching_rect": [
-      1270,
-      236,
+      1360,
+      140,
       80,
       15
      ],
@@ -3410,8 +3814,8 @@
      "id": "pv_bEuSteps",
      "maxclass": "live.numbox",
      "patching_rect": [
-      1270,
-      260,
+      1360,
+      164,
       80,
       15
      ],
@@ -3441,8 +3845,8 @@
      "id": "pv_bEuPulses",
      "maxclass": "live.numbox",
      "patching_rect": [
-      1270,
-      284,
+      1360,
+      188,
       80,
       15
      ],
@@ -3473,7 +3877,7 @@
      "maxclass": "live.numbox",
      "patching_rect": [
       1360,
-      20,
+      212,
       80,
       15
      ],
@@ -3504,7 +3908,7 @@
      "maxclass": "live.menu",
      "patching_rect": [
       1360,
-      44,
+      236,
       80,
       15
      ],
@@ -3539,7 +3943,7 @@
      "maxclass": "live.numbox",
      "patching_rect": [
       1360,
-      68,
+      260,
       80,
       15
      ],
@@ -3570,7 +3974,7 @@
      "maxclass": "live.menu",
      "patching_rect": [
       1360,
-      92,
+      284,
       80,
       15
      ],
@@ -3603,8 +4007,8 @@
      "id": "pv_bEuNote",
      "maxclass": "live.numbox",
      "patching_rect": [
-      1360,
-      116,
+      1450,
+      20,
       80,
       15
      ],
@@ -4792,6 +5196,30 @@
     "patchline": {
      "source": [
       "mac0_slice",
+      3
+     ],
+     "destination": [
+      "mac0_pack",
+      4
+     ]
+    }
+   },
+   {
+    "patchline": {
+     "source": [
+      "mac0_slice",
+      1
+     ],
+     "destination": [
+      "mac0_pack",
+      1
+     ]
+    }
+   },
+   {
+    "patchline": {
+     "source": [
+      "mac0_slice",
       0
      ],
      "destination": [
@@ -4845,6 +5273,30 @@
      "destination": [
       "mac1_pack",
       2
+     ]
+    }
+   },
+   {
+    "patchline": {
+     "source": [
+      "mac1_slice",
+      3
+     ],
+     "destination": [
+      "mac1_pack",
+      4
+     ]
+    }
+   },
+   {
+    "patchline": {
+     "source": [
+      "mac1_slice",
+      1
+     ],
+     "destination": [
+      "mac1_pack",
+      1
      ]
     }
    },
@@ -5200,43 +5652,83 @@
     0
    ],
    "pv_m1": [
-    "Macro1",
-    "Macro 1",
+    "CCLock1",
+    "CC 1",
     0
    ],
    "pv_m2": [
-    "Macro2",
-    "Macro 2",
+    "CCLock2",
+    "CC 2",
     0
    ],
    "pv_m3": [
-    "Macro3",
-    "Macro 3",
+    "CCLock3",
+    "CC 3",
     0
    ],
    "pv_m4": [
-    "Macro4",
-    "Macro 4",
+    "CCLock4",
+    "CC 4",
     0
    ],
    "pv_m5": [
-    "Macro5",
-    "Macro 5",
+    "CCLock5",
+    "CC 5",
     0
    ],
    "pv_m6": [
-    "Macro6",
-    "Macro 6",
+    "CCLock6",
+    "CC 6",
     0
    ],
    "pv_m7": [
-    "Macro7",
-    "Macro 7",
+    "CCLock7",
+    "CC 7",
     0
    ],
    "pv_m8": [
-    "Macro8",
-    "Macro 8",
+    "CCLock8",
+    "CC 8",
+    0
+   ],
+   "pv_map1": [
+    "CCMap1",
+    "Map 1",
+    0
+   ],
+   "pv_map2": [
+    "CCMap2",
+    "Map 2",
+    0
+   ],
+   "pv_map3": [
+    "CCMap3",
+    "Map 3",
+    0
+   ],
+   "pv_map4": [
+    "CCMap4",
+    "Map 4",
+    0
+   ],
+   "pv_map5": [
+    "CCMap5",
+    "Map 5",
+    0
+   ],
+   "pv_map6": [
+    "CCMap6",
+    "Map 6",
+    0
+   ],
+   "pv_map7": [
+    "CCMap7",
+    "Map 7",
+    0
+   ],
+   "pv_map8": [
+    "CCMap8",
+    "Map 8",
     0
    ],
    "pv_retrig": [

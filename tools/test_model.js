@@ -46,8 +46,8 @@ function run(argv) {
 	eq("kick slide ignored", m.isLocked(K, 0, P.slide), false);
 	eq("micro clamp", m.value(B, 4, P.microtime), -12);
 	eq("default used", m.value(B, 5, P.velocity), 100);
-	eq("macro default 0", m.value(B, 5, P.m3), 0);
-	eq("macro lock", [m.value(B, 4, P.m3), m.value(B, 4, P.m4)], [64, -127]);
+	eq("CC default 64", m.value(B, 5, P.m3), 64);
+	eq("CC lock (clamped 0–127)", [m.value(B, 4, P.m3), m.value(B, 4, P.m4)], [64, 0]);
 	eq("no trig no lock", m.hasTrig(K, 100), false);
 	eq("hasLocks", m.hasLocks(B, 4), true);
 
@@ -75,7 +75,7 @@ function run(argv) {
 	eq("muted kept", r.step(K, 0).muted, true);
 	eq("last step kept", r.hasTrig(K, 511), true);
 	eq("kick note setting", r.settings.kickNote, 38);
-	eq("macro locks kept", [r.value(B, 4, P.m3), r.value(B, 4, P.m4)], [64, -127]);
+	eq("CC locks kept", [r.value(B, 4, P.m3), r.value(B, 4, P.m4)], [64, 0]);
 	eq("trig counts", [r.countTrigs(K), r.countTrigs(B)], [2, 2]);
 
 	// wipe
@@ -326,10 +326,10 @@ function run(argv) {
 	cm2.addTrig(K, 0); cm2.setLock(K, 0, P.m1, 64); cm2.setLock(K, 0, P.m3, -20); cm2.setLock(K, 0, P.m5, 0);
 	cm2.addTrig(B, 2, 40); cm2.setLock(B, 2, P.m2, 99);
 	var c0 = cm2.eventsAt(0, 100, 0, 0);
-	eq("kick: reset, non-zero slots, then the note", c0.map(function (e) { return [e.lane, e.pitch, e.velocity, e.offMs]; }), [[3, 0, 0, 0], [3, 1, 64, 0], [3, 3, -20, 0], [0, 60, 100, 0]]);
-	eq("bass macros on lane 4", mac(cm2.eventsAt(2, 100, 0, 0), 4), [[0, 0], [2, 99]]);
+	eq("kick: all 8 CC slots, then the note", c0.map(function (e) { return [e.lane, e.pitch, e.velocity, e.offMs]; }), [[3, 1, 64, 0], [3, 2, 64, 0], [3, 3, 0, 0], [3, 4, 64, 0], [3, 5, 0, 0], [3, 6, 64, 0], [3, 7, 64, 0], [3, 8, 64, 0], [0, 60, 100, 0]]);
+	eq("bass CCs on lane 4", mac(cm2.eventsAt(2, 100, 0, 0), 4), [[1, 64], [2, 99], [3, 64], [4, 64], [5, 64], [6, 64], [7, 64], [8, 64]]);
 	cm2.addTrig(K, 1);
-	eq("unlocked step: reset only", mac(cm2.eventsAt(1, 100, 0, 0), 3), [[0, 0]]);
+	eq("unlocked step: lane defaults", mac(cm2.eventsAt(1, 100, 0, 0), 3), [[1, 64], [2, 64], [3, 64], [4, 64], [5, 64], [6, 64], [7, 64], [8, 64]]);
 	eq("empty step: nothing", cm2.eventsAt(3, 100, 0, 0).length, 0);
 	cm2.setMuted(K, 0, true);
 	eq("muted: no macros", mac(cm2.eventsAt(0, 100, 0, 0), 3), []);
@@ -338,7 +338,7 @@ function run(argv) {
 	cm2.clearLock(K, 0, P.probability);
 	// microtime: the macros move with the note
 	cm2.setLock(K, 0, P.microtime, 6);
-	eq("macros at the note's time", cm2.eventsAt(0, 100, 0, 0).map(function (e) { return e.offMs; }), [25, 25, 25, 25]);
+	eq("CCs at the note's time", cm2.eventsAt(0, 100, 0, 0).map(function (e) { return e.offMs; }), [25, 25, 25, 25, 25, 25, 25, 25, 25]);
 	cm2.clearLock(K, 0, P.microtime);
 	// slid-into step's macro lock doesn't apply
 	cm2.setLock(B, 2, P.slide, 1); cm2.setLock(B, 2, P.length, M.RETRIG_LENS.indexOf(4)); cm2.addTrig(B, 3, 42); cm2.setLock(B, 3, P.m4, 10);
@@ -346,10 +346,10 @@ function run(argv) {
 	// retrig: macros once, with the first hit
 	cm2.setLock(K, 0, P.retrig, 1); cm2.setLock(K, 0, P.length, M.RETRIG_LENS.indexOf(2)); cm2.setLock(K, 0, P.retrigRate, M.RETRIG_RATES.indexOf("1/32"));
 	cm2.wipe(K, 1);
-	eq("retrig: macros once", [mac(cm2.eventsAt(0, 100, 0, 0), 3).length, mac(cm2.eventsAt(1, 100, 0, 0), 3).length], [3, 0]);
+	eq("retrig: CCs once", [mac(cm2.eventsAt(0, 100, 0, 0), 3).length, mac(cm2.eventsAt(1, 100, 0, 0), 3).length], [8, 0]);
 	// Euclid hits: no locks, reset only
 	var ce = new M.Model(); ce.setEuclid(K, "pulses", 4); ce.setEuclid(K, "layer", 1);
-	eq("euclid hit: reset only", mac(ce.eventsAt(0, 100, 0, 0), 3), [[0, 0]]);
+	eq("euclid hit: lane defaults", mac(ce.eventsAt(0, 100, 0, 0), 3), [[1, 64], [2, 64], [3, 64], [4, 64], [5, 64], [6, 64], [7, 64], [8, 64]]);
 
 	// ---- performance mode ----
 	var pm = new M.Model(); pm.setLaneLength(K, 12);
@@ -421,8 +421,8 @@ function run(argv) {
 	e3.splice(lane1, 1, 8, 70, 71, 72, 73, 74, 75, 76, 77);
 	var o3 = new M.Model();
 	eq("v3 decodes", o3.decode(e3), true);
-	eq("v3: CC lock dropped, others kept", [o3.isLocked(B, 4, P.m2), o3.value(B, 4, P.velocity), o3.lanes[K].defaults[P.m1]], [false, 90, 0]);
-	eq("v3: saves in the current format", o3.encode()[1], 6);
+	eq("v3: CC lock dropped, others kept", [o3.isLocked(B, 4, P.m2), o3.value(B, 4, P.velocity), o3.lanes[K].defaults[P.m1]], [false, 90, 64]);
+	eq("v3: saves in the current format", o3.encode()[1], 7);
 
 	// ---- microtime ----
 	var mt = new M.Model(); mt.setLoop(0, 1);
@@ -550,11 +550,18 @@ function run(argv) {
 	mu.slots[3] = old5.slice(); mu.activeSlot = 3;
 	var outer = mu.encode(); outer[1] = 5;
 	var mu2 = new M.Model(); eq("v5 load", mu2.decode(outer), true);
-	eq("v5 % -> macro units", [mu2.value(B, 2, P.m1), mu2.value(B, 2, P.m2)], [64, -127]);
-	eq("v5 slot upgraded", [mu2.slots[3][1], mu2.isDirty()], [6, false]);
-	mu2.loadSlot(3); eq("v5 slot loads in units", mu2.value(B, 2, P.m1), 64);
+	eq("v5 % -> CC value (50 % -> 96)", [mu2.value(B, 2, P.m1), mu2.value(B, 2, P.m2)], [96, 64]);
+	eq("v5 slot upgraded", [mu2.slots[3][1], mu2.isDirty()], [7, false]);
+	mu2.loadSlot(3); eq("v5 slot loads as CC", mu2.value(B, 2, P.m1), 96);
 	var e6 = []; mu2.eventsAt(2, 120, 0, 0).forEach(function (e) { if (e.lane === 4 && e.pitch === 1) e6.push(e.velocity); });
-	eq("macro event in units", e6, [64]);
+	eq("CC event value", e6, [96]);
+
+	// v6 macro offsets load as CC values (v7)
+	var w6 = new M.Model(); w6.addTrig(K, 0); w6.setLock(K, 0, P.m1, 90); var e6b = w6.encode(); e6b[1] = 6;
+	var w7 = new M.Model(); w7.decode(e6b); eq("v6 offset -> CC value (+90 -> 109)", w7.value(K, 0, P.m1), 109);
+	var n6 = new M.Model(); n6.addTrig(K, 0); n6.lanes[K].defaults[P.m1] = 0; // a v6 lane default: offset 0
+	var e6n = n6.encode(); e6n[1] = 6;
+	var n7 = new M.Model(); n7.decode(e6n); eq("v6 unlocked default -> 64", n7.lanes[K].defaults[P.m1], 64);
 
 	log.push(passes + " passed, " + fails + " failed");
 	return log.join("\n");

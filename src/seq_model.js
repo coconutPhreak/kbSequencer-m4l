@@ -11,6 +11,11 @@ var MACRO_SLOTS = 8; // macro lock slots per lane: slot N = macro N of the Rack 
 var MACRO_RANGE = 127; // a macro lock is an offset in macro units (Live macros run 0–127), ±127
 // v4/v5 saves stored it in % of the range (±100): scaled on load.
 function macroFromPercent(v) { return Math.round(v * MACRO_RANGE / 100); }
+// CC locks (v7): 64 = no change (kbLane's default Min −100 / Max +100 put 64
+// exactly halfway). An old macro offset (±127 units) -> the CC value that
+// gives the same offset there: 0 -> 64, +127 -> 127, −127 -> 0.
+var CC_CENTER = 64;
+function ccFromOffset(o) { return Math.round(o >= 0 ? CC_CENTER + o * 63 / 127 : CC_CENTER + o * 64 / 127); }
 
 // Units: 24 ticks per step (one 1/16). Length and microtime use ticks.
 var TICKS_PER_STEP = 24;
@@ -70,7 +75,8 @@ var PARAMS = [
 // Macro lock slots (v4; these ids held the CC lock slots up to v3): an offset
 // in % of the macro's range, added to its knob by kbLane. 0 = no offset.
 for (var _c = 0; _c < MACRO_SLOTS; _c++)
-	PARAMS.push({ key: "m" + (_c + 1), min: -MACRO_RANGE, max: MACRO_RANGE, def: 0, lanes: [1, 1], macro: _c });
+	// a slot lock is an absolute CC value 0–127 (unlocked = the lane default, 64 = no change)
+	PARAMS.push({ key: "m" + (_c + 1), min: 0, max: 127, def: CC_CENTER, lanes: [1, 1], macro: _c });
 
 // Retrig, appended after the macro slots (ids are the save format).
 PARAMS.push(
@@ -127,7 +133,10 @@ var DEFAULT_BASS_NOTE = 60; // C3
 // v5: 16 preset slots after the working pattern: activeSlot, nSlots, then
 //     per slot its length and its own encoded pattern (0 = empty).
 // v6: macro locks in macro units (±127) instead of % (±100).
-var MAGIC = 7101, VERSION = 6;
+// v7: the slots are CC locks, absolute values 0–127 (kbLane sends them as
+//     MIDI CCs and modulates its mapped parameters). Older macro offsets load
+//     as the CC value giving the same offset (ccFromOffset: 0 -> 64).
+var MAGIC = 7101, VERSION = 7;
 var PRESET_SLOTS = 16;
 // Settings that belong to a preset (the rest are global: kept on load).
 var PATTERN_SETTINGS = { maskKick: true, maskBass: true };
@@ -747,10 +756,10 @@ Model.prototype.eventsAt = function (absStep, stepMs, seed, startAbs) {
 				// So an unlocked step returns every macro to its knob. Once per
 				// note: retrig hits and slid-into steps send none.
 				var st0s = this.playStepAt(l, this.seqIndexFor(f.abs, l));
-				out.push({ offMs: ms(st0), lane: 3 + l, pitch: 0, velocity: 0, durMs: 0, channel: ch });
+				// every slot's value (locked or the lane default) with every note
 				for (var mi = 0; mi < MACRO_SLOTS; mi++) {
 					var mv = this.stepValue(l, st0s, PARAM_ID["m" + (mi + 1)]);
-					if (mv) out.push({ offMs: ms(st0), lane: 3 + l, pitch: mi + 1, velocity: mv, durMs: 0, channel: ch });
+					out.push({ offMs: ms(st0), lane: 3 + l, pitch: mi + 1, velocity: mv, durMs: 0, channel: ch });
 				}
 				if (l === BASS) // centre the bend before every new bass note
 					out.push({ offMs: ms(st0), lane: 2, pitch: 8192, velocity: 0, durMs: 0, channel: ch });
@@ -958,7 +967,7 @@ Model.prototype.decode = function (list) {
 			for (i = 0; i < np; i++) {
 				var d = next();
 				if (lane && i < PARAMS.length) {
-					if (PARAMS[i].macro !== undefined) d = ver < 4 ? PARAMS[i].def : ver < 6 ? macroFromPercent(d) : d;
+					if (PARAMS[i].macro !== undefined) d = ver < 4 ? PARAMS[i].def : ver < 7 ? ccFromOffset(ver < 6 ? macroFromPercent(d) : d) : d;
 					lane.defaults[i] = clamp(d, PARAMS[i].min, PARAMS[i].max);
 				}
 			}
@@ -972,6 +981,7 @@ Model.prototype.decode = function (list) {
 					if (pid < 0 || pid >= PARAMS.length || !PARAMS[pid].lanes[l]) continue;
 					if (ver < 4 && PARAMS[pid].macro !== undefined) continue; // a v1–v3 CC lock: dropped
 					if (ver < 6 && PARAMS[pid].macro !== undefined) val = macroFromPercent(val);
+					if (ver < 7 && PARAMS[pid].macro !== undefined) val = ccFromOffset(val);
 					st.locks[pid] = clamp(val, PARAMS[pid].min, PARAMS[pid].max);
 				}
 				if (ver < 2 && (1 in st.locks)) { // v1 gate ticks -> length index
@@ -1000,7 +1010,7 @@ Model.prototype.decode = function (list) {
 			for (k = 0; k < nsl; k++) {
 				var sn = next(), data = [];
 				for (j = 0; j < sn; j++) data.push(next());
-				if (k < PRESET_SLOTS && sn) this.slots[k] = ver < 6 ? upgradeSlot(data) : data;
+				if (k < PRESET_SLOTS && sn) this.slots[k] = ver < VERSION ? upgradeSlot(data) : data;
 			}
 			this.activeSlot = act >= 0 && act < PRESET_SLOTS ? act : -1;
 		}
