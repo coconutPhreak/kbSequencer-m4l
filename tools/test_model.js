@@ -47,7 +47,7 @@ function run(argv) {
 	eq("micro clamp", m.value(B, 4, P.microtime), -12);
 	eq("default used", m.value(B, 5, P.velocity), 100);
 	eq("macro default 0", m.value(B, 5, P.m3), 0);
-	eq("macro lock", [m.value(B, 4, P.m3), m.value(B, 4, P.m4)], [64, -100]);
+	eq("macro lock", [m.value(B, 4, P.m3), m.value(B, 4, P.m4)], [64, -127]);
 	eq("no trig no lock", m.hasTrig(K, 100), false);
 	eq("hasLocks", m.hasLocks(B, 4), true);
 
@@ -75,7 +75,7 @@ function run(argv) {
 	eq("muted kept", r.step(K, 0).muted, true);
 	eq("last step kept", r.hasTrig(K, 511), true);
 	eq("kick note setting", r.settings.kickNote, 38);
-	eq("macro locks kept", [r.value(B, 4, P.m3), r.value(B, 4, P.m4)], [64, -100]);
+	eq("macro locks kept", [r.value(B, 4, P.m3), r.value(B, 4, P.m4)], [64, -127]);
 	eq("trig counts", [r.countTrigs(K), r.countTrigs(B)], [2, 2]);
 
 	// wipe
@@ -422,7 +422,7 @@ function run(argv) {
 	var o3 = new M.Model();
 	eq("v3 decodes", o3.decode(e3), true);
 	eq("v3: CC lock dropped, others kept", [o3.isLocked(B, 4, P.m2), o3.value(B, 4, P.velocity), o3.lanes[K].defaults[P.m1]], [false, 90, 0]);
-	eq("v3: saves in the current format", o3.encode()[1], 5);
+	eq("v3: saves in the current format", o3.encode()[1], 6);
 
 	// ---- microtime ----
 	var mt = new M.Model(); mt.setLoop(0, 1);
@@ -543,6 +543,18 @@ function run(argv) {
 	es.setLaneEnd(K, 5);
 	eq("end before start moves start, bass keeps its end", [es.loopStart, es.lanes[K].length, es.lanes[B].length, es.loopEnd], [0, 6, 101, 3]);
 	eq("end step in loop", [es.inLoop(K, 5), es.inLoop(K, 6), es.inLoop(B, 100), es.inLoop(B, 101)], [true, false, true, false]);
+
+	// v6: macro locks in macro units; v5 % values are scaled on load
+	var mu = new M.Model(); mu.addTrig(B, 2, 40); mu.setLock(B, 2, P.m1, 50); mu.setLock(B, 2, P.m2, -100);
+	var old5 = mu.encodePattern(true); old5[1] = 5;
+	mu.slots[3] = old5.slice(); mu.activeSlot = 3;
+	var outer = mu.encode(); outer[1] = 5;
+	var mu2 = new M.Model(); eq("v5 load", mu2.decode(outer), true);
+	eq("v5 % -> macro units", [mu2.value(B, 2, P.m1), mu2.value(B, 2, P.m2)], [64, -127]);
+	eq("v5 slot upgraded", [mu2.slots[3][1], mu2.isDirty()], [6, false]);
+	mu2.loadSlot(3); eq("v5 slot loads in units", mu2.value(B, 2, P.m1), 64);
+	var e6 = []; mu2.eventsAt(2, 120, 0, 0).forEach(function (e) { if (e.lane === 4 && e.pitch === 1) e6.push(e.velocity); });
+	eq("macro event in units", e6, [64]);
 
 	log.push(passes + " passed, " + fails + " failed");
 	return log.join("\n");

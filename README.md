@@ -27,12 +27,13 @@ python3 tools/build.py --install "$HOME/Music/Ableton/User Library/m4l devices"
 osascript -l JavaScript tools/test_model.js "$PWD/src/seq_model.js"
 ```
 
-### Push 3 standalone (untested)
+### Push 3 standalone ✅
 
-The build also writes **frozen** copies to `device/frozen/`: each `.amxd`
-with its `.js` packed inside, so one file per device. Use those on Push in
-standalone mode, where a loose `.js` can't be copied along: drag
-`device/frozen/kbSequencer.amxd` and `kbLane.amxd` (or a Set using them) to
+Every build also writes **frozen** copies to `device/frozen/`: each `.amxd`
+with its `.js` packed inside, so one file per device. `--install` copies
+them into a **Push standalone** subfolder of the install folder. Use those
+on Push in standalone mode, where a loose `.js` can't be copied along: drag
+`Push standalone/kbSequencer.amxd` and `kbLane.amxd` (or a Set using them) to
 Push in Live's browser. Keep developing with the unfrozen pair; the frozen
 file is a snapshot, so rebuild after each change. Don't load a frozen copy
 and the installed unfrozen one in the same Set (same names).
@@ -211,7 +212,7 @@ kbSequencer (Device mode, device selected) to see the bank.
   kbSequencer selected) turns takeover back on. Always: only use it with one
   kbSequencer in the Set, or they fight over Push. While released, Push can
   also turn the other Settings knobs, but those don't change anything.
-- Macro Locks: the held step's offset per macro slot (−100 … +100 %).
+- Macro Locks: the held step's offset per macro slot, in macro units (−127 … +127, Live's 0–127 macro scale). These encoders are **fine by default** (one unit at a time); **Shift + turn = coarse** (8 units at a time).
 - Step: Note, Velocity, Length (retrig's LEN list: 0.125 … 128 steps, INF), Micro (1/24 step), Prob, Accent, Slide, Tie.
   Note and Slide are hidden when bass isn't selected.
 - More: Retrig, Rt Rate, Rt Fade, Fill, Cond.
@@ -371,7 +372,7 @@ Loop pages live, one tap each, without touching the sequence.
 Each lane has 8 macro lock slots. Slot N modulates **macro N of the first
 Rack after kbLane** on that lane's track. kbLane applies them with
 `live.modulate~` (Live's Modulate mode): the lock is an **offset from the
-macro's knob**, −100 … +100 % of its range, added to the knob and clipped at
+macro's knob**, −127 … +127 macro units (the knob's own 0–127 scale), added to the knob and clipped at
 the range. The macro stays hand-turnable and automatable. No MIDI CCs.
 
 - Put the instrument (or effects) in a Rack after kbLane and map its macros.
@@ -392,6 +393,8 @@ the range. The macro stays hand-turnable and automatable. No MIDI CCs.
   path, so they arrive in order with it. Every note first resets all 8
   offsets to 0, so an **unlocked step plays the knob alone**. Transport stop
   also returns the offsets to 0.
+- Sets saved before v0.20 stored the offset in % (−100 … +100): they load
+  scaled to units (50 % → 64), presets included (save format v6).
 - Sets saved with CC locks (before v0.15) load normally: the CC locks and
   CC numbers are dropped, everything else is kept; the next save writes the
   new format (v4).
@@ -476,7 +479,7 @@ adds or changes one. Details are in the sections above.
 |---|---|
 | Press an empty step | Creates a trig (bass: the brush note); keep holding to edit it |
 | Tap a lit step | Mute / unmute (on release, quick taps only) |
-| Hold step(s) + turn an encoder | P-lock the held steps (Shift + turn = fine) |
+| Hold step(s) + turn an encoder | P-lock the held steps (Shift + turn = fine; macro locks: fine by default, Shift + turn = coarse) |
 | Hold step(s) + tap a note pad | Set the held bass steps' note |
 | Hold step(s) + Delete + touch an encoder | Clear that lock (a single Delete tap latches clear mode) |
 | Delete + tap a step | Wipe the step |

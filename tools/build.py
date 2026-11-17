@@ -3,6 +3,7 @@
 
     python3 tools/build.py                 # build into device/
     python3 tools/build.py --install DIR   # also copy the device files into DIR
+                                           # (frozen copies into DIR/Push standalone)
 
 Also writes frozen copies to device/frozen/: each .amxd with its .js packed
 inside (one file per device), for Push 3 standalone, where a loose .js can't
@@ -23,11 +24,12 @@ ROOT = Path(__file__).resolve().parent.parent
 SRC = ROOT / "src"
 OUT = ROOT / "device"
 FROZEN = OUT / "frozen"
+PUSH_DIR = "Push standalone"  # install subfolder for the frozen copies
 AMXD_MIDI = int.from_bytes(b"mmmm", "big")  # 1835887981
 
 # Shown on every device and printed to the Max Console at load, so it's easy
 # to tell which build is running. VERSION: bump the minor per spec build step.
-VERSION = "0.19.1"
+VERSION = "0.20.1"
 BUILD = datetime.datetime.now().strftime("%m%d.%H%M")  # build time, MMDD.HHMM
 STAMP = f"v{VERSION} · {BUILD}"
 
@@ -90,7 +92,8 @@ DISPLAY_PARAMS = (
        ("condition", "Cond", "Cond", "enum", 0, len(CONDITIONS) - 1, CONDITIONS)]
     # Macro Locks bank: offset added to macro N of the lane's Rack (by kbLane).
     # Push can't show the real macro names (parameter names are fixed).
-    + [(f"m{n}", f"Macro{n}", f"Macro {n}", "int", -100, 100, "%d %%") for n in range(1, 9)]
+    # Offset in macro units (Live's macros run 0–127), not %.
+    + [(f"m{n}", f"Macro{n}", f"Macro {n}", "int", -127, 127, None) for n in range(1, 9)]
     # Retrig (as retrig-m4l): banks Retrig and Rt Chance
     + [("retrig", "Retrig", "RTRG", "enum", 0, 1, OFF_ON),
        ("retrigRate", "RtRate", "RATE", "enum", 0, 16, RETRIG_RATES),
@@ -556,6 +559,9 @@ s.obj("info_recv", "receive kbLaneInfo", [1240, 830, 110, 22], 1, 1)
 s.obj("info_pre", "prepend laneinfo", [1240, 860, 100, 22], 1, 1)
 s.wire("info_recv", 0, "info_pre", 0)
 s.wire("info_pre", 0, "js", 0)
+# A deleted kbSequencer asks the others to grab Push again ("regrab").
+s.obj("seq_cmd_recv", "receive kbSeqCmd", [1380, 830, 105, 22], 1, 1)
+s.wire("seq_cmd_recv", 0, "js", 0)
 s.obj("lane_cmd", "send kbLaneCmd", [1240, 890, 95, 22], 1, 0, varname="lane_cmd")
 s.obj("group_pre", "prepend group", [1240, 800, 85, 22], 1, 1)
 s.wire("group", 0, "group_pre", 0)
@@ -676,7 +682,7 @@ f.wire("js", 2, "m_reset", 0)  # transport stopped
 f.wire("js", 3, "js_info", 0)
 for n in range(8):
     dv, mod = f"m_div{n}", f"m_mod{n}"
-    f.obj(dv, "/ 100.", [500 + n * 70, 420, 45, 22], 2, 1, ["float"])
+    f.obj(dv, "/ 127.", [500 + n * 70, 420, 45, 22], 2, 1, ["float"])  # macro units -> live.modulate~ ±1
     f.obj(mod, "live.modulate~ @smoothing 0", [500 + n * 70, 460, 160, 22], 2, 1)
     f.wire("m_route", n + 1, dv, 0)
     f.wire(dv, 0, mod, 0)
@@ -699,3 +705,11 @@ if args.install:
                  "kbLane.amxd", "kbLane.js"):
         shutil.copy2(OUT / name, dest / name)
         print("installed", dest / name)
+    # Frozen copies for Push 3 standalone, in their own subfolder: drag them
+    # to Push from Live's browser. Not for use on the computer next to the
+    # unfrozen pair (same names).
+    pdest = dest / PUSH_DIR
+    pdest.mkdir(exist_ok=True)
+    for name in ("kbSequencer.amxd", "kbLane.amxd"):
+        shutil.copy2(FROZEN / name, pdest / name)
+        print("installed", pdest / name, "(frozen)")

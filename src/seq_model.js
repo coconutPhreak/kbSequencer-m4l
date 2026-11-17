@@ -8,6 +8,9 @@ var NUM_STEPS = STEPS_PER_PAGE * PAGES; // 512 per lane
 var KICK = 0, BASS = 1;
 var LANE_NAMES = ["kick", "bass"];
 var MACRO_SLOTS = 8; // macro lock slots per lane: slot N = macro N of the Rack after kbLane
+var MACRO_RANGE = 127; // a macro lock is an offset in macro units (Live macros run 0–127), ±127
+// v4/v5 saves stored it in % of the range (±100): scaled on load.
+function macroFromPercent(v) { return Math.round(v * MACRO_RANGE / 100); }
 
 // Units: 24 ticks per step (one 1/16). Length and microtime use ticks.
 var TICKS_PER_STEP = 24;
@@ -67,7 +70,7 @@ var PARAMS = [
 // Macro lock slots (v4; these ids held the CC lock slots up to v3): an offset
 // in % of the macro's range, added to its knob by kbLane. 0 = no offset.
 for (var _c = 0; _c < MACRO_SLOTS; _c++)
-	PARAMS.push({ key: "m" + (_c + 1), min: -100, max: 100, def: 0, lanes: [1, 1], macro: _c });
+	PARAMS.push({ key: "m" + (_c + 1), min: -MACRO_RANGE, max: MACRO_RANGE, def: 0, lanes: [1, 1], macro: _c });
 
 // Retrig, appended after the macro slots (ids are the save format).
 PARAMS.push(
@@ -123,7 +126,8 @@ var DEFAULT_BASS_NOTE = 60; // C3
 //     numbers are gone (nCc written as 0). Older CC locks are dropped on load.
 // v5: 16 preset slots after the working pattern: activeSlot, nSlots, then
 //     per slot its length and its own encoded pattern (0 = empty).
-var MAGIC = 7101, VERSION = 5;
+// v6: macro locks in macro units (±127) instead of % (±100).
+var MAGIC = 7101, VERSION = 6;
 var PRESET_SLOTS = 16;
 // Settings that belong to a preset (the rest are global: kept on load).
 var PATTERN_SETTINGS = { maskKick: true, maskBass: true };
@@ -739,7 +743,7 @@ Model.prototype.eventsAt = function (absStep, stepMs, seed, startAbs) {
 			if (inStep(st0)) {
 				// Macro offsets go out with the note, just before it (lane 3 / 4 =
 				// kick / bass): first slot 0 = "all offsets back to 0", then each
-				// slot 1–8 with a non-zero offset (pitch = slot, velocity = offset %).
+				// slot 1–8 with a non-zero offset (pitch = slot, velocity = offset, ±127).
 				// So an unlocked step returns every macro to its knob. Once per
 				// note: retrig hits and slid-into steps send none.
 				var st0s = this.playStepAt(l, this.seqIndexFor(f.abs, l));
@@ -884,6 +888,12 @@ Model.prototype.encode = function () {
 };
 // The working pattern alone (same layout as a v4 save). forSlot: global
 // settings written as their defaults, so a slot doesn't depend on them.
+// An older slot, re-encoded in the current format (so it still matches the
+// working pattern after loading: not shown as edited).
+function upgradeSlot(data) {
+	var m = new Model();
+	return m.decode(data) ? m.encodePattern(true) : data;
+}
 Model.prototype.encodePattern = function (forSlot) {
 	var out = [MAGIC, VERSION, SETTINGS.length], i, l;
 	for (i = 0; i < SETTINGS.length; i++)
@@ -947,7 +957,10 @@ Model.prototype.decode = function (list) {
 			var np = next();
 			for (i = 0; i < np; i++) {
 				var d = next();
-				if (lane && i < PARAMS.length) lane.defaults[i] = ver < 4 && PARAMS[i].macro !== undefined ? PARAMS[i].def : clamp(d, PARAMS[i].min, PARAMS[i].max);
+				if (lane && i < PARAMS.length) {
+					if (PARAMS[i].macro !== undefined) d = ver < 4 ? PARAMS[i].def : ver < 6 ? macroFromPercent(d) : d;
+					lane.defaults[i] = clamp(d, PARAMS[i].min, PARAMS[i].max);
+				}
 			}
 			if (lane && ver < 2) lane.defaults[PARAM_ID.length] = nearestLen(lane.defaults[1] / TICKS_PER_STEP);
 			var nsteps = next();
@@ -958,6 +971,7 @@ Model.prototype.decode = function (list) {
 					var pid = next(), val = next();
 					if (pid < 0 || pid >= PARAMS.length || !PARAMS[pid].lanes[l]) continue;
 					if (ver < 4 && PARAMS[pid].macro !== undefined) continue; // a v1–v3 CC lock: dropped
+					if (ver < 6 && PARAMS[pid].macro !== undefined) val = macroFromPercent(val);
 					st.locks[pid] = clamp(val, PARAMS[pid].min, PARAMS[pid].max);
 				}
 				if (ver < 2 && (1 in st.locks)) { // v1 gate ticks -> length index
@@ -986,7 +1000,7 @@ Model.prototype.decode = function (list) {
 			for (k = 0; k < nsl; k++) {
 				var sn = next(), data = [];
 				for (j = 0; j < sn; j++) data.push(next());
-				if (k < PRESET_SLOTS && sn) this.slots[k] = data;
+				if (k < PRESET_SLOTS && sn) this.slots[k] = ver < 6 ? upgradeSlot(data) : data;
 			}
 			this.activeSlot = act >= 0 && act < PRESET_SLOTS ? act : -1;
 		}
@@ -1008,7 +1022,7 @@ var api = {
 	CONDITIONS: CONDITIONS, RETRIG_RATES: RETRIG_RATES, RETRIG_LENS: RETRIG_LENS,
 	RETRIG_LEN_LABELS: RETRIG_LEN_LABELS, RETRIG_PMODES: RETRIG_PMODES, RETRIG_VOICES: RETRIG_VOICES,
 	STEPS_PER_PAGE: STEPS_PER_PAGE, PAGES: PAGES, NUM_STEPS: NUM_STEPS,
-	TICKS_PER_STEP: TICKS_PER_STEP, MACRO_SLOTS: MACRO_SLOTS, PRESET_SLOTS: PRESET_SLOTS,
+	TICKS_PER_STEP: TICKS_PER_STEP, MACRO_SLOTS: MACRO_SLOTS, MACRO_RANGE: MACRO_RANGE, PRESET_SLOTS: PRESET_SLOTS,
 	KICK: KICK, BASS: BASS, LANE_NAMES: LANE_NAMES,
 	keyboardNotes: keyboardNotes, CHROMATIC: CHROMATIC,
 	MIN_OCTAVE: MIN_OCTAVE, MAX_OCTAVE: MAX_OCTAVE

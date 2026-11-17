@@ -208,7 +208,7 @@
       400,
       20
      ],
-     "text": "kbSequencer   v0.19.1 \u00b7 1117.1725",
+     "text": "kbSequencer   v0.20.1 \u00b7 1117.1835",
      "numinlets": 1,
      "numoutlets": 0
     }
@@ -1426,6 +1426,24 @@
    },
    {
     "box": {
+     "id": "seq_cmd_recv",
+     "maxclass": "newobj",
+     "patching_rect": [
+      1380,
+      830,
+      105,
+      22
+     ],
+     "text": "receive kbSeqCmd",
+     "numinlets": 1,
+     "numoutlets": 1,
+     "outlettype": [
+      ""
+     ]
+    }
+   },
+   {
+    "box": {
      "id": "lane_cmd",
      "maxclass": "newobj",
      "patching_rect": [
@@ -2475,10 +2493,9 @@
        "parameter_shortname": "Macro 1",
        "parameter_initial_enable": 0,
        "parameter_type": 1,
-       "parameter_mmin": -100,
-       "parameter_mmax": 100,
-       "parameter_unitstyle": 9,
-       "parameter_units": "%d %%"
+       "parameter_mmin": -127,
+       "parameter_mmax": 127,
+       "parameter_unitstyle": 0
       }
      }
     }
@@ -2507,10 +2524,9 @@
        "parameter_shortname": "Macro 2",
        "parameter_initial_enable": 0,
        "parameter_type": 1,
-       "parameter_mmin": -100,
-       "parameter_mmax": 100,
-       "parameter_unitstyle": 9,
-       "parameter_units": "%d %%"
+       "parameter_mmin": -127,
+       "parameter_mmax": 127,
+       "parameter_unitstyle": 0
       }
      }
     }
@@ -2539,10 +2555,9 @@
        "parameter_shortname": "Macro 3",
        "parameter_initial_enable": 0,
        "parameter_type": 1,
-       "parameter_mmin": -100,
-       "parameter_mmax": 100,
-       "parameter_unitstyle": 9,
-       "parameter_units": "%d %%"
+       "parameter_mmin": -127,
+       "parameter_mmax": 127,
+       "parameter_unitstyle": 0
       }
      }
     }
@@ -2571,10 +2586,9 @@
        "parameter_shortname": "Macro 4",
        "parameter_initial_enable": 0,
        "parameter_type": 1,
-       "parameter_mmin": -100,
-       "parameter_mmax": 100,
-       "parameter_unitstyle": 9,
-       "parameter_units": "%d %%"
+       "parameter_mmin": -127,
+       "parameter_mmax": 127,
+       "parameter_unitstyle": 0
       }
      }
     }
@@ -2603,10 +2617,9 @@
        "parameter_shortname": "Macro 5",
        "parameter_initial_enable": 0,
        "parameter_type": 1,
-       "parameter_mmin": -100,
-       "parameter_mmax": 100,
-       "parameter_unitstyle": 9,
-       "parameter_units": "%d %%"
+       "parameter_mmin": -127,
+       "parameter_mmax": 127,
+       "parameter_unitstyle": 0
       }
      }
     }
@@ -2635,10 +2648,9 @@
        "parameter_shortname": "Macro 6",
        "parameter_initial_enable": 0,
        "parameter_type": 1,
-       "parameter_mmin": -100,
-       "parameter_mmax": 100,
-       "parameter_unitstyle": 9,
-       "parameter_units": "%d %%"
+       "parameter_mmin": -127,
+       "parameter_mmax": 127,
+       "parameter_unitstyle": 0
       }
      }
     }
@@ -2667,10 +2679,9 @@
        "parameter_shortname": "Macro 7",
        "parameter_initial_enable": 0,
        "parameter_type": 1,
-       "parameter_mmin": -100,
-       "parameter_mmax": 100,
-       "parameter_unitstyle": 9,
-       "parameter_units": "%d %%"
+       "parameter_mmin": -127,
+       "parameter_mmax": 127,
+       "parameter_unitstyle": 0
       }
      }
     }
@@ -2699,10 +2710,9 @@
        "parameter_shortname": "Macro 8",
        "parameter_initial_enable": 0,
        "parameter_type": 1,
-       "parameter_mmin": -100,
-       "parameter_mmax": 100,
-       "parameter_unitstyle": 9,
-       "parameter_units": "%d %%"
+       "parameter_mmin": -127,
+       "parameter_mmax": 127,
+       "parameter_unitstyle": 0
       }
      }
     }
@@ -4890,6 +4900,18 @@
     "patchline": {
      "source": [
       "info_pre",
+      0
+     ],
+     "destination": [
+      "js",
+      0
+     ]
+    }
+   },
+   {
+    "patchline": {
+     "source": [
+      "seq_cmd_recv",
       0
      ],
      "destination": [

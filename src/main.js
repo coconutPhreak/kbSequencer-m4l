@@ -189,7 +189,8 @@ var historyPending = false;
 var encoderEdit = false;   // set while an encoder edits: group a turn into one undo
 var ENCODER_REFILL_MS = 60;
 var ENCODER_UNDO_MS = 600;
-var FINE_FACTOR = 4;       // Shift + turn: ticks per value multiplied by this
+var FINE_FACTOR = 4;       // fine turns: ticks per value multiplied by this
+var MACRO_COARSE = 8;      // Shift + turn on a macro lock: units per value
 function historyChanged() {
 	if (encoderEdit) { historyPending = true; historyTask.schedule(ENCODER_UNDO_MS); return; }
 	if (historyPending) return;
@@ -451,7 +452,13 @@ function palette(base) {
 	if (grabbed) defer(renderAll);
 }
 
+// A deleted kbSequencer releases Push's controls. If another one grabbed them
+// already (a device replaced by a new copy: the new one loads and grabs
+// before the old one is deleted), that release takes them away from it
+// without it knowing. So the deleted one tells the others to grab again.
+var deleting = false;
 function notifydeleted() {
+	deleting = true;
 	saveTask.cancel();
 	grabTask.cancel();
 	repaintTask.cancel();
@@ -459,8 +466,20 @@ function notifydeleted() {
 	refreshTask.cancel();
 	teardownTransport();
 	teardownScale();
-	release();
+	try { release(); } catch (e) {}
 	if (selObserver) selObserver.property = "";
+	messnamed("kbSeqCmd", "regrab");
+}
+
+// [receive kbSeqCmd] "regrab": grab again if this device should own Push.
+function regrab() {
+	if (deleting || !initialised) return;
+	grabTask.cancel();
+	if (grabbed) {
+		for (var role in controls) if (controls[role].api) { controls[role].api.property = ""; controls[role].api = null; }
+		grabbed = false;
+	}
+	updateGrab(); // grabs after GRAB_DELAY_MS, once the release has gone through
 }
 
 // ---------- setup ----------
@@ -589,6 +608,7 @@ function makeHandler(role) {
 		if (a[0] !== "value") return;
 		var v = [];
 		for (var i = 1; i < a.length; i++) v.push(Number(a[i]));
+		if (!v.length || isNaN(v[0])) return; // the call an observer makes when it's set up
 		outlet(1, role + " " + v.join(" "));
 		defer(function () { handleInput(role, v); });
 	};
@@ -896,7 +916,8 @@ function updateDisplay() {
 	var bname = (perfMode ? "PERF " : "") + (model.activeSlot >= 0 ? "P" + (model.activeSlot + 1) + (model.isDirty() ? "* " : " ") : "") + bank.name;
 	var sig = bname + "|" + names.join("|");
 	if (sig !== lastBankSig) {
-		var b = this.patcher.getnamed("banks");
+		var b = this.patcher ? this.patcher.getnamed("banks") : null;
+		if (!b) return; // device being deleted
 		b.message.apply(b, ["edit", 0, bname].concat(names));
 		lastBankSig = sig;
 	}
@@ -933,13 +954,17 @@ function onEncoder(v) {
 	var key = currentBank().items[idx];
 	if (!itemShown(key)) return;
 	encAcc[idx] += d;
-	var d0 = DISPLAY_PARAMS[key], fine = shiftHeld && d0.kind !== "enum";
+	// Macro locks are fine by default and Shift + turn is coarse (MACRO_COARSE
+	// units per value); everything else is normal, Shift + turn = fine.
+	var d0 = DISPLAY_PARAMS[key], macro = MACRO_KEY.test(key);
+	var fine = macro ? !shiftHeld : shiftHeld && d0.kind !== "enum";
 	var per = ticksPerStep(key) * (fine ? FINE_FACTOR : 1), steps = (encAcc[idx] / per) | 0;
 	if (!steps) return;
 	encAcc[idx] -= steps * per;
-	// Shift + turn = fine: 4× the ticks per value, and one value per message
-	// at most (Push's encoder acceleration would otherwise still jump).
+	// Fine: 4× the ticks per value, and one value per message at most (Push's
+	// encoder acceleration would otherwise still jump).
 	if (fine && Math.abs(steps) > 1) { steps = steps > 0 ? 1 : -1; encAcc[idx] = 0; }
+	if (macro && shiftHeld) steps *= MACRO_COARSE;
 	// Short menus (Layer, On/Off…) move one item per message: Push's encoder
 	// acceleration could otherwise jump over the middle item of three.
 	if (d0.kind === "enum" && d0.items <= 4 && Math.abs(steps) > 1) { steps = steps > 0 ? 1 : -1; encAcc[idx] = 0; }

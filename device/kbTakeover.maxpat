@@ -371,7 +371,7 @@
       400,
       20
      ],
-     "text": "kbSequencer \u00b7 Push takeover test   v0.19.1 \u00b7 1117.1725",
+     "text": "kbSequencer \u00b7 Push takeover test   v0.20.1 \u00b7 1117.1835",
      "numinlets": 1,
      "numoutlets": 0
     }
