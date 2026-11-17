@@ -27,6 +27,16 @@ python3 tools/build.py --install "$HOME/Music/Ableton/User Library/m4l devices"
 osascript -l JavaScript tools/test_model.js "$PWD/src/seq_model.js"
 ```
 
+### Push 3 standalone (untested)
+
+The build also writes **frozen** copies to `device/frozen/`: each `.amxd`
+with its `.js` packed inside, so one file per device. Use those on Push in
+standalone mode, where a loose `.js` can't be copied along: drag
+`device/frozen/kbSequencer.amxd` and `kbLane.amxd` (or a Set using them) to
+Push in Live's browser. Keep developing with the unfrozen pair; the frozen
+file is a snapshot, so rebuild after each change. Don't load a frozen copy
+and the installed unfrozen one in the same Set (same names).
+
 ## Step 1 — Push takeover test ✅
 
 Confirmed on Push 3: grab, release, pads, encoders, touches, display

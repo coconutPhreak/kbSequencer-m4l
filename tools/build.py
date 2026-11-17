@@ -4,6 +4,10 @@
     python3 tools/build.py                 # build into device/
     python3 tools/build.py --install DIR   # also copy the device files into DIR
 
+Also writes frozen copies to device/frozen/: each .amxd with its .js packed
+inside (one file per device), for Push 3 standalone, where a loose .js can't
+be copied along. The unfrozen pair stays the one to develop with.
+
 Sources live in src/. Each device gets ONE self-contained .js (modules are
 bundled in, no require()), so only the .amxd and its .js need copying.
 Edit src/ and this file, never the generated files in device/.
@@ -18,11 +22,12 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 SRC = ROOT / "src"
 OUT = ROOT / "device"
+FROZEN = OUT / "frozen"
 AMXD_MIDI = int.from_bytes(b"mmmm", "big")  # 1835887981
 
 # Shown on every device and printed to the Max Console at load, so it's easy
 # to tell which build is running. VERSION: bump the minor per spec build step.
-VERSION = "0.19.0"
+VERSION = "0.19.1"
 BUILD = datetime.datetime.now().strftime("%m%d.%H%M")  # build time, MMDD.HHMM
 STAMP = f"v{VERSION} · {BUILD}"
 
@@ -256,6 +261,15 @@ class Patch:
         (OUT / f"{stem}.amxd").write_bytes(amxd_bytes(json.dumps(pj, indent=1)))
         (OUT / f"{stem}.maxpat").write_text(json.dumps(pj, indent=1))
         print("wrote", OUT / f"{stem}.amxd")
+        self.frozen = (stem, pj)  # written once the .js files are bundled
+
+    def write_frozen(self):
+        stem, pj = self.frozen
+        FROZEN.mkdir(parents=True, exist_ok=True)
+        files = [(d, "TEXT", (OUT / d).read_bytes()) for d in self.deps]
+        (FROZEN / f"{stem}.amxd").write_bytes(
+            amxd_frozen_bytes(f"{stem}.amxd", json.dumps(pj, indent=1), files))
+        print("wrote", FROZEN / f"{stem}.amxd", "(frozen)")
 
 
 def amxd_bytes(patch_json):
@@ -264,6 +278,42 @@ def amxd_bytes(patch_json):
     return (b"ampf" + struct.pack("<I", 4) + b"mmmm"
             + b"meta" + struct.pack("<I", 4) + struct.pack("<I", 0)
             + b"ptch" + struct.pack("<I", len(body)) + body)
+
+
+# Frozen device (as Max writes one, read from Ableton's frozen examples): the
+# ptch chunk holds an "mx@c" container instead of the bare patch JSON:
+#   "mx@c" be32 16, be32 0, be32 offset of the directory, then the files back
+#   to back (the device's own patch first), then the directory "dlst": one
+#   "dire" per file with type / fnam / sz32 / of32 / vers / flag / mdat fields.
+# Fields are tag + be32 length (header included) + value; strings are
+# NUL-terminated and padded to 4 bytes. Offsets count from the "mx@c".
+# flag 17 marks the device's own patch. meta = 7 on frozen devices.
+def _field(tag, value):
+    if isinstance(value, int):
+        data = struct.pack(">I", value)
+    else:
+        data = value.encode("utf-8") + b"\0"
+        data += b"\0" * (-len(data) % 4)
+    return tag + struct.pack(">I", 8 + len(data)) + data
+
+
+def amxd_frozen_bytes(name, patch_json, files):
+    mdat = int(datetime.datetime.now().timestamp()) + 2082844800  # seconds since 1904
+    entries = [("JSON", name, patch_json.encode("utf-8") + b"\n\x00", 17)]
+    entries += [(t, n, data, 0) for n, t, data in files]
+    blob, dirs, off = b"", b"", 16
+    for typ, fname, data, flag in entries:
+        body = (_field(b"type", typ) + _field(b"fnam", fname) + _field(b"sz32", len(data))
+                + _field(b"of32", off) + _field(b"vers", 0) + _field(b"flag", flag)
+                + _field(b"mdat", mdat))
+        dirs += b"dire" + struct.pack(">I", 8 + len(body)) + body
+        blob += data
+        off += len(data)
+    dlst = b"dlst" + struct.pack(">I", 8 + len(dirs)) + dirs
+    mx = b"mx@c" + struct.pack(">III", 16, 0, 16 + len(blob)) + blob + dlst
+    return (b"ampf" + struct.pack("<I", 4) + b"mmmm"
+            + b"meta" + struct.pack("<I", 4) + struct.pack("<I", 7)
+            + b"ptch" + struct.pack("<I", len(mx)) + mx)
 
 
 def common(p, js_text, js_outs, wire_init=True, toggles=True):
@@ -639,6 +689,9 @@ f.wire("js", 0, "st_pre", 0)
 f.wire("st_pre", 0, "st_msg", 0)
 f.deps = ["kbLane.js"]
 f.write("kbLane")
+
+for dev in (t, s, f):
+    dev.write_frozen()
 
 if args.install:
     dest = Path(args.install).expanduser()
