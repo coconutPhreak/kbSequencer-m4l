@@ -464,3 +464,62 @@ a generated pattern kept apart from the manual steps.
   mode follows the first selected lane.
 - Saved in the set (save format v3; older sets load with Length = their
   loop pages).
+
+## Button combos
+
+Every Push gesture in one place. Keep this list up to date when a feature
+adds or changes one. Details are in the sections above.
+
+### Steps (rows 1–4)
+
+| Combo | Does |
+|---|---|
+| Press an empty step | Creates a trig (bass: the brush note); keep holding to edit it |
+| Tap a lit step | Mute / unmute (on release, quick taps only) |
+| Hold step(s) + turn an encoder | P-lock the held steps (Shift + turn = fine) |
+| Hold step(s) + tap a note pad | Set the held bass steps' note |
+| Hold step(s) + Delete + touch an encoder | Clear that lock (a single Delete tap latches clear mode) |
+| Delete + tap a step | Wipe the step |
+| **Shift + tap a step** | End step: the selected lanes' loop ends there |
+| Duplicate + tap a step, then tap others | Copy the step, paste it |
+| Duplicate + hold a step + press another | Copy that range |
+
+### Page pads (rows 5–6)
+
+| Combo | Does |
+|---|---|
+| Tap a page pad (or Select + page pad) | View that page; follow off |
+| Tap the playing page, or **Shift + page pad** | Follow on |
+| Long-press a page pad (½ s) | Loop that page |
+| Hold a page pad + press another | Loop that range of pages |
+| Hold a page pad + turn an encoder | Page lock (Delete + touch = clear it) |
+| Delete + tap a page pad | Wipe the page (selected lanes) |
+| Mute + tap a page pad | Un-mute every step on the page |
+| Duplicate + page pad, then tap others | Copy page(s), paste them |
+| Performance mode: tap / hold + press | The selected lanes loop that page / range from the next beat |
+
+### Note keyboard / presets (rows 7–8)
+
+| Combo | Does |
+|---|---|
+| Tap a note pad | Brush note + audition |
+| Octave Up / Down | Shift the keyboard |
+| **Shift + Octave Up** | Note keyboard ⇄ preset slots |
+| Tap a slot | Load it at the next bar |
+| Shift + tap a slot | Save into it |
+| Duplicate + slot, then tap others | Copy the slot |
+| Delete + slot | Clear the slot |
+
+### Buttons and encoders
+
+| Combo | Does |
+|---|---|
+| Display button 1 / 2 | Select Kick / Bass (one stays on) |
+| Display buttons 3–8 | Pick the bank (Settings / Euclid banks, or the held step's banks) |
+| Jog wheel turn / nudge | Next / previous bank |
+| **Shift + jog wheel press** | Performance mode on / off |
+| Shift + lane button | Live negative mask on / off for that lane |
+| Mute + lane button | Print that lane's mask into the other lane as mutes |
+| **Shift + Duplicate** | Print the Euclid hits onto the manual steps |
+| Undo / **Shift + Undo** | Undo / redo |
+| Encoder 8, Settings bank | Takeover: Off / Track selected / Always (also works while released) |
