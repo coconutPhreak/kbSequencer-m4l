@@ -712,6 +712,7 @@ function onStepPad(pad, pressed) {
 		return;
 	}
 	var i = viewPage * S.STEPS_PER_PAGE + pad;
+	if (shiftHeld && !heldSteps.length) { setEndStep(i); return; }
 	if (deleteHeld) {
 		for (var k = 0; k < lanes.length; k++) model.wipe(lanes[k], i);
 		renderStep(i);
@@ -729,6 +730,18 @@ function onStepPad(pad, pressed) {
 	renderNotes(); // keyboard shows the held step's note
 	renderDisplayButtons();
 	updateDisplay(); // Push shows the held step
+}
+
+// Shift + tap a step: the selected lanes' loop ends on that step (their
+// Length, counted from the loop's start page). Steps aren't created or muted.
+function setEndStep(i) {
+	var lanes = selectedLanes();
+	for (var k = 0; k < lanes.length; k++) model.setLaneEnd(lanes[k], i);
+	post("kbSequencer: end step " + (i % S.STEPS_PER_PAGE + 1) + " on page " + (Math.floor(i / S.STEPS_PER_PAGE) + 1) +
+		" · Length kick " + model.lanes[S.KICK].length + " / bass " + model.lanes[S.BASS].length + "\n");
+	renderAll();
+	updateDisplay();
+	showStatus();
 }
 
 // Anything that edits the held steps makes their release not a tap.

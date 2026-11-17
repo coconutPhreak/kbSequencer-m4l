@@ -326,6 +326,21 @@ Model.prototype.setLaneLength = function (l, len) {
 	this.updateLoopEnd();
 	this.changed();
 };
+// End step: lane l's loop ends on step i (its Length = i from the loop's
+// start). A step before the loop's start page moves the start to the step's
+// page; the other lane keeps its own end step.
+Model.prototype.setLaneEnd = function (l, i) {
+	i = clamp(i, 0, MAX_LENGTH - 1);
+	var page = Math.floor(i / STEPS_PER_PAGE);
+	if (page < this.loopStart) {
+		var o = 1 - l, oEnd = this.loopStart * STEPS_PER_PAGE + this.lanes[o].length - 1;
+		this.loopStart = page;
+		this.lanes[o].length = clamp(oEnd - page * STEPS_PER_PAGE + 1, 1, this.maxLength());
+	}
+	this.lanes[l].length = i - this.loopStart * STEPS_PER_PAGE + 1;
+	this.updateLoopEnd();
+	this.changed();
+};
 Model.prototype.updateLoopEnd = function () {
 	var m = Math.max(this.lanes[0].length, this.lanes[1].length);
 	this.loopEnd = Math.min(PAGES - 1, this.loopStart + Math.ceil(m / STEPS_PER_PAGE) - 1);

@@ -536,6 +536,14 @@ function run(argv) {
 	var sv3 = new M.Model(); eq("v2 load", sv3.decode(v2), true);
 	eq("v2: length from loop pages", [sv3.lanes[K].length, sv3.lanes[B].length, sv3.lanes[B].euclid.pulses], [64, 64, 0]);
 
+	// end step
+	var es = new M.Model(); es.setLoop(1, 2);
+	es.setLaneEnd(K, 32 + 10); es.setLaneEnd(B, 3 * 32 + 4);
+	eq("end step sets Length", [es.loopStart, es.lanes[K].length, es.lanes[B].length, es.loopEnd], [1, 11, 69, 3]);
+	es.setLaneEnd(K, 5);
+	eq("end before start moves start, bass keeps its end", [es.loopStart, es.lanes[K].length, es.lanes[B].length, es.loopEnd], [0, 6, 101, 3]);
+	eq("end step in loop", [es.inLoop(K, 5), es.inLoop(K, 6), es.inLoop(B, 100), es.inLoop(B, 101)], [true, false, true, false]);
+
 	log.push(passes + " passed, " + fails + " failed");
 	return log.join("\n");
 }

@@ -135,6 +135,7 @@ indices, and send them back.
 | Hold a step + turn an encoder | Releasing is no longer a tap: the step is not muted (the encoder sets p-locks in step 7) |
 | Hold step(s) + tap a note pad | Sets or replaces the held bass steps' note (brush unchanged); the keyboard shows the held step's note in bright white |
 | Hold Delete + tap a step | Wipes it (on press) |
+| Shift + tap a step (any page) | End step: the selected lanes' loop ends on that step (sets their Length, counted from the loop's start page). A step before the start page moves the start there; the other lane keeps its end. The step itself isn't changed |
 | Hold Mute + tap a lane button (Kick / Bass) | Prints that lane's mask into the other lane as mutes (see Negative mask) |
 | Hold Mute + tap a page pad | Un-mutes every step on that page for the selected lanes (p-locks untouched; view and loop unchanged). One Undo |
 | Hold Delete + tap a page pad | Wipes every step on that page (trigs, notes, p-locks) for the selected lanes; the loop is unchanged |
