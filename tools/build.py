@@ -29,7 +29,7 @@ AMXD_MIDI = int.from_bytes(b"mmmm", "big")  # 1835887981
 
 # Shown on every device and printed to the Max Console at load, so it's easy
 # to tell which build is running. VERSION: bump the minor per spec build step.
-VERSION = "0.22.1"
+VERSION = "0.23.0"
 BUILD = datetime.datetime.now().strftime("%m%d.%H%M")  # build time, MMDD.HHMM
 STAMP = f"v{VERSION} · {BUILD}"
 
@@ -79,7 +79,11 @@ DISPLAY_PARAMS = (
      ("macroRefresh", "MacroRefresh", "Refresh", "enum", 0, 1, ["Turn", "Sent"]),
      # A real setting (saved with the Set, shown in the device view): when the
      # device lets go of Push, Push itself can turn it back on (Settings bank).
-     ("takeover", "Takeover", "Takeover", "enum", 0, 2, ["Off", "Track selected", "Always"])]
+     ("takeover", "Takeover", "Takeover", "enum", 0, 2, ["Off", "Track selected", "Always"]),
+     # Device bank: Group mirrors the device's Group number box (turning it
+     # sets that box); Rescan = the device's rescan button (turn to run).
+     ("groupView", "GroupView", "Group", "int", 1, 16, None),
+     ("rescanView", "RescanView", "Rescan", "enum", 0, 1, ["Turn", "Done"])]
     + [("note", "Note", "Note", "note", 0, 127, None),
        ("velocity", "Velocity", "Velocity", "int", 0, 127, None),
        ("length", "Length", "Length", "enum", 0, 127, RETRIG_LEN_LABELS),  # gate + retrig LEN

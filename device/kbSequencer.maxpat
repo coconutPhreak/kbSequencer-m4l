@@ -208,7 +208,7 @@
       400,
       20
      ],
-     "text": "kbSequencer   v0.22.1 \u00b7 1117.2100",
+     "text": "kbSequencer   v0.23.0 \u00b7 1119.2143",
      "numinlets": 1,
      "numoutlets": 0
     }
@@ -1999,11 +1999,76 @@
    },
    {
     "box": {
-     "id": "pv_note",
+     "id": "pv_groupView",
      "maxclass": "live.numbox",
      "patching_rect": [
       1000,
       212,
+      80,
+      15
+     ],
+     "numinlets": 1,
+     "numoutlets": 2,
+     "outlettype": [
+      "",
+      "float"
+     ],
+     "parameter_enable": 1,
+     "varname": "pv_groupView",
+     "saved_attribute_attributes": {
+      "valueof": {
+       "parameter_longname": "GroupView",
+       "parameter_shortname": "Group",
+       "parameter_initial_enable": 0,
+       "parameter_type": 1,
+       "parameter_mmin": 1,
+       "parameter_mmax": 16,
+       "parameter_unitstyle": 0
+      }
+     }
+    }
+   },
+   {
+    "box": {
+     "id": "pv_rescanView",
+     "maxclass": "live.menu",
+     "patching_rect": [
+      1000,
+      236,
+      80,
+      15
+     ],
+     "numinlets": 1,
+     "numoutlets": 3,
+     "outlettype": [
+      "",
+      "",
+      "float"
+     ],
+     "parameter_enable": 1,
+     "varname": "pv_rescanView",
+     "saved_attribute_attributes": {
+      "valueof": {
+       "parameter_longname": "RescanView",
+       "parameter_shortname": "Rescan",
+       "parameter_initial_enable": 0,
+       "parameter_type": 2,
+       "parameter_enum": [
+        "Turn",
+        "Done"
+       ],
+       "parameter_mmax": 1
+      }
+     }
+    }
+   },
+   {
+    "box": {
+     "id": "pv_note",
+     "maxclass": "live.numbox",
+     "patching_rect": [
+      1000,
+      260,
       80,
       15
      ],
@@ -2034,7 +2099,7 @@
      "maxclass": "live.numbox",
      "patching_rect": [
       1000,
-      236,
+      284,
       80,
       15
      ],
@@ -2064,8 +2129,8 @@
      "id": "pv_length",
      "maxclass": "live.menu",
      "patching_rect": [
-      1000,
-      260,
+      1090,
+      20,
       80,
       15
      ],
@@ -2224,8 +2289,8 @@
      "id": "pv_microtime",
      "maxclass": "live.numbox",
      "patching_rect": [
-      1000,
-      284,
+      1090,
+      44,
       80,
       15
      ],
@@ -2257,7 +2322,7 @@
      "maxclass": "live.numbox",
      "patching_rect": [
       1090,
-      20,
+      68,
       80,
       15
      ],
@@ -2289,7 +2354,7 @@
      "maxclass": "live.menu",
      "patching_rect": [
       1090,
-      44,
+      92,
       80,
       15
      ],
@@ -2323,7 +2388,7 @@
      "maxclass": "live.menu",
      "patching_rect": [
       1090,
-      68,
+      116,
       80,
       15
      ],
@@ -2357,7 +2422,7 @@
      "maxclass": "live.menu",
      "patching_rect": [
       1090,
-      92,
+      140,
       80,
       15
      ],
@@ -2391,7 +2456,7 @@
      "maxclass": "live.menu",
      "patching_rect": [
       1090,
-      116,
+      164,
       80,
       15
      ],
@@ -2425,7 +2490,7 @@
      "maxclass": "live.menu",
      "patching_rect": [
       1090,
-      140,
+      188,
       80,
       15
      ],
@@ -2479,7 +2544,7 @@
      "maxclass": "live.numbox",
      "patching_rect": [
       1090,
-      164,
+      212,
       80,
       15
      ],
@@ -2510,7 +2575,7 @@
      "maxclass": "live.numbox",
      "patching_rect": [
       1090,
-      188,
+      236,
       80,
       15
      ],
@@ -2541,7 +2606,7 @@
      "maxclass": "live.numbox",
      "patching_rect": [
       1090,
-      212,
+      260,
       80,
       15
      ],
@@ -2572,7 +2637,7 @@
      "maxclass": "live.numbox",
      "patching_rect": [
       1090,
-      236,
+      284,
       80,
       15
      ],
@@ -2602,8 +2667,8 @@
      "id": "pv_m5",
      "maxclass": "live.numbox",
      "patching_rect": [
-      1090,
-      260,
+      1180,
+      20,
       80,
       15
      ],
@@ -2633,8 +2698,8 @@
      "id": "pv_m6",
      "maxclass": "live.numbox",
      "patching_rect": [
-      1090,
-      284,
+      1180,
+      44,
       80,
       15
      ],
@@ -2665,7 +2730,7 @@
      "maxclass": "live.numbox",
      "patching_rect": [
       1180,
-      20,
+      68,
       80,
       15
      ],
@@ -2696,7 +2761,7 @@
      "maxclass": "live.numbox",
      "patching_rect": [
       1180,
-      44,
+      92,
       80,
       15
      ],
@@ -2727,7 +2792,7 @@
      "maxclass": "live.menu",
      "patching_rect": [
       1180,
-      68,
+      116,
       80,
       15
      ],
@@ -2777,7 +2842,7 @@
      "maxclass": "live.menu",
      "patching_rect": [
       1180,
-      92,
+      140,
       80,
       15
      ],
@@ -2827,7 +2892,7 @@
      "maxclass": "live.menu",
      "patching_rect": [
       1180,
-      116,
+      164,
       80,
       15
      ],
@@ -2877,7 +2942,7 @@
      "maxclass": "live.menu",
      "patching_rect": [
       1180,
-      140,
+      188,
       80,
       15
      ],
@@ -2927,7 +2992,7 @@
      "maxclass": "live.menu",
      "patching_rect": [
       1180,
-      164,
+      212,
       80,
       15
      ],
@@ -2977,7 +3042,7 @@
      "maxclass": "live.menu",
      "patching_rect": [
       1180,
-      188,
+      236,
       80,
       15
      ],
@@ -3027,7 +3092,7 @@
      "maxclass": "live.menu",
      "patching_rect": [
       1180,
-      212,
+      260,
       80,
       15
      ],
@@ -3077,7 +3142,7 @@
      "maxclass": "live.menu",
      "patching_rect": [
       1180,
-      236,
+      284,
       80,
       15
      ],
@@ -3126,8 +3191,8 @@
      "id": "pv_retrig",
      "maxclass": "live.menu",
      "patching_rect": [
-      1180,
-      260,
+      1270,
+      20,
       80,
       15
      ],
@@ -3160,8 +3225,8 @@
      "id": "pv_retrigRate",
      "maxclass": "live.menu",
      "patching_rect": [
-      1180,
-      284,
+      1270,
+      44,
       80,
       15
      ],
@@ -3210,7 +3275,7 @@
      "maxclass": "live.numbox",
      "patching_rect": [
       1270,
-      20,
+      68,
       80,
       15
      ],
@@ -3242,7 +3307,7 @@
      "maxclass": "live.numbox",
      "patching_rect": [
       1270,
-      44,
+      92,
       80,
       15
      ],
@@ -3274,7 +3339,7 @@
      "maxclass": "live.numbox",
      "patching_rect": [
       1270,
-      68,
+      116,
       80,
       15
      ],
@@ -3306,7 +3371,7 @@
      "maxclass": "live.menu",
      "patching_rect": [
       1270,
-      92,
+      140,
       80,
       15
      ],
@@ -3356,7 +3421,7 @@
      "maxclass": "live.numbox",
      "patching_rect": [
       1270,
-      116,
+      164,
       80,
       15
      ],
@@ -3388,7 +3453,7 @@
      "maxclass": "live.menu",
      "patching_rect": [
       1270,
-      140,
+      188,
       80,
       15
      ],
@@ -3422,7 +3487,7 @@
      "maxclass": "live.menu",
      "patching_rect": [
       1270,
-      164,
+      212,
       80,
       15
      ],
@@ -3457,7 +3522,7 @@
      "maxclass": "live.menu",
      "patching_rect": [
       1270,
-      188,
+      236,
       80,
       15
      ],
@@ -3497,7 +3562,7 @@
      "maxclass": "live.numbox",
      "patching_rect": [
       1270,
-      212,
+      260,
       80,
       15
      ],
@@ -3529,7 +3594,7 @@
      "maxclass": "live.numbox",
      "patching_rect": [
       1270,
-      236,
+      284,
       80,
       15
      ],
@@ -3559,8 +3624,8 @@
      "id": "pv_kLength",
      "maxclass": "live.numbox",
      "patching_rect": [
-      1270,
-      260,
+      1360,
+      20,
       80,
       15
      ],
@@ -3590,8 +3655,8 @@
      "id": "pv_kEuSteps",
      "maxclass": "live.numbox",
      "patching_rect": [
-      1270,
-      284,
+      1360,
+      44,
       80,
       15
      ],
@@ -3622,7 +3687,7 @@
      "maxclass": "live.numbox",
      "patching_rect": [
       1360,
-      20,
+      68,
       80,
       15
      ],
@@ -3653,7 +3718,7 @@
      "maxclass": "live.numbox",
      "patching_rect": [
       1360,
-      44,
+      92,
       80,
       15
      ],
@@ -3684,7 +3749,7 @@
      "maxclass": "live.menu",
      "patching_rect": [
       1360,
-      68,
+      116,
       80,
       15
      ],
@@ -3719,7 +3784,7 @@
      "maxclass": "live.numbox",
      "patching_rect": [
       1360,
-      92,
+      140,
       80,
       15
      ],
@@ -3750,7 +3815,7 @@
      "maxclass": "live.menu",
      "patching_rect": [
       1360,
-      116,
+      164,
       80,
       15
      ],
@@ -3784,7 +3849,7 @@
      "maxclass": "live.numbox",
      "patching_rect": [
       1360,
-      140,
+      188,
       80,
       15
      ],
@@ -3815,7 +3880,7 @@
      "maxclass": "live.numbox",
      "patching_rect": [
       1360,
-      164,
+      212,
       80,
       15
      ],
@@ -3846,7 +3911,7 @@
      "maxclass": "live.numbox",
      "patching_rect": [
       1360,
-      188,
+      236,
       80,
       15
      ],
@@ -3877,7 +3942,7 @@
      "maxclass": "live.numbox",
      "patching_rect": [
       1360,
-      212,
+      260,
       80,
       15
      ],
@@ -3908,7 +3973,7 @@
      "maxclass": "live.menu",
      "patching_rect": [
       1360,
-      236,
+      284,
       80,
       15
      ],
@@ -3942,8 +4007,8 @@
      "id": "pv_bEuVel",
      "maxclass": "live.numbox",
      "patching_rect": [
-      1360,
-      260,
+      1450,
+      20,
       80,
       15
      ],
@@ -3973,8 +4038,8 @@
      "id": "pv_bEuFollow",
      "maxclass": "live.menu",
      "patching_rect": [
-      1360,
-      284,
+      1450,
+      44,
       80,
       15
      ],
@@ -4008,7 +4073,7 @@
      "maxclass": "live.numbox",
      "patching_rect": [
       1450,
-      20,
+      68,
       80,
       15
      ],
@@ -5599,6 +5664,16 @@
    "pv_takeover": [
     "Takeover",
     "Takeover",
+    0
+   ],
+   "pv_groupView": [
+    "GroupView",
+    "Group",
+    0
+   ],
+   "pv_rescanView": [
+    "RescanView",
+    "Rescan",
     0
    ],
    "pv_note": [

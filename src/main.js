@@ -370,6 +370,9 @@ function fillSlot(absStep) {
 // ---------- messages from the device UI ----------
 function bang() { init(); } // [live.thisdevice]
 function rescan() { release(); init(); }
+// Device bank > Rescan shows "Done" for a second after it runs.
+var rescanShown = false;
+var rescanTask = new Task(function () { rescanShown = false; updateDisplay(); }, this);
 function enable(v) { enabled = v ? 1 : 0; if (initialised) defer(updateGrab); }
 function autofocus(v) { followFocus = v ? 1 : 0; if (initialised) defer(updateGrab); }
 // Takeover parameter (device view, Settings bank encoder 8; saved with the
@@ -788,7 +791,9 @@ var BANKS = {
 		// turn encoder N to step slot N's target through the
 		// parameters on the lane's track (first selected lane); the bank
 		// title shows the picked parameter.
-		{ name: "CC Map", items: ["map1", "map2", "map3", "map4", "map5", "map6", "map7", "map8"] }
+		{ name: "CC Map", items: ["map1", "map2", "map3", "map4", "map5", "map6", "map7", "map8"] },
+		// Group = the device's Group box; Rescan = its rescan button
+		{ name: "Device", items: ["groupView", "rescanView", null, null, null, null, null, null] }
 	],
 	step: [
 		{ name: "Step", items: ["note", "velocity", "length", "microtime", "probability", "accent", "slide", "tie"] },
@@ -875,6 +880,8 @@ function itemValue(key) {
 	if (MAP_KEY.test(key)) { var mi = macroInfo[editLane()]; return mi && mi.codes ? mi.codes[Number(key.slice(3)) - 1] || 0 : 0; }
 	if (key === "macroRefresh") return refreshShown ? 1 : 0;
 	if (key === "takeover") return takeoverMode;
+	if (key === "groupView") return laneGroup;
+	if (key === "rescanView") return rescanShown ? 1 : 0;
 	if (LANE_ITEMS[key]) return laneItemValue(key);
 	if (key in model.settings) return model.settings[key];
 	var t = heldTarget();
@@ -1061,6 +1068,28 @@ function editSetting(key, steps) {
 		var lc = this.patcher ? this.patcher.getnamed("lane_cmd") : null, l = editLane(), slot = Number(key.slice(3));
 		mapPending = { lane: l, slot: slot };
 		if (lc) lc.message("pick", laneGroup, l, slot, steps > 0 ? 1 : -1);
+		return;
+	}
+	if (key === "groupView") { // through the Group box, so it's saved; its output calls group()
+		encoderEdit = false;
+		var gb = this.patcher ? this.patcher.getnamed("Group") : null, ng = Math.max(1, Math.min(16, laneGroup + steps));
+		if (ng === laneGroup) return;
+		if (gb) gb.message("int", ng); else group(ng);
+		updateDisplay();
+		return;
+	}
+	if (key === "rescanView") { // release and grab again, then come back to this bank
+		encoderEdit = false;
+		var keep = bankSel.settings;
+		defer(function () {
+			rescan();
+			bankSel.settings = keep;
+			rescanShown = true;
+			rescanTask.schedule(1000);
+			lastBankSig = "";
+			renderAll();
+			updateDisplay();
+		});
 		return;
 	}
 	if (key === "takeover") { // through the parameter, so it's saved; its output calls takeover()
@@ -1702,6 +1731,7 @@ function group(g) {
 	laneGroup = g;
 	macroInfo = [null, null];
 	refresh();
+	updateDisplay();
 }
 function refresh() {
 	var o = this.patcher ? this.patcher.getnamed("lane_cmd") : null;

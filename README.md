@@ -191,7 +191,7 @@ one Undo.
 
 ## Step 6 — Encoders and banks ✅
 
-Push can't show a custom screen, so the device has 35 small **display
+Push can't show a custom screen, so the device has small **display
 parameters** (one per value an encoder edits) and **one Push bank**, which
 the script rewrites with `live.banks` to hold the 8 that matter right now.
 The encoders stay grabbed and edit the sequence directly; the script sets
@@ -200,7 +200,7 @@ kbSequencer (Device mode, device selected) to see the bank.
 
 | Context | Display buttons 3–8 (the row under the knobs) | Encoders |
 |---|---|---|
-| Nothing held | 3 **Settings**, 4 **Kick Euclid**, 5 **Bass Euclid**, 6 **CC Map** (7–8 free) | Edit them (one Undo per turn) |
+| Nothing held | 3 **Settings**, 4 **Kick Euclid**, 5 **Bass Euclid**, 6 **CC Map**, 7 **Device** (8 free) | Edit them (one Undo per turn) |
 | Step or page held | 3 **Step**, 4 **Retrig**, 5 **Rt Chance**, 6 **More** (Fill, Cond: not played yet), 7 **Slide**, 8 **CC Locks** | Show and lock the held step's values |
 
 - Settings: Kick Ch, Bass Ch, Kick Note, Bend, Scale (follow), Swing, Refresh (turn: the kbLanes report their CC slot mappings again), **Takeover** (encoder 8).
@@ -214,6 +214,7 @@ kbSequencer (Device mode, device selected) to see the bank.
   also turn the other Settings knobs, but those don't change anything.
 - CC Locks: the held step's CC value per slot (0–127). These encoders are **fine by default** (one value at a time); **Shift + turn = coarse** (8 at a time).
 - CC Map: pick each slot's mapped parameter on Push (see CC lock slots).
+- Device: **Group** (encoder 1: the device's Group, 1–16, saved with the Set; the kbLanes report again for the new group) and **Rescan** (encoder 2: turn to let go of Push and grab it again, the same as the device's rescan button; shows Done for a second). Use Rescan when takeover stops responding.
 - Step: Note, Velocity, Length (retrig's LEN list: 0.125 … 128 steps, INF), Micro (1/24 step), Prob, Accent, Slide, Tie.
   Note and Slide are hidden when bass isn't selected.
 - More: Retrig, Rt Rate, Rt Fade, Fill, Cond.
@@ -533,7 +534,7 @@ adds or changes one. Details are in the sections above.
 | Combo | Does |
 |---|---|
 | Display button 1 / 2 | Select Kick / Bass (one stays on) |
-| Display buttons 3–8 | Pick the bank (Settings / Euclid / CC Map banks, or the held step's banks) |
+| Display buttons 3–8 | Pick the bank (Settings / Euclid / CC Map / Device banks, or the held step's banks) |
 | CC Map bank: turn encoder N | Pick slot N's mapped parameter (first selected lane) |
 | Jog wheel turn / nudge | Next / previous bank |
 | **Shift + jog wheel press** | Performance mode on / off |
@@ -542,3 +543,5 @@ adds or changes one. Details are in the sections above.
 | **Shift + Duplicate** | Print the Euclid hits onto the manual steps |
 | Undo / **Shift + Undo** | Undo / redo |
 | Encoder 8, Settings bank | Takeover: Off / Track selected / Always (also works while released) |
+| Encoder 1, Device bank | Group (1–16) |
+| Encoder 2, Device bank | Rescan: release and grab Push again |
