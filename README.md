@@ -8,16 +8,17 @@ Spec: [Push Kick + Bass Sequencer (M4L) — Spec v1](https://claude.ai/artifact/
 |---|---|
 | `src/main.js` | Main device logic: Push takeover, pad UI, storage |
 | `src/seq_model.js` | Sequence data model + save format (pure JS, tested) |
+| `src/display.js` | Push 3 screen drawing (Live 13), bundled as `kbSequencerDraw.js` |
 | `src/kbTakeover.js` | Step 1 takeover test logic (kept as a reference) |
-| `device/` | **Generated** — `kbSequencer.amxd` + one bundled `kbSequencer.js` (and the takeover test). Don't edit. |
+| `device/` | **Generated** — `kbSequencer.amxd` + one bundled `kbSequencer.js` and its screen script `kbSequencerDraw.js` (and the takeover test). Don't edit. |
 | `device/kbLane.amxd` + `kbLane.js` | Receiving-track device: plays one lane (Kick/Bass) of the sequencer with the same Group, sends that lane's CC locks as MIDI CCs and modulates the parameters mapped to them |
 | `src/kbLane.js` | kbLane's CC slot mapping (device view and Push) |
 | `docs/push3-notes.md` | Confirmed Push 3 control names and pad orientation |
 | `tools/build.py` | Bundles src/ into device/ and generates the .amxd/.maxpat files |
 | `tools/test_model.js` | Model tests (run with osascript, no Node needed) |
 
-Each device is just two files, the `.amxd` and its `.js`, kept in the same
-folder. Build and install into the User Library folder in one go:
+Each device is just two files, the `.amxd` and its `.js` (kbSequencer has a
+third, `kbSequencerDraw.js`), kept in the same folder. Build and install into the User Library folder in one go:
 
 ```bash
 python3 tools/build.py --install "$HOME/Music/Ableton/User Library/m4l devices"
@@ -191,7 +192,8 @@ one Undo.
 
 ## Step 6 — Encoders and banks ✅
 
-Push can't show a custom screen, so the device has small **display
+Push's encoder row can't be custom-drawn (Live 13 adds a screen in the
+middle, see Push screen), so the device has small **display
 parameters** (one per value an encoder edits) and **one Push bank**, which
 the script rewrites with `live.banks` to hold the 8 that matter right now.
 The encoders stay grabbed and edit the sequence directly; the script sets
@@ -483,6 +485,29 @@ a generated pattern kept apart from the manual steps.
   mode follows the first selected lane.
 - Saved in the set (save format v3; older sets load with Length = their
   loop pages).
+
+## Push screen (Live 13) ✅ (v0.24)
+
+On Live 13 (beta) kbSequencer draws in the middle of Push 3's display, the
+strip between Push's encoder row and the button labels, using Live 13's
+Custom Device Display API (`[live.push]`). It shows while Push is showing
+kbSequencer (Device mode); Push clears it on other devices and the script
+redraws it when kbSequencer is shown again. The encoders switch to small
+values with no dials, so the middle is free. Redraws are coalesced (20 ms).
+
+| Bank | Screen |
+|---|---|
+| Kick / Bass Euclid | One cycle of the lane's pattern, then the lane's viewed page; info line: steps, pulses, rotate, layer |
+| Retrig (step held) | The held step's burst: time across, velocity up, chance-skipped hits dimmer |
+| Slide (bass step held) | The pitch path from the held note to the next, with Sl Time and Sl Curve |
+| CC Locks | One bar per encoder (64 = centre line), bright when locked, with the mapped parameter names |
+| Anything else | Both lanes' 32 steps of the viewed page: trigs, muted (dim), locked (mark), Euclid hits (outline), outside the lane's Length (dash), playhead and held steps, page n/m |
+
+Percent-style values (Swing, Prob, Rt Fade, CRV, PROB, Sl Time) show as
+plain numbers on Push. On Live 12 and earlier the screen is skipped
+(`[live.push]` doesn't exist there; the Max Console says `no device
+display`) and everything else works as before. Works on Push 3 standalone
+with the frozen copy.
 
 ## Button combos
 

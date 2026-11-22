@@ -29,7 +29,7 @@ AMXD_MIDI = int.from_bytes(b"mmmm", "big")  # 1835887981
 
 # Shown on every device and printed to the Max Console at load, so it's easy
 # to tell which build is running. VERSION: bump the minor per spec build step.
-VERSION = "0.23.1"
+VERSION = "0.24.0"
 BUILD = datetime.datetime.now().strftime("%m%d.%H%M")  # build time, MMDD.HHMM
 STAMP = f"v{VERSION} · {BUILD}"
 
@@ -74,7 +74,7 @@ DISPLAY_PARAMS = (
      ("kickNote", "KickNote", "Kick Note", "note", 0, 127, None),
      ("bendRange", "BendRange", "Bend", "int", 1, 96, "%d st"),  # each way
      ("scaleFollow", "ScaleFollow", "Scale", "enum", 0, 1, OFF_ON),
-     ("swing", "Swing", "Swing", "int", 50, 75, "%d %%"),
+     ("swing", "Swing", "Swing", "int", 50, 75, None),
      # Settings > Refresh: turn to ask the kbLanes for their macros again
      ("macroRefresh", "MacroRefresh", "Refresh", "enum", 0, 1, ["Turn", "Sent"]),
      # A real setting (saved with the Set, shown in the device view): when the
@@ -88,7 +88,7 @@ DISPLAY_PARAMS = (
        ("velocity", "Velocity", "Velocity", "int", 0, 127, None),
        ("length", "Length", "Length", "enum", 0, 127, RETRIG_LEN_LABELS),  # gate + retrig LEN
        ("microtime", "Micro", "Micro", "int", -12, 12, "%d/24"),
-       ("probability", "Prob", "Prob", "int", 0, 100, "%d %%"),
+       ("probability", "Prob", "Prob", "int", 0, 100, None),
        ("accent", "Accent", "Accent", "enum", 0, 1, OFF_ON),
        ("slide", "Slide", "Slide", "enum", 0, 1, OFF_ON),
        ("tie", "Tie", "Tie", "enum", 0, 1, OFF_ON),
@@ -104,16 +104,16 @@ DISPLAY_PARAMS = (
     # Retrig (as retrig-m4l): banks Retrig and Rt Chance
     + [("retrig", "Retrig", "RTRG", "enum", 0, 1, OFF_ON),
        ("retrigRate", "RtRate", "RATE", "enum", 0, 16, RETRIG_RATES),
-       ("retrigFade", "RtVFade", "VFAD", "int", -100, 100, "%d %%"),
-       ("retrigCurve", "RtCurve", "CRV", "int", 0, 100, "%d %%"),
-       ("retrigProb", "RtProb", "PROB", "int", 0, 100, "%d %%"),
+       ("retrigFade", "RtVFade", "VFAD", "int", -100, 100, None),
+       ("retrigCurve", "RtCurve", "CRV", "int", 0, 100, None),
+       ("retrigProb", "RtProb", "PROB", "int", 0, 100, None),
        ("retrigTRate", "RtTRate", "TRATE", "enum", 0, 17, ["Off"] + RETRIG_RATES),
        ("retrigGlide", "RtGlide", "GLIDE", "float", 0, 128, "%.2f st"),
        ("retrigLock", "RtLock", "LOCK", "enum", 0, 1, OFF_ON),
        ("retrigPMode", "RtPMode", "PMODE", "enum", 0, 2, ["Repeats", "Burst", "Note"]),
        ("retrigVoices", "RtVoices", "VOICES", "enum", 0, 7, ["Mono", "2", "3", "4", "5", "6", "7", "8"])]
     # Slide bank (bass)
-    + [("slideTime", "SlTime", "Sl Time", "int", 0, 200, "%d %%"),
+    + [("slideTime", "SlTime", "Sl Time", "int", 0, 200, None),
        ("slideCurve", "SlCurve", "Sl Curve", "int", -100, 100, None)]
     # Kick Euclid / Bass Euclid banks (nothing held): lane Length + generator
     + [item for lane, L in (("k", "K"), ("b", "B")) for item in (
@@ -388,6 +388,7 @@ t.write("kbTakeover")
 
 # ---- main device ----
 bundle("kbSequencer.js", "main.js", modules=[("S", "seq_model.js")])
+bundle("kbSequencerDraw.js", "display.js")
 s = Patch("kbSequencer", size=(640, 169))
 common(s, "js kbSequencer.js", 5, wire_init=False, toggles=False)
 s.blob_pattr("pattr", "kbData", [200, 400, 100, 22])
@@ -597,7 +598,14 @@ s.obj("banks", "live.banks", [1000, 330, 70, 22], 1, 1, varname="banks")
 s.obj("pre_banks", "prepend banks", [1000, 360, 90, 22], 1, 1)
 s.wire("banks", 0, "pre_banks", 0)
 s.wire("pre_banks", 0, "js", 0)
-s.deps = ["kbSequencer.js"]
+# Push screen (Live 13): drawing script -> live.push; view state calls go
+# through a live.object the main script points at the control surface.
+# On Live 12 live.push doesn't exist and the script skips the screen.
+s.obj("draw", "js kbSequencerDraw.js", [1500, 300, 150, 22], 1, 1, varname="draw")
+s.obj("lpush", "live.push", [1500, 340, 60, 22], 1, 0)
+s.wire("draw", 0, "lpush", 0)
+s.obj("vs_obj", "live.object", [1500, 380, 70, 22], 2, 1, varname="vs_obj")
+s.deps = ["kbSequencer.js", "kbSequencerDraw.js"]
 s.write("kbSequencer")
 
 # ---- kbLane: put first on each receiving track ----
@@ -773,7 +781,7 @@ for dev in (t, s, f):
 
 if args.install:
     dest = Path(args.install).expanduser()
-    for name in ("kbTakeover.amxd", "kbTakeover.js", "kbSequencer.amxd", "kbSequencer.js",
+    for name in ("kbTakeover.amxd", "kbTakeover.js", "kbSequencer.amxd", "kbSequencer.js", "kbSequencerDraw.js",
                  "kbLane.amxd", "kbLane.js"):
         shutil.copy2(OUT / name, dest / name)
         print("installed", dest / name)

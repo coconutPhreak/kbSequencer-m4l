@@ -113,7 +113,7 @@ function run(argv) {
 	function notes(evs) { return evs.filter(function (e) { return e.lane < 2; }); }
 	var ev = notes(pm.eventsAt(0, stepMs, 0));
 	eq("two events at 0", ev.length, 2);
-	eq("kick event", [ev[0].lane, ev[0].pitch, ev[0].velocity, ev[0].durMs, ev[0].channel], [K, 60, 100, 50, 1]);
+	eq("kick event", [ev[0].lane, ev[0].pitch, ev[0].velocity, ev[0].durMs, ev[0].channel], [K, 60, 100, 88, 1]);
 	eq("bass event", [ev[1].lane, ev[1].pitch, ev[1].durMs, ev[1].channel], [B, 41, 100, 2]);
 	eq("muted silent", pm.eventsAt(4, stepMs, 0).length, 0);
 	eq("empty silent", pm.eventsAt(1, stepMs, 0).length, 0);
@@ -229,11 +229,11 @@ function run(argv) {
 	eq("glide: more hits than 4, fewer than 8", n2 > 4 && n2 < 8, true);
 	// plain note on the other lane unaffected; bass plain still plays
 	rt.addTrig(B, 1, 45);
-	eq("bass plain", rt.eventsAt(1, ms, 0, 0).filter(function (e) { return e.lane === B; }).map(function (e) { return [e.offMs, e.pitch, e.durMs]; }), [[0, 45, 50]]);
+	eq("bass plain", rt.eventsAt(1, ms, 0, 0).filter(function (e) { return e.lane === B; }).map(function (e) { return [e.offMs, e.pitch, e.durMs]; }), [[0, 45, 88]]);
 
 	// ---- merged length ----
 	var ml = new M.Model();
-	eq("default length 1/32", M.RETRIG_LENS[ml.lanes[K].defaults[P.length]], 0.5);
+	eq("default length 0.875", M.RETRIG_LENS[ml.lanes[K].defaults[P.length]], 0.875);
 	ml.addTrig(B, 0, 40); ml.setLock(B, 0, P.length, 127); ml.addTrig(B, 5, 41);
 	eq("INF gate until next note", ml.eventsAt(0, 100, 0, 0).filter(function (e) { return e.lane === B; })[0].durMs, 499);
 	// v1 save: gate ticks lock + default -> length index
@@ -428,15 +428,15 @@ function run(argv) {
 	var mt = new M.Model(); mt.setLoop(0, 1);
 	var kn = function (ev, lane) { return ev.filter(function (e) { return e.lane === lane; }).map(function (e) { return [e.offMs, e.durMs]; }); };
 	mt.addTrig(K, 4); mt.setLock(K, 4, P.microtime, 6);
-	eq("late: offset in step", kn(mt.eventsAt(4, 100, 0, 0), K), [[25, 50]]);
+	eq("late: offset in step", kn(mt.eventsAt(4, 100, 0, 0), K), [[25, 88]]);
 	mt.addTrig(K, 8); mt.setLock(K, 8, P.microtime, -6);
-	eq("early: plays in the step before", [kn(mt.eventsAt(7, 100, 0, 0), K), kn(mt.eventsAt(8, 100, 0, 0), K)], [[[75, 50]], []]);
-	eq("early on the play start step: on it", kn(mt.eventsAt(8, 100, 0, 8), K), [[0, 50]]);
+	eq("early: plays in the step before", [kn(mt.eventsAt(7, 100, 0, 0), K), kn(mt.eventsAt(8, 100, 0, 0), K)], [[[75, 88]], []]);
+	eq("early on the play start step: on it", kn(mt.eventsAt(8, 100, 0, 8), K), [[0, 88]]);
 	mt.addTrig(K, 12); mt.setLock(K, 12, P.microtime, -12); mt.addTrig(K, 11); mt.setLock(K, 11, P.microtime, 12);
-	eq("+12 and next -12 at the same time: one note", [kn(mt.eventsAt(11, 100, 0, 0), K), kn(mt.eventsAt(12, 100, 0, 0), K)], [[[50, 50]], []]);
+	eq("+12 and next -12 at the same time: one note", [kn(mt.eventsAt(11, 100, 0, 0), K), kn(mt.eventsAt(12, 100, 0, 0), K)], [[[50, 88]], []]);
 	// mono cut by an early next note
 	mt.addTrig(B, 16, 40); mt.setLock(B, 16, P.length, M.RETRIG_LENS.indexOf(2)); mt.addTrig(B, 17, 43); mt.setLock(B, 17, P.microtime, -6);
-	eq("cut by early next note", kn(mt.eventsAt(16, 100, 0, 0), B), [[0, 74], [75, 50]]);
+	eq("cut by early next note", kn(mt.eventsAt(16, 100, 0, 0), B), [[0, 74], [75, 88]]);
 	// retrig hits move with the note
 	mt.addTrig(K, 24); mt.setLock(K, 24, P.microtime, 3); mt.setLock(K, 24, P.retrig, 1); mt.setLock(K, 24, P.length, M.RETRIG_LENS.indexOf(1)); mt.setLock(K, 24, P.retrigRate, M.RETRIG_RATES.indexOf("1/32"));
 	eq("retrig shifted", kn(mt.eventsAt(24, 100, 0, 0), K).map(function (x) { return x[0]; }), [12.5, 62.5]);

@@ -1035,7 +1035,8 @@ var api = {
 	TICKS_PER_STEP: TICKS_PER_STEP, MACRO_SLOTS: MACRO_SLOTS, MACRO_RANGE: MACRO_RANGE, PRESET_SLOTS: PRESET_SLOTS,
 	KICK: KICK, BASS: BASS, LANE_NAMES: LANE_NAMES,
 	keyboardNotes: keyboardNotes, CHROMATIC: CHROMATIC,
-	MIN_OCTAVE: MIN_OCTAVE, MAX_OCTAVE: MAX_OCTAVE
+	MIN_OCTAVE: MIN_OCTAVE, MAX_OCTAVE: MAX_OCTAVE,
+	burstHits: burstHits, rateSteps: rateSteps, curveShape: curveShape
 };
 if (typeof exports !== "undefined") for (var _k in api) exports[_k] = api[_k];
 return api; // bundled build wraps this file in a function

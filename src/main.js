@@ -341,6 +341,7 @@ function tick(absStep) {
 	if (jumped) refillWindow(); else fillSlot(absStep + LOOKAHEAD);
 	var old = playSteps, oldPage = playPage();
 	playSteps = [model.seqIndexFor(absStep, S.KICK), model.seqIndexFor(absStep, S.BASS)];
+	if (old[0] !== playSteps[0] || old[1] !== playSteps[1]) screenDirty();
 	if (!grabbed || (old[0] === playSteps[0] && old[1] === playSteps[1])) return;
 	if (followPlayhead()) { renderAll(); showStatus(); return; }
 	for (var l = 0; l < 2; l++) { renderStep(old[l]); renderStep(playSteps[l]); }
@@ -462,6 +463,8 @@ function palette(base) {
 var deleting = false;
 function notifydeleted() {
 	deleting = true;
+	screenTask.cancel();
+	if (viewObs) { viewObs.property = ""; viewObs = null; }
 	saveTask.cancel();
 	grabTask.cancel();
 	repaintTask.cancel();
@@ -495,6 +498,7 @@ function init() {
 	readTakeover();
 	findPush();
 	if (!surface) { status("No Push found — is Push set as a control surface?"); return; }
+	setupScreen();
 	resolveControls();
 	setupFocus();
 	ensureBanks();
@@ -925,6 +929,7 @@ function banks() {
 }
 
 function updateDisplay() {
+	screenDirty();
 	if (!banksReady) return;
 	var bank = currentBank(), names = [];
 	for (var k = 0; k < 8; k++) names.push(itemShown(bank.items[k]) ? DISPLAY_PARAMS[bank.items[k]].longname : "-");
@@ -1429,6 +1434,7 @@ function sendPad(x, y, colour) {
 }
 
 function renderAll() {
+	screenDirty();
 	if (!grabbed || !controls.matrix) return;
 	if (paletteBase >= 0) {
 		for (var y = 0; y < 8; y++) for (var x = 0; x < 8; x++) sendPad(x, y, paletteBase + y * 8 + x);
@@ -1446,6 +1452,7 @@ function renderAll() {
 }
 
 function renderStep(i) {
+	screenDirty();
 	if (!grabbed || !controls.matrix || paletteBase >= 0) return;
 	var local = i - viewPage * S.STEPS_PER_PAGE;
 	if (local < 0 || local >= S.STEPS_PER_PAGE) return;
@@ -1790,4 +1797,177 @@ function toId(res) {
 	for (var i = 0; i < a.length; i++) if (a[i] === "id" && i + 1 < a.length) return Number(a[i + 1]);
 	var n = Number(a[a.length - 1]);
 	return isNaN(n) ? 0 : n;
+}
+
+// ---------- Push screen (Live 13 Custom Device Display API) ----------
+// While Push shows this device (view_device == this device), send the view
+// state (encoder styles) and keep the drawing in [js kbSequencerDraw.js]
+// current. Push clears the drawing itself when it shows another device, and
+// resets the view state, so both are sent again each time we're shown.
+// The view state call goes through [live.object] (vs_obj) in Looplet's form:
+// "call request_view_state_change dictionary <name>".
+var VIEW_DICT = "kbSequencerView";
+var viewObs = null, myDeviceId = 0, screenViewed = false, screenLogLeft = 8;
+var screenTask = new Task(function () { screenPending = false; pushScreen(); }, this);
+var screenPending = false;
+var viewStateDict = new Dict(VIEW_DICT);
+
+function screenLog(m) { if (screenLogLeft > 0) { screenLogLeft--; post("kbSequencer screen: " + m + "\n"); } }
+
+function setupScreen() {
+	if (viewObs) { viewObs.property = ""; viewObs = null; }
+	screenViewed = false;
+	if (!surface) return;
+	var me = new LiveAPI("this_device");
+	myDeviceId = me ? Number(me.id) : 0;
+	var vs = this.patcher ? this.patcher.getnamed("vs_obj") : null;
+	// Live 12 and earlier: no view_device, so no screen (the rest works as before).
+	var vd = surface.get("view_device");
+	if (!vd || !vd.length) { screenLog("no device display (needs Live 13)"); return; }
+	if (vs) vs.message("id", Number(surface.id));
+	viewObs = new LiveAPI(onViewDevice, "id " + surface.id);
+	viewObs.property = "view_device";
+	screenLog("watching view_device on surface " + surface.id + ", this device " + myDeviceId);
+}
+
+function onViewDevice(args) {
+	var a = flatten(args);
+	if (a[0] !== "view_device") return;
+	var shown = Number(a[a.length - 1]) === myDeviceId && myDeviceId !== 0;
+	if (shown === screenViewed) return;
+	screenViewed = shown;
+	screenLog("viewed " + (shown ? 1 : 0));
+	if (shown) defer(function () { sendViewState(); pushScreen(); });
+}
+
+// One combined dict per request (only the last of quick requests applies).
+// All encoders: small value, no dial, label on, so the middle is free.
+function sendViewState() {
+	var v = ["Small", "Small", "Small", "Small", "Small", "Small", "Small", "Small"];
+	var n = ["None", "None", "None", "None", "None", "None", "None", "None"];
+	viewStateDict.clear();
+	viewStateDict.set("EncodersValueStyle", v);
+	viewStateDict.set("EncodersVisualStyle", n);
+	viewStateDict.set("EncodersShowLabel", [1, 1, 1, 1, 1, 1, 1, 1]);
+	var vs = this.patcher ? this.patcher.getnamed("vs_obj") : null;
+	if (!vs) return;
+	vs.message("call", "request_view_state_change", "dictionary", VIEW_DICT);
+	screenLog("view state sent");
+}
+
+// Coalesce: many pads change at once (page flips, playhead), draw once.
+function screenDirty() {
+	if (!screenViewed || screenPending) return;
+	screenPending = true;
+	screenTask.schedule(20);
+}
+
+// Which screen a bank gets; others show the page view.
+var SCREEN_OF = { "Kick Euclid": "euclid", "Bass Euclid": "euclid", "Retrig": "retrig", "Slide": "slide", "CC Locks": "cclocks" };
+
+function pushScreen() {
+	if (!screenViewed) return;
+	var d = this.patcher ? this.patcher.getnamed("draw") : null;
+	if (!d) return;
+	var bank = currentBank(), mode = SCREEN_OF[bank.name] || "page", t = heldTarget();
+	var fl = bank.name === "Kick Euclid" ? S.KICK : bank.name === "Bass Euclid" ? S.BASS : t ? t.lane : editLane();
+	if (mode === "slide" && !selBass) mode = "page";
+	if ((mode === "retrig" || mode === "slide") && !(t && model.hasTrig(t.lane, t.i))) mode = "page"; // page held on an empty page
+	d.message("setmode", mode, fl);
+	var first = viewPage * S.STEPS_PER_PAGE, loop0 = model.loopStart * S.STEPS_PER_PAGE;
+	for (var l = 0; l < 2; l++) {
+		var row = ["lane", l], end = loop0 + model.lanes[l].length;
+		for (var i = first; i < first + S.STEPS_PER_PAGE; i++) {
+			var st = model.step(l, i), c = 0;
+			if (i >= end || i < loop0) c = 5;
+			else if (st) c = st.muted ? 2 : model.hasLocks(l, i) ? 3 : 1;
+			else if (model.lanes[l].euclid.layer !== 0 && model.euclidHit(l, i)) c = 4;
+			row.push(c);
+		}
+		d.message.apply(d, row);
+	}
+	var h = [];
+	for (var k = 0; k < 2; k++) {
+		var p = playSteps[k];
+		h.push(p >= first && p < first + S.STEPS_PER_PAGE ? p - first : -1);
+	}
+	d.message("playhead", h[0], h[1]);
+	var hl = ["setheld"];
+	for (var j = 0; j < heldSteps.length; j++) {
+		var hi = heldSteps[j].i - first;
+		if (hi >= 0 && hi < S.STEPS_PER_PAGE) hl.push(hi);
+	}
+	d.message.apply(d, hl);
+	var pg = [];
+	for (var m = 0; m < 2; m++) pg.push("pg " + (viewPage - model.loopStart + 1) + "/" + Math.max(1, Math.ceil(model.lanes[m].length / S.STEPS_PER_PAGE)));
+	d.message("pages", pg[0], pg[1]);
+	d.message("sel", selKick ? 1 : 0, selBass ? 1 : 0);
+	var info = BUILD_STAMP;
+	if (mode === "euclid") info = screenEuclid(d, fl);
+	else if (mode === "retrig") info = screenRetrig(d, t);
+	else if (mode === "slide") info = screenSlide(d, t);
+	else if (mode === "cclocks") screenCC(d, fl, t);
+	d.message("setinfo", info);
+	d.message("bang");
+}
+
+// One cycle of the lane's Euclid pattern (as model.euclidHit, from the
+// loop's first step).
+function screenEuclid(d, l) {
+	var eu = model.lanes[l].euclid, n = eu.follow ? model.lanes[l].length : eu.steps, k = Math.min(eu.pulses, n);
+	var msg = ["setpattern"];
+	for (var m = 0; m < n && m < 512; m++) {
+		var e = ((m - eu.rotate) % n + n) % n;
+		msg.push(k > 0 && (e * k) % n < k ? 1 : 0);
+	}
+	d.message.apply(d, msg);
+	return S.LANE_NAMES[l] + " · " + n + " steps · " + k + " pulses · rotate " + eu.rotate + " · " + S.LAYERS[eu.layer] + (eu.follow ? " · follows Length" : "");
+}
+
+// The held step's burst, with every repeat shown (chance: dimmer hits).
+function screenRetrig(d, t) {
+	var v = function (key) { return model.value(t.lane, t.i, S.PARAM_ID[key]); };
+	var n = { retrig: v("retrig") === 1, velocity: Math.max(1, v("velocity")), lenSteps: S.RETRIG_LENS[v("length")] };
+	if (n.retrig) {
+		n.rate = S.rateSteps(v("retrigRate")); n.len = n.lenSteps;
+		n.fade = v("retrigFade") / 100; n.curve = v("retrigCurve") / 100;
+		n.pmode = v("retrigPMode"); n.burstOk = true; n.lock = true;
+		var tr = v("retrigTRate");
+		n.trate = tr > 0 ? S.rateSteps(tr - 1) : 0;
+		n.glide = v("retrigGlide") / 4;
+		n.pass = function () { return true; };
+	}
+	var b = S.burstHits(n, 32), msg = ["setburst", b.span === Infinity ? 33 : b.span, v("retrigLock") === 1 ? 100 : v("retrigProb")];
+	for (var k = 0; k < b.hits.length && k < 256; k++) msg.push(b.hits[k].t, b.hits[k].vel, b.hits[k].play ? 1 : 0);
+	d.message.apply(d, msg);
+	var len = S.RETRIG_LEN_LABELS[v("length")];
+	return S.LANE_NAMES[t.lane] + " step " + (t.i + 1) + " · " + (n.retrig ? b.hits.length + (b.span === Infinity ? "+" : "") + " hits over " + len : "retrig off: one note, length " + len);
+}
+
+// The bass slide from the held step to the lane's next trig.
+function screenSlide(d, t) {
+	var l = S.BASS, i = t.i, st = model.step(l, i);
+	var nx = -1, len = model.lanes[l].length, loop0 = model.loopStart * S.STEPS_PER_PAGE;
+	for (var k = 1; k <= len && nx < 0; k++) {
+		var j = loop0 + ((i - loop0 + k) % len);
+		var s2 = model.step(l, j);
+		if (s2 && !s2.muted) nx = j;
+	}
+	var to = nx >= 0 ? model.step(l, nx).note : st ? st.note : 0, from = st ? st.note : 0;
+	var p = model.value(l, i, S.PARAM_ID.slideTime) / 100, c = model.value(l, i, S.PARAM_ID.slideCurve) / 100;
+	d.message("setslide", p, c, from, to);
+	var on = model.value(l, i, S.PARAM_ID.slide) === 1 ? "slide on" : model.value(l, i, S.PARAM_ID.tie) === 1 ? "tie on" : "slide off";
+	return "bass step " + (i + 1) + " → " + (nx >= 0 ? "step " + (nx + 1) : "none") + " · " + (to - from >= 0 ? "+" : "") + (to - from) + " st · " + on;
+}
+
+// CC slot values of the held step (or the lane defaults), and their targets.
+function screenCC(d, l, t) {
+	var msg = ["setcc"], lk = [], mi = macroInfo[l];
+	for (var k = 1; k <= 8; k++) {
+		var pid = S.PARAM_ID["m" + k];
+		msg.push(t ? model.value(t.lane, t.i, pid) : model.lanes[l].defaults[pid]);
+		lk.push(t && model.isLocked(t.lane, t.i, pid) ? 1 : 0);
+	}
+	d.message.apply(d, msg.concat(lk));
+	for (var j = 0; j < 8; j++) d.message("ccname", j, mi && mi.names && mi.names[j] && mi.names[j] !== "-" ? mi.names[j] : "");
 }

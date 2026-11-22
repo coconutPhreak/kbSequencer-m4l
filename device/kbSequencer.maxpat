@@ -208,7 +208,7 @@
       400,
       20
      ],
-     "text": "kbSequencer   v0.23.1 \u00b7 1122.2119",
+     "text": "kbSequencer   v0.24.0 \u00b7 1122.2125",
      "numinlets": 1,
      "numoutlets": 0
     }
@@ -1912,8 +1912,7 @@
        "parameter_type": 1,
        "parameter_mmin": 50,
        "parameter_mmax": 75,
-       "parameter_unitstyle": 9,
-       "parameter_units": "%d %%"
+       "parameter_unitstyle": 0
       }
      }
     }
@@ -2342,8 +2341,7 @@
        "parameter_type": 1,
        "parameter_mmin": 0,
        "parameter_mmax": 100,
-       "parameter_unitstyle": 9,
-       "parameter_units": "%d %%"
+       "parameter_unitstyle": 0
       }
      }
     }
@@ -3295,8 +3293,7 @@
        "parameter_type": 1,
        "parameter_mmin": -100,
        "parameter_mmax": 100,
-       "parameter_unitstyle": 9,
-       "parameter_units": "%d %%"
+       "parameter_unitstyle": 0
       }
      }
     }
@@ -3327,8 +3324,7 @@
        "parameter_type": 1,
        "parameter_mmin": 0,
        "parameter_mmax": 100,
-       "parameter_unitstyle": 9,
-       "parameter_units": "%d %%"
+       "parameter_unitstyle": 0
       }
      }
     }
@@ -3359,8 +3355,7 @@
        "parameter_type": 1,
        "parameter_mmin": 0,
        "parameter_mmax": 100,
-       "parameter_unitstyle": 9,
-       "parameter_units": "%d %%"
+       "parameter_unitstyle": 0
       }
      }
     }
@@ -3582,8 +3577,7 @@
        "parameter_type": 1,
        "parameter_mmin": 0,
        "parameter_mmax": 200,
-       "parameter_unitstyle": 9,
-       "parameter_units": "%d %%"
+       "parameter_unitstyle": 0
       }
      }
     }
@@ -4173,6 +4167,60 @@
      "outlettype": [
       ""
      ]
+    }
+   },
+   {
+    "box": {
+     "id": "draw",
+     "maxclass": "newobj",
+     "patching_rect": [
+      1500,
+      300,
+      150,
+      22
+     ],
+     "text": "js kbSequencerDraw.js",
+     "numinlets": 1,
+     "numoutlets": 1,
+     "outlettype": [
+      ""
+     ],
+     "varname": "draw"
+    }
+   },
+   {
+    "box": {
+     "id": "lpush",
+     "maxclass": "newobj",
+     "patching_rect": [
+      1500,
+      340,
+      60,
+      22
+     ],
+     "text": "live.push",
+     "numinlets": 1,
+     "numoutlets": 0,
+     "outlettype": []
+    }
+   },
+   {
+    "box": {
+     "id": "vs_obj",
+     "maxclass": "newobj",
+     "patching_rect": [
+      1500,
+      380,
+      70,
+      22
+     ],
+     "text": "live.object",
+     "numinlets": 2,
+     "numoutlets": 1,
+     "outlettype": [
+      ""
+     ],
+     "varname": "vs_obj"
     }
    }
   ],
@@ -5604,11 +5652,29 @@
       0
      ]
     }
+   },
+   {
+    "patchline": {
+     "source": [
+      "draw",
+      0
+     ],
+     "destination": [
+      "lpush",
+      0
+     ]
+    }
    }
   ],
   "dependency_cache": [
    {
     "name": "kbSequencer.js",
+    "bootpath": ".",
+    "type": "TEXT",
+    "implicit": 1
+   },
+   {
+    "name": "kbSequencerDraw.js",
     "bootpath": ".",
     "type": "TEXT",
     "implicit": 1
@@ -5961,6 +6027,10 @@
     "patchers": {},
     "code": {
      "kbSequencer.js": {
+      "kind": "javascript",
+      "local": 1
+     },
+     "kbSequencerDraw.js": {
       "kind": "javascript",
       "local": 1
      }
