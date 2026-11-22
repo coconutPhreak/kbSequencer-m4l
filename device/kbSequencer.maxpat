@@ -208,7 +208,7 @@
       400,
       20
      ],
-     "text": "kbSequencer   v0.23.0 \u00b7 1119.2143",
+     "text": "kbSequencer   v0.23.1 \u00b7 1122.2119",
      "numinlets": 1,
      "numoutlets": 0
     }

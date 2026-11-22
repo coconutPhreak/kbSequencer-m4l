@@ -99,7 +99,7 @@ track output still carries both lanes on channels 1 and 2.
 
 What plays: trigs on the kick lane (channel 1, note 60 = C3) and bass lane
 (channel 2, the step's note), skipping muted steps, applying probability,
-velocity and length (default: velocity 100, half a step). The pattern is
+velocity and length (default: velocity 100, 0.875 of a step). The pattern is
 locked to the song position and loops over the loop pages (page 1 by
 default; testfill sets pages 1–2). The playhead step shows white on Push.
 
@@ -265,8 +265,8 @@ follow retrig-m4l's REQUIREMENTS.md:
 
 - **Length** is one value for both: a plain note's gate and a retrig
   burst's LEN, from retrig's list (0.125 … 128 steps, INF). It's on the Step
-  bank and in the LEN slot of the Retrig bank (same value). Default 1/32
-  (half a step), so raise it when turning RTRG on. A plain note at INF is
+  bank and in the LEN slot of the Retrig bank (same value). Default 0.875
+  (7/8 of a step), so raise it when turning RTRG on. A plain note at INF is
   held until the lane's next note. Sets saved before v0.8.1 are converted to
   the nearest entry.
 - **RTRG** on makes the step a burst: hits at RATE (1/1 … 1/80) for Length.

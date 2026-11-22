@@ -81,8 +81,8 @@ for (var _c = 0; _c < MACRO_SLOTS; _c++)
 // Retrig, appended after the macro slots (ids are the save format).
 PARAMS.push(
 	// Length (index into RETRIG_LENS): a plain note's gate and a retrig burst's
-	// length, one value (merged). Default 1/32 (half a step), as before.
-	{ key: "length",       min: 0, max: RETRIG_LENS.length - 1, def: RETRIG_LENS.indexOf(0.5), lanes: [1, 1] },
+	// length, one value (merged). Default 0.875 (7/8 of a step).
+	{ key: "length",       min: 0, max: RETRIG_LENS.length - 1, def: RETRIG_LENS.indexOf(0.875), lanes: [1, 1] },
 	{ key: "retrigCurve",  min: 0, max: 100, def: 0,   lanes: [1, 1] },  // CRV %
 	{ key: "retrigProb",   min: 0, max: 100, def: 100, lanes: [1, 1] },  // PROB %
 	{ key: "retrigLock",   min: 0, max: 1,   def: 0,   lanes: [1, 1] },  // LOCK: ignore PROB
